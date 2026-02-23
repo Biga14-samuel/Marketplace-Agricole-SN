@@ -494,8 +494,8 @@ const handleLogin = async () => {
             // Redirection basée sur le rôle
             try {
                 if (role === 'Producer') {
-                    console.log('🔄 Redirection vers /profile/producer')
-                    router.push('/profile/producer')
+                    console.log('🔄 Redirection vers /producer/dashboard')
+                    router.push('/producer/dashboard')
                 } else if (role === 'Admin') {
                     console.log('🔄 Redirection vers /admin/dashboard')
                     router.push('/admin/dashboard')

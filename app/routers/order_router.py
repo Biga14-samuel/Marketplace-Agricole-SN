@@ -308,6 +308,11 @@ def get_order(
     response_model=OrderResponse,
     summary="Changer le statut d'une commande"
 )
+@router.put(
+    "/{order_id}/status",
+    response_model=OrderResponse,
+    summary="Changer le statut d'une commande (alias PUT)"
+)
 def update_order_status(
     order_id: int,
     status_change: UpdateOrderStatusRequest,
@@ -329,8 +334,9 @@ def update_order_status(
     """
     # Convert to the service expected format
     from app.schemas.order_schema import OrderStatusHistoryCreate
+    resolved_status = status_change.status or status_change.new_status
     status_change_data = OrderStatusHistoryCreate(
-        new_status=status_change.status,
+        new_status=resolved_status,
         comment=status_change.comment
     )
     

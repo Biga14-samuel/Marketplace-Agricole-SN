@@ -128,7 +128,7 @@ export const ordersService = {
 
       if (filter) {
         if (filter.status) {
-          params.append('status', Array.isArray(filter.status) ? filter.status[0] : filter.status)
+          params.append('status_filter', Array.isArray(filter.status) ? filter.status[0] : filter.status)
         }
         if (filter.page) {
           params.append('skip', ((filter.page - 1) * (filter.limit || 20)).toString())
@@ -166,16 +166,13 @@ export const ordersService = {
 
       if (filter) {
         if (filter.status) {
-          params.append('status', Array.isArray(filter.status) ? filter.status[0] : filter.status)
+          params.append('status_filter', Array.isArray(filter.status) ? filter.status[0] : filter.status)
         }
         if (filter.page) {
           params.append('skip', ((filter.page - 1) * (filter.limit || 20)).toString())
         }
         if (filter.limit) {
           params.append('limit', filter.limit.toString())
-        }
-        if (filter.producerId) {
-          params.append('producer_id', filter.producerId.toString())
         }
       }
 
@@ -281,15 +278,13 @@ export const ordersService = {
   },
 
   /**
-   * POST /api/v1/orders/bulk-cancel
+   * POST /api/v1/orders/{ids}/cancel
    * Annuler plusieurs commandes
    */
   bulkCancelOrders: async (orderIds: (string | number)[], data?: CancelOrderRequest): Promise<{ success: boolean; message: string }> => {
     try {
-      const response: AxiosResponse = await apiClient.post('/orders/bulk-cancel', {
-        order_ids: orderIds.map(id => parseInt(id.toString())),
-        ...data
-      })
+      const idsParam = orderIds.map(id => parseInt(id.toString(), 10)).join(',')
+      const response: AxiosResponse = await apiClient.post(`/orders/${idsParam}/cancel`, data || {})
       return { success: true, message: response.data.message }
     } catch (error: any) {
       console.error('Erreur annulation en lot:', error)

@@ -1,7 +1,7 @@
 """
 Schémas Pydantic pour les commandes et le panier
 """
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, model_validator
 from typing import Optional, List
 from datetime import datetime
 from decimal import Decimal
@@ -206,8 +206,17 @@ class OrderTrackingResponse(BaseModel):
 # ============= Request/Response Schemas =============
 
 class UpdateOrderStatusRequest(BaseModel):
-    status: OrderStatus
+    status: Optional[OrderStatus] = None
+    new_status: Optional[OrderStatus] = None
     comment: Optional[str] = None
+
+    @model_validator(mode="after")
+    def validate_status_field(self):
+        if self.status is None and self.new_status is None:
+            raise ValueError("Un statut est requis (status ou new_status)")
+        if self.status is None and self.new_status is not None:
+            self.status = self.new_status
+        return self
 
 class CancelOrderRequest(BaseModel):
     reason: Optional[str] = None

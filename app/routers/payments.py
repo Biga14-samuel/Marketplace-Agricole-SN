@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 from decimal import Decimal
+from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.services.payment_service import PaymentService
+from app.models.profiles import ProducerProfile
 from app.schemas.payments import (
     PaymentCreate, PaymentResponse, PaymentStats,
     PaymentMethodCreate, PaymentMethodResponse,
@@ -21,6 +24,25 @@ router = APIRouter(
     prefix="",
     tags=["Payments & Billing"]
 )
+
+
+class ProducerPayoutRequestBody(BaseModel):
+    period_start: datetime
+    period_end: datetime
+    payout_method: Optional[str] = None
+    account_details: Optional[Dict[str, Any]] = None
+    commission_rate: Decimal = Decimal("0.15")
+
+
+def _get_current_producer_id(db: Session, user_id: int) -> int:
+    producer = db.query(ProducerProfile).filter(ProducerProfile.user_id == user_id).first()
+    if not producer:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Profil producteur requis"
+        )
+    return producer.id
 
 
 # ============================================================================
@@ -288,6 +310,93 @@ def update_invoice_status(
 # ============================================================================
 # ENDPOINTS - PRODUCERPAYOUT (Versements producteurs)
 # ============================================================================
+
+@router.get("/producer/earnings")
+def get_current_producer_earnings(
+    period_start: Optional[datetime] = Query(None, description="Début de la période"),
+    period_end: Optional[datetime] = Query(None, description="Fin de la période"),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Donne un résumé des gains du producteur connecté.
+    """
+    now = datetime.utcnow()
+    period_start = period_start or datetime(now.year, now.month, 1)
+    period_end = period_end or now
+
+    producer_id = _get_current_producer_id(db, current_user.id)
+    service = PaymentService(db)
+    calc = service.calculate_producer_payout(
+        producer_id=producer_id,
+        period_start=period_start,
+        period_end=period_end,
+        commission_rate=Decimal("0.05")
+    )
+    return {
+        "currency": "XAF",
+        "total_revenue": calc.gross_amount,
+        "commission_rate": float(calc.commission_rate * Decimal("100")),
+        "commission_amount": calc.commission_amount,
+        "net_amount": calc.net_amount,
+        "period_breakdown": [
+            {
+                "month": period_start.strftime("%Y-%m"),
+                "gross": calc.gross_amount,
+                "net": calc.net_amount
+            }
+        ]
+    }
+
+
+@router.get("/producer/payout-preview", response_model=ProducerPayoutCalculation)
+def get_current_producer_payout_preview(
+    period_start: datetime = Query(..., description="Début de la période"),
+    period_end: datetime = Query(..., description="Fin de la période"),
+    commission_rate: Decimal = Query(Decimal("0.05"), description="Taux de commission"),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    producer_id = _get_current_producer_id(db, current_user.id)
+    service = PaymentService(db)
+    return service.calculate_producer_payout(
+        producer_id=producer_id,
+        period_start=period_start,
+        period_end=period_end,
+        commission_rate=commission_rate
+    )
+
+
+@router.post("/producer/payout-request", response_model=ProducerPayoutResponse, status_code=status.HTTP_201_CREATED)
+def create_current_producer_payout_request(
+    payload: ProducerPayoutRequestBody,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Crée une demande de virement pour le producteur connecté.
+    Les champs payout_method/account_details sont acceptés pour compatibilité MVP.
+    """
+    producer_id = _get_current_producer_id(db, current_user.id)
+    service = PaymentService(db)
+    return service.create_producer_payout(
+        producer_id=producer_id,
+        period_start=payload.period_start,
+        period_end=payload.period_end,
+        commission_rate=payload.commission_rate
+    )
+
+
+@router.get("/producer/payouts", response_model=List[ProducerPayoutResponse])
+def get_current_producer_payouts(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    producer_id = _get_current_producer_id(db, current_user.id)
+    service = PaymentService(db)
+    return service.get_producer_payouts(producer_id=producer_id, skip=skip, limit=limit)
 
 @router.get("/payouts/calculate", response_model=ProducerPayoutCalculation)
 def calculate_producer_payout(

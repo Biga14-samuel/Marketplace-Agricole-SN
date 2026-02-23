@@ -28,11 +28,24 @@ class AuthService:
         self.password_reset_repo = PasswordResetRepository(db)
         self.email_verification_repo = EmailVerificationRepository(db)
         self.login_history_repo = LoginHistoryRepository(db)
+
+    def _resolve_role_name(self, role_name: Optional[str]) -> str:
+        """Résout un nom de rôle de manière insensible à la casse."""
+        requested = (role_name or "Customer").strip()
+        if not requested:
+            requested = "Customer"
+
+        for role in self.role_repo.get_all():
+            if role.name.lower() == requested.lower():
+                return role.name
+
+        # Valeur de repli compatible avec les anciens clients.
+        return "Customer"
     
     def register_user(
             self, 
             user_data: UserCreate,
-            assign_role: str = "Customer"
+            assign_role: Optional[str] = None
         ) -> Tuple[User, str]:
             """
             Enregistre un nouvel utilisateur
@@ -70,14 +83,18 @@ class AuthService:
                 print(f"🚀 Mode développement: activation automatique du compte {user.email}")
                 user = self.user_repo.verify_email(user)
 
-            # Assigner le rôle
-            role = self.role_repo.get_by_name(assign_role)
-            if role:
-                self.role_repo.assign_role_to_user(user, role)
+            # Assigner le rôle demandé (Customer/Producer), insensible à la casse.
+            effective_role_name = self._resolve_role_name(assign_role or user_data.role)
+            role = self.role_repo.get_by_name(effective_role_name)
+            if not role:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Rôle introuvable: {effective_role_name}"
+                )
+            self.role_repo.assign_role_to_user(user, role)
 
             # Créer un profil client si first_name et last_name sont fournis
-            user_name = None
-            if assign_role == "Customer" and user_data.first_name and user_data.last_name:
+            if effective_role_name.lower() == "customer" and user_data.first_name and user_data.last_name:
                 from app.repositories.profile_repository import CustomerProfileRepository
                 profile_repo = CustomerProfileRepository(self.db)
                 profile_repo.create(
@@ -85,7 +102,6 @@ class AuthService:
                     first_name=user_data.first_name,
                     last_name=user_data.last_name
                 )
-                user_name = f"{user_data.first_name} {user_data.last_name}"
 
             # Créer un token de vérification d'email (même en mode skip pour les logs)
             verification_token = generate_verification_token()
@@ -233,7 +249,7 @@ class AuthService:
         verification = self.email_verification_repo.get_by_token(token)
         
         if not verification:
-            print(f"DEBUG - Token non trouvé ou expiré")
+            print("DEBUG - Token non trouvé ou expiré")
             # Vérifier si le token existe mais est déjà utilisé
             used_verification = self.db.query(EmailVerification).filter(
                 EmailVerification.token == token
@@ -259,7 +275,7 @@ class AuthService:
         # Récupérer l'utilisateur
         user = self.user_repo.get_by_id(verification.user_id)
         if not user:
-            print(f"DEBUG - Utilisateur non trouvé")
+            print("DEBUG - Utilisateur non trouvé")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Utilisateur non trouvé"
@@ -275,7 +291,7 @@ class AuthService:
         
         # Marquer comme vérifié
         self.email_verification_repo.mark_as_verified(verification)
-        print(f"DEBUG - Token marqué comme vérifié")
+        print("DEBUG - Token marqué comme vérifié")
         
         # Vérifier l'utilisateur
         verified_user = self.user_repo.verify_email(user)

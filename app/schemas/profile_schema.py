@@ -68,7 +68,7 @@ class CustomerProfileResponse(CustomerProfileBase):
 class AddressBase(BaseModel):
     """Schéma de base pour une adresse"""
     type: AddressTypeEnum
-    street: str = Field(..., min_length=5, max_length=255)
+    street: str = Field(..., min_length=3, max_length=255)
     city: str = Field(..., min_length=2, max_length=100)
     postal_code: str = Field(..., min_length=2, max_length=20)
     country: str = Field(default="Cameroun", max_length=100)
@@ -100,7 +100,7 @@ class AddressCreate(AddressBase):
 class AddressUpdate(BaseModel):
     """Schéma pour mettre à jour une adresse"""
     type: Optional[AddressTypeEnum] = None
-    street: Optional[str] = Field(None, min_length=5, max_length=255)
+    street: Optional[str] = Field(None, min_length=3, max_length=255)
     city: Optional[str] = Field(None, min_length=2, max_length=100)
     postal_code: Optional[str] = Field(None, min_length=2, max_length=20)
     country: Optional[str] = Field(None, max_length=100)
@@ -252,7 +252,7 @@ class ProducerScheduleResponse(ProducerScheduleBase):
 class PickupPointBase(BaseModel):
     """Schéma de base pour un point de retrait"""
     name: str = Field(..., min_length=2, max_length=255)
-    address: str = Field(..., min_length=5)
+    address: str = Field(..., min_length=3)
     city: str = Field(..., min_length=2, max_length=100)
     postal_code: str = Field(..., min_length=2, max_length=20)
     coordinates: Optional[str] = None
@@ -283,7 +283,7 @@ class PickupPointCreate(PickupPointBase):
 class PickupPointUpdate(BaseModel):
     """Schéma pour mettre à jour un point de retrait"""
     name: Optional[str] = Field(None, min_length=2, max_length=255)
-    address: Optional[str] = Field(None, min_length=5)
+    address: Optional[str] = Field(None, min_length=3)
     city: Optional[str] = Field(None, min_length=2, max_length=100)
     postal_code: Optional[str] = Field(None, min_length=2, max_length=20)
     coordinates: Optional[str] = None

@@ -3,6 +3,8 @@ import { useAuthStore } from '@/modules/auth'
 import authRoutes from './routes/auth.routes'
 import catalogRoutes from './routes/catalog.routes'
 import userProfilesRoutes from './routes/user-profiles.routes'
+import ordersRoutes from '@/modules/orders/router/orders.routes'
+import paymentRoutes from '@/modules/payments/router/paymentRoutes'
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -39,6 +41,8 @@ const router = createRouter({
         ...authRoutes,
         ...catalogRoutes,
         ...userProfilesRoutes,
+        ...ordersRoutes,
+        ...paymentRoutes,
         
         // Route 404
         {

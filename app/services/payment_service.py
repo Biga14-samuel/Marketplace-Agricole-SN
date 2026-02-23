@@ -10,7 +10,7 @@ from app.repositories.payment_repository import PaymentRepository
 from app.models.payments import (
     Payment, Invoice, PaymentStatus, RefundStatus, InvoiceStatus, PayoutStatus
 )
-from app.models.orders import Order, OrderStatus
+from app.models.orders import Order, OrderStatus, PaymentStatus as OrderPaymentStatus
 from app.schemas.payments import (
     PaymentCreate, PaymentUpdate, PaymentResponse, PaymentStats,
     PaymentMethodCreate, PaymentMethodUpdate, PaymentMethodResponse,
@@ -551,29 +551,24 @@ class PaymentService:
         """
         Calcule le versement à effectuer pour un producteur sur une période.
         
-        Cette fonction analyse toutes les commandes livrées du producteur
-        pendant la période et calcule la commission à prélever.
+        Seules les commandes producteur finalisées et payées sont éligibles.
         """
-        # Récupérer toutes les commandes livrées du producteur dans la période
-        from app.models.orders import OrderItem
-        
-        orders_query = self.db.query(Order).join(OrderItem).filter(
+        # Récupérer les commandes éligibles sur la période.
+        orders = self.db.query(Order).filter(
             and_(
-                OrderItem.producer_id == producer_id,
-                Order.status == OrderStatus.DELIVERED,
-                Order.delivery_date >= period_start,
-                Order.delivery_date <= period_end
+                Order.producer_id == producer_id,
+                Order.status == OrderStatus.COMPLETED,
+                Order.payment_status == OrderPaymentStatus.COMPLETED,
+                Order.created_at >= period_start,
+                Order.created_at <= period_end
             )
-        ).distinct()
-        
-        orders = orders_query.all()
-        
-        # Calculer le montant brut (somme des items du producteur)
-        gross_amount = Decimal("0")
-        for order in orders:
-            for item in order.items:
-                if item.producer_id == producer_id:
-                    gross_amount += item.price * item.quantity
+        ).all()
+
+        # Montant brut: somme des totaux de commandes éligibles.
+        gross_amount = sum(
+            (Decimal(str(order.total_amount)) for order in orders),
+            Decimal("0")
+        )
         
         # Calculer la commission et le montant net
         commission_amount = gross_amount * commission_rate
@@ -616,6 +611,11 @@ class PaymentService:
             calculation = self.calculate_producer_payout(
                 producer_id, period_start, period_end, commission_rate
             )
+            if calculation.total_orders == 0 or calculation.gross_amount <= 0:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Aucune commande éligible (COMPLETED + paiement COMPLETED) sur cette période"
+                )
             
             # Créer le versement
             payout_data = ProducerPayoutCreate(

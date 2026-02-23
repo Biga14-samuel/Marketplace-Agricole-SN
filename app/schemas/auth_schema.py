@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 import re
 
@@ -36,6 +36,7 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=100)
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     last_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    role: Literal["Customer", "Producer"] = "Customer"
     
     @field_validator('password')
     @classmethod

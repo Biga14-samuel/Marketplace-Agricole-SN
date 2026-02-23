@@ -92,110 +92,65 @@ app.add_middleware(
 )
 
 # --- INCLUSION DES ROUTERS ---
+def include_router_with_legacy_prefix(router_obj, suffix: str, tags: list[str]):
+    """
+    Expose chaque route sous deux formes :
+    - nouvelle: /api/v1/...
+    - legacy: /...
+    Cela maintient la compatibilité avec les tests/intégrations existants.
+    """
+    app.include_router(
+        router_obj,
+        prefix=f"{settings.API_V1_PREFIX}{suffix}",
+        tags=tags
+    )
+    if settings.API_V1_PREFIX:
+        app.include_router(
+            router_obj,
+            prefix=suffix,
+            tags=tags,
+            include_in_schema=False
+        )
 
 # Administration Système
-app.include_router(
-    admin.router,
-    prefix=f"{settings.API_V1_PREFIX}/admin",
-    tags=["Administration"]
-)
+include_router_with_legacy_prefix(admin.router, "/admin", ["Administration"])
 
 # Authentification & Utilisateurs
-app.include_router(
-    auth_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/authentification",
-    tags=["Authentication"]
-)
+include_router_with_legacy_prefix(auth_router.router, "/authentification", ["Authentication"])
 
-app.include_router(
-    customer_profile_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/customer-profiles",
-    tags=["Customer Profiles"]
-)
+include_router_with_legacy_prefix(customer_profile_router.router, "/customer-profiles", ["Customer Profiles"])
 
-app.include_router(
-    producer_profile_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/producer-profiles",
-    tags=["Producer Profiles"]
-)
+include_router_with_legacy_prefix(producer_profile_router.router, "/producer-profiles", ["Producer Profiles"])
 
 # Catalogue & Commerce
-app.include_router(
-    product_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/products-catalog",
-    tags=["Products & Catalog"]
-)
+include_router_with_legacy_prefix(product_router.router, "/products-catalog", ["Products & Catalog"])
 
-app.include_router(
-    order_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/orders",
-    tags=["Orders"]
-)
+include_router_with_legacy_prefix(order_router.router, "/orders", ["Orders"])
 
 # Marketing & Finance
-app.include_router(
-    payments_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/payments",
-    tags=["Payments & Invoices"]
-)
+include_router_with_legacy_prefix(payments_router.router, "/payments", ["Payments & Invoices"])
 
-app.include_router(
-    promotions.router,
-    prefix=f"{settings.API_V1_PREFIX}/promotions",
-    tags=["Promotions"]
-)
+include_router_with_legacy_prefix(promotions.router, "/promotions", ["Promotions"])
 
-app.include_router(
-    reviews.router,
-    prefix=f"{settings.API_V1_PREFIX}/reviews",
-    tags=["Product Reviews"]
-)
+include_router_with_legacy_prefix(reviews.router, "/reviews", ["Product Reviews"])
 
 # Communication & Analytics
-app.include_router(
-    communication_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/communication",
-    tags=["Communication"]
-)
+include_router_with_legacy_prefix(communication_router.router, "/communication", ["Communication"])
 
-app.include_router(
-    analytics_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/analytics",
-    tags=["Analytics"]
-)
+include_router_with_legacy_prefix(analytics_router.router, "/analytics", ["Analytics"])
 
 # Abonnements
-app.include_router(
-    subscriptions_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/subscription",
-    tags=["Subscriptions"]
-)
+include_router_with_legacy_prefix(subscriptions_router.router, "/subscription", ["Subscriptions"])
 
 # Livraison & Listes
-app.include_router(
-    delivery.router,
-    prefix=f"{settings.API_V1_PREFIX}/delivery",
-    tags=["Delivery"]
-)
+include_router_with_legacy_prefix(delivery.router, "/delivery", ["Delivery"])
 
-app.include_router(
-    wishlist.router,
-    prefix=f"{settings.API_V1_PREFIX}/wishlist",
-    tags=["Wishlist"]
-)
+include_router_with_legacy_prefix(wishlist.router, "/wishlist", ["Wishlist"])
 
-app.include_router(
-    event.router,
-    prefix=f"{settings.API_V1_PREFIX}/events",
-    tags=["Events"]
-)
+include_router_with_legacy_prefix(event.router, "/events", ["Events"])
 
 # CMS & Contenu
-app.include_router(
-    cms_router.router,
-    prefix=f"{settings.API_V1_PREFIX}/cms",
-    tags=["CMS & Content"]
-)
+include_router_with_legacy_prefix(cms_router.router, "/cms", ["CMS & Content"])
 
 @app.get("/", tags=["System"])
 def read_root():

@@ -83,7 +83,10 @@ async def register(
     """
     Crée un nouveau compte utilisateur.
     """
-    user, verification_token = auth_service.register_user(user_data)
+    user, verification_token = auth_service.register_user(
+        user_data,
+        assign_role=user_data.role
+    )
     
     # En mode SKIP, pas besoin d'envoyer d'email
     if settings.SKIP_EMAIL_VERIFICATION:

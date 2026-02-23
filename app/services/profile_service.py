@@ -10,14 +10,15 @@ from app.repositories.profile_repository import (
 from app.repositories.auth_repository import UserRepository
 from app.models.profiles import (
     CustomerProfile, Address, ProducerProfile,
-    PickupPoint, PickupSlot, ProducerSchedule
+    ProducerDocument, PickupPoint, PickupSlot, ProducerSchedule
 )
 from app.schemas.profile_schema import (
     CustomerProfileCreate, CustomerProfileUpdate,
     AddressCreate, AddressUpdate,
     ProducerProfileCreate, ProducerProfileUpdate,
+    DocumentTypeEnum,
     PickupPointCreate, PickupPointUpdate,
-    PickupSlotCreate,
+    PickupSlotCreate, PickupSlotUpdate,
     ProducerScheduleCreate, ProducerScheduleUpdate
 )
 
@@ -189,6 +190,11 @@ class ProducerProfileService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Utilisateur non trouvé"
             )
+        if not user.is_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Veuillez vérifier votre email avant de créer un profil producteur"
+            )
         
         # Vérifier qu'il n'a pas déjà un profil producteur
         existing_profile = self.profile_repo.get_by_user_id(user_id)
@@ -203,6 +209,92 @@ class ProducerProfileService:
             user_id=user_id,
             **profile_data.model_dump()
         )
+
+    def upload_document(
+        self,
+        user_id: int,
+        document_type: DocumentTypeEnum,
+        file_path: str,
+        original_filename: str,
+        expires_at=None
+    ) -> ProducerDocument:
+        """Ajoute un document légal au profil producteur connecté."""
+        profile = self.get_profile(user_id)
+        return self.document_repo.create(
+            producer_id=profile.id,
+            type=document_type,
+            file_path=file_path,
+            original_filename=original_filename,
+            expires_at=expires_at
+        )
+
+    def get_documents(self, user_id: int) -> List[ProducerDocument]:
+        """Récupère les documents du producteur connecté."""
+        profile = self.get_profile(user_id)
+        return self.document_repo.get_producer_documents(profile.id)
+
+    def delete_document(self, user_id: int, document_id: int) -> bool:
+        """Supprime un document du producteur connecté."""
+        profile = self.get_profile(user_id)
+        document = self.document_repo.get_by_id(document_id)
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document non trouvé"
+            )
+        if document.producer_id != profile.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous n'avez pas accès à ce document"
+            )
+        return self.document_repo.delete(document)
+
+    def submit_for_verification(self, user_id: int) -> dict:
+        """
+        Soumet le dossier producteur pour validation.
+        Dans cette version, l'état est dérivé des documents présents.
+        """
+        profile = self.get_profile(user_id)
+        documents = self.document_repo.get_producer_documents(profile.id)
+        required = {"kbis", "insurance"}
+        uploaded = {doc.type.value if hasattr(doc.type, "value") else str(doc.type) for doc in documents}
+
+        missing = [doc for doc in required if doc not in uploaded]
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Documents manquants: {', '.join(sorted(missing))}"
+            )
+
+        return {
+            "status": "under_review" if not profile.is_verified else "verified",
+            "message": "Dossier soumis avec succès"
+        }
+
+    def get_verification_status(self, user_id: int) -> dict:
+        """Retourne un statut lisible de vérification producteur."""
+        profile = self.get_profile(user_id)
+        documents = self.document_repo.get_producer_documents(profile.id)
+        required = {"kbis", "insurance"}
+        uploaded = {doc.type.value if hasattr(doc.type, "value") else str(doc.type) for doc in documents}
+
+        if profile.is_verified:
+            status_value = "verified"
+            message = "Compte producteur validé"
+        elif not required.issubset(uploaded):
+            status_value = "pending_documents"
+            missing = [doc for doc in required if doc not in uploaded]
+            message = f"Documents manquants: {', '.join(sorted(missing))}"
+        else:
+            status_value = "under_review"
+            message = "Dossier en cours d'examen"
+
+        return {
+            "status": status_value,
+            "message": message,
+            "is_verified": profile.is_verified,
+            "documents_count": len(documents)
+        }
     
     def get_profile(self, user_id: int) -> ProducerProfile:
         """Récupère le profil producteur"""
@@ -360,6 +452,35 @@ class PickupPointService:
     def get_available_slots(self, point_id: int, day_of_week: str) -> List[PickupSlot]:
         """Récupère les créneaux disponibles pour un jour"""
         return self.slot_repo.get_available_slots(point_id, day_of_week)
+
+    def get_slot(self, slot_id: int, user_id: int) -> PickupSlot:
+        """Récupère un créneau spécifique en vérifiant la propriété."""
+        slot = self.slot_repo.get_by_id(slot_id)
+        if not slot:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Créneau non trouvé"
+            )
+        point = self.get_point(slot.pickup_point_id, user_id)
+        if slot.pickup_point_id != point.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous n'avez pas accès à ce créneau"
+            )
+        return slot
+
+    def update_slot(self, slot_id: int, user_id: int, slot_data: PickupSlotUpdate) -> PickupSlot:
+        """Met à jour un créneau de retrait."""
+        slot = self.get_slot(slot_id, user_id)
+        update_data = slot_data.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(slot, field, value)
+        return self.slot_repo.update(slot)
+
+    def delete_slot(self, slot_id: int, user_id: int) -> bool:
+        """Supprime un créneau de retrait."""
+        slot = self.get_slot(slot_id, user_id)
+        return self.slot_repo.delete(slot)
 
 
 

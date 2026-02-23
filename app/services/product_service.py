@@ -9,6 +9,7 @@ from app.repositories.product_repository import (
 )
 from app.repositories.profile_repository import ProducerProfileRepository
 from app.models.products import Product, Category, Tag, Unit, ProductImage, ProductVariant, StockAlert
+from app.core.config import settings
 from app.schemas.product_schema import (
     CategoryCreate, CategoryUpdate, TagCreate, TagUpdate,
     UnitCreate, UnitUpdate, ProductCreate, ProductUpdate,
@@ -218,6 +219,11 @@ class ProductService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Seuls les producteurs peuvent créer des produits"
+            )
+        if not producer.is_verified and not settings.SKIP_EMAIL_VERIFICATION:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Votre profil producteur doit être validé avant de créer des produits"
             )
         
         # Vérifier que le slug est unique pour ce producteur

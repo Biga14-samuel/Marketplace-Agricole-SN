@@ -113,11 +113,12 @@ class User(Base):
         """Retourne le nom du premier rôle de l'utilisateur, ou 'customer' par défaut"""
         if self.roles:
             return self.roles[0].name
-        return "customer"
+        return "Customer"
     
     def has_role(self, role_name: str) -> bool:
         """Vérifie si l'utilisateur a un rôle spécifique"""
-        return any(role.name == role_name for role in self.roles)
+        expected = (role_name or "").strip().lower()
+        return any((role.name or "").strip().lower() == expected for role in self.roles)
     
     def __repr__(self):
         return f"<User(id={self.id}, email='{self.email}')>"

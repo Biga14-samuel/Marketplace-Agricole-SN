@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, status
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, status, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.core.database import get_db
 from app.routers.auth_router import get_current_user
@@ -8,8 +9,9 @@ from app.services.profile_service import ProducerProfileService, PickupPointServ
 from app.services.auth_service import AuthService
 from app.schemas.profile_schema import (
     ProducerProfileCreate, ProducerProfileUpdate, ProducerProfileResponse, ProducerProfileComplete,
+    ProducerDocumentResponse, DocumentTypeEnum,
     PickupPointCreate, PickupPointUpdate, PickupPointResponse,
-    PickupSlotCreate, PickupSlotResponse,
+    PickupSlotCreate, PickupSlotUpdate, PickupSlotResponse,
     ProducerScheduleCreate, ProducerScheduleUpdate, ProducerScheduleResponse
 )
 from app.schemas.auth_schema import MessageResponse
@@ -90,22 +92,6 @@ def get_my_complete_profile(
     return ProducerProfileComplete.model_validate(profile)
 
 
-@router.get(
-    "/{producer_id}",
-    response_model=ProducerProfileResponse,
-    summary="Obtenir un profil producteur public"
-)
-def get_public_producer_profile(
-    producer_id: int,
-    producer_service: ProducerProfileService = Depends(get_producer_service)
-):
-    """
-    Récupère les informations publiques d'un profil producteur.
-    Accessible sans authentification.
-    """
-    return producer_service.get_public_profile(producer_id)
-
-
 @router.put(
     "/profile",
     response_model=ProducerProfileResponse,
@@ -140,6 +126,96 @@ def get_verified_producers(
     return [ProducerProfileResponse.model_validate(p) for p in producers]
 
 
+# ============= Producer Documents & Verification =============
+
+@router.post(
+    "/documents",
+    response_model=ProducerDocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Uploader un document producteur"
+)
+async def upload_producer_document(
+    type: str = Form(...),
+    file: UploadFile = File(...),
+    expires_at: Optional[datetime] = Form(None),
+    current_user=Depends(get_current_user),
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    """
+    Uploade un document légal (kbis/insurance/certification) pour le producteur connecté.
+    Le fichier est référencé en base (MVP: chemin logique).
+    """
+    try:
+        document_type = DocumentTypeEnum(type)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Type de document invalide (kbis, insurance, certification)"
+        )
+
+    safe_name = (file.filename or "document.bin").replace(" ", "_")
+    stored_path = f"/uploads/producers/{current_user.id}/{int(datetime.now(timezone.utc).timestamp())}_{safe_name}"
+    document = producer_service.upload_document(
+        user_id=current_user.id,
+        document_type=document_type,
+        file_path=stored_path,
+        original_filename=file.filename or safe_name,
+        expires_at=expires_at
+    )
+    return ProducerDocumentResponse.model_validate(document)
+
+
+@router.get(
+    "/documents",
+    response_model=List[ProducerDocumentResponse],
+    summary="Lister mes documents producteur"
+)
+def get_producer_documents(
+    current_user=Depends(get_current_user),
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    documents = producer_service.get_documents(current_user.id)
+    return [ProducerDocumentResponse.model_validate(doc) for doc in documents]
+
+
+@router.delete(
+    "/documents/{document_id}",
+    response_model=MessageResponse,
+    summary="Supprimer un document producteur"
+)
+def delete_producer_document(
+    document_id: int,
+    current_user=Depends(get_current_user),
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    producer_service.delete_document(current_user.id, document_id)
+    return MessageResponse(message="Document supprimé avec succès")
+
+
+@router.post(
+    "/verification/submit",
+    response_model=MessageResponse,
+    summary="Soumettre le dossier producteur"
+)
+def submit_producer_verification(
+    current_user=Depends(get_current_user),
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    result = producer_service.submit_for_verification(current_user.id)
+    return MessageResponse(message=result.get("message", "Dossier soumis"))
+
+
+@router.get(
+    "/verification/status",
+    summary="Consulter le statut de vérification producteur"
+)
+def get_producer_verification_status(
+    current_user=Depends(get_current_user),
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    return producer_service.get_verification_status(current_user.id)
+
+
 # ============= Producer Schedule Endpoints =============
 
 @router.post(
@@ -172,6 +248,34 @@ def get_my_schedules(
     """
     Récupère tous les horaires du producteur connecté.
     """
+    schedules = schedule_service.get_producer_schedules(current_user.id)
+    return [ProducerScheduleResponse.model_validate(s) for s in schedules]
+
+
+@router.post(
+    "/schedule",
+    response_model=ProducerScheduleResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Créer un horaire d'ouverture (alias)"
+)
+def create_schedule_alias(
+    schedule_data: ProducerScheduleCreate,
+    current_user=Depends(get_current_user),
+    schedule_service: ProducerScheduleService = Depends(get_schedule_service)
+):
+    schedule = schedule_service.create_schedule(current_user.id, schedule_data)
+    return ProducerScheduleResponse.model_validate(schedule)
+
+
+@router.get(
+    "/schedule",
+    response_model=List[ProducerScheduleResponse],
+    summary="Obtenir mes horaires (alias)"
+)
+def get_my_schedule_alias(
+    current_user=Depends(get_current_user),
+    schedule_service: ProducerScheduleService = Depends(get_schedule_service)
+):
     schedules = schedule_service.get_producer_schedules(current_user.id)
     return [ProducerScheduleResponse.model_validate(s) for s in schedules]
 
@@ -370,3 +474,62 @@ def get_available_slots(
     """
     slots = pickup_service.get_available_slots(point_id, day_of_week)
     return [PickupSlotResponse.model_validate(s) for s in slots]
+
+
+@router.get(
+    "/pickup-slots/{slot_id}",
+    response_model=PickupSlotResponse,
+    summary="Obtenir un créneau de retrait"
+)
+def get_pickup_slot(
+    slot_id: int,
+    current_user=Depends(get_current_user),
+    pickup_service: PickupPointService = Depends(get_pickup_service)
+):
+    slot = pickup_service.get_slot(slot_id, current_user.id)
+    return PickupSlotResponse.model_validate(slot)
+
+
+@router.put(
+    "/pickup-slots/{slot_id}",
+    response_model=PickupSlotResponse,
+    summary="Mettre à jour un créneau de retrait"
+)
+def update_pickup_slot(
+    slot_id: int,
+    slot_data: PickupSlotUpdate,
+    current_user=Depends(get_current_user),
+    pickup_service: PickupPointService = Depends(get_pickup_service)
+):
+    slot = pickup_service.update_slot(slot_id, current_user.id, slot_data)
+    return PickupSlotResponse.model_validate(slot)
+
+
+@router.delete(
+    "/pickup-slots/{slot_id}",
+    response_model=MessageResponse,
+    summary="Supprimer un créneau de retrait"
+)
+def delete_pickup_slot(
+    slot_id: int,
+    current_user=Depends(get_current_user),
+    pickup_service: PickupPointService = Depends(get_pickup_service)
+):
+    pickup_service.delete_slot(slot_id, current_user.id)
+    return MessageResponse(message="Créneau supprimé avec succès")
+
+
+@router.get(
+    "/{producer_id}",
+    response_model=ProducerProfileResponse,
+    summary="Obtenir un profil producteur public"
+)
+def get_public_producer_profile(
+    producer_id: int,
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    """
+    Récupère les informations publiques d'un profil producteur.
+    Accessible sans authentification.
+    """
+    return producer_service.get_public_profile(producer_id)

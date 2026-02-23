@@ -9,7 +9,12 @@ from app.repositories.order_repository import (
     OrderItemRepository, OrderStatusHistoryRepository, OrderTrackingRepository
 )
 from app.repositories.product_repository import ProductRepository, ProductVariantRepository
-from app.repositories.profile_repository import AddressRepository, PickupPointRepository
+from app.repositories.profile_repository import (
+    AddressRepository,
+    PickupPointRepository,
+    PickupSlotRepository,
+    ProducerProfileRepository,
+)
 from app.models.orders import Cart, CartItem, Order, OrderTracking
 from app.schemas.order_schema import (
     CartItemCreate, CartItemUpdate, CheckoutRequest,
@@ -282,6 +287,78 @@ class OrderService:
         self.product_repo = ProductRepository(db)
         self.address_repo = AddressRepository(db)
         self.pickup_point_repo = PickupPointRepository(db)
+        self.pickup_slot_repo = PickupSlotRepository(db)
+        self.producer_profile_repo = ProducerProfileRepository(db)
+
+    @staticmethod
+    def _value_of(enum_or_value) -> str:
+        """Retourne la valeur string d'un Enum ou d'une chaîne."""
+        return enum_or_value.value if hasattr(enum_or_value, "value") else str(enum_or_value)
+
+    def _get_producer_profile_id_for_user(self, user_id: int) -> Optional[int]:
+        producer_profile = self.producer_profile_repo.get_by_user_id(user_id)
+        return producer_profile.id if producer_profile else None
+
+    def _is_order_producer(self, order: Order, user_id: int) -> bool:
+        producer_profile_id = self._get_producer_profile_id_for_user(user_id)
+        return producer_profile_id is not None and order.producer_id == producer_profile_id
+
+    def _validate_status_transition(self, current_status: str, next_status: str) -> None:
+        allowed_transitions = {
+            "pending": {"confirmed", "cancelled"},
+            "confirmed": {"preparing", "cancelled"},
+            "preparing": {"ready", "cancelled"},
+            "ready": {"completed", "cancelled"},
+            "completed": set(),
+            "cancelled": set(),
+        }
+        allowed = allowed_transitions.get(current_status, set())
+        if next_status not in allowed:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Transition invalide: {current_status} -> {next_status}"
+            )
+
+    def _decrement_stock_for_order(self, order: Order) -> None:
+        for item in order.items:
+            if item.variant_id:
+                if not item.variant:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Variante introuvable pour un article de commande"
+                    )
+                if item.variant.stock < item.quantity:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Stock insuffisant pour la variante {item.variant.name}"
+                    )
+                item.variant.stock -= item.quantity
+            else:
+                if not item.product:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Produit introuvable pour un article de commande"
+                    )
+                if item.product.stock_quantity < item.quantity:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Stock insuffisant pour {item.product.name}"
+                    )
+                item.product.stock_quantity -= item.quantity
+
+    def _restore_stock_for_order(self, order: Order) -> None:
+        for item in order.items:
+            if item.variant_id and item.variant:
+                item.variant.stock += item.quantity
+            elif item.product:
+                item.product.stock_quantity += item.quantity
+
+    def _release_pickup_slot(self, order: Order) -> None:
+        if not order.pickup_slot_id:
+            return
+        slot = self.pickup_slot_repo.get_by_id(order.pickup_slot_id)
+        if slot and slot.current_orders > 0:
+            slot.current_orders -= 1
     
     def create_order_from_cart(
         self,
@@ -327,11 +404,29 @@ class OrderService:
                 )
         
         # Valider les informations de livraison
+        pickup_slot = None
         if checkout_request.delivery_type == "pickup":
             if not checkout_request.pickup_point_id or not checkout_request.pickup_slot_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Point de retrait et créneau requis pour un retrait"
+                )
+            pickup_point = self.pickup_point_repo.get_by_id(checkout_request.pickup_point_id)
+            if not pickup_point or pickup_point.producer_id != producer_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Point de retrait invalide pour ce producteur"
+                )
+            pickup_slot = self.pickup_slot_repo.get_by_id(checkout_request.pickup_slot_id)
+            if not pickup_slot or pickup_slot.pickup_point_id != pickup_point.id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Créneau de retrait invalide"
+                )
+            if not pickup_slot.is_active or pickup_slot.current_orders >= pickup_slot.max_orders:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Créneau de retrait indisponible"
                 )
         else:
             if not checkout_request.delivery_address_id:
@@ -387,15 +482,10 @@ class OrderService:
             comment="Commande créée",
             changed_by=user_id
         )
-        
-        # Mettre à jour les stocks des produits
-        for item in cart.items:
-            product = item.product
-            if item.variant_id:
-                variant = item.variant
-                variant.stock -= item.quantity
-            else:
-                product.stock_quantity -= item.quantity
+
+        # Réserver la capacité du créneau de retrait dès la création de commande.
+        if pickup_slot:
+            pickup_slot.current_orders += 1
         
         # Vider le panier (utilise flush())
         self.cart_repo.delete(cart)
@@ -417,7 +507,7 @@ class OrderService:
             )
         
         # Vérifier que l'utilisateur a le droit de voir cette commande
-        if order.user_id != user_id and order.producer_id != user_id:
+        if order.user_id != user_id and not self._is_order_producer(order, user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Accès refusé à cette commande"
@@ -452,7 +542,7 @@ class OrderService:
         status_change: OrderStatusHistoryCreate
     ) -> Order:
         """Change le statut d'une commande avec historique"""
-        order = self.order_repo.get_by_id(order_id)
+        order = self.order_repo.get_complete(order_id)
         
         if not order:
             raise HTTPException(
@@ -461,24 +551,33 @@ class OrderService:
             )
         
         # Vérifier les droits (seul le producteur ou l'admin peut changer le statut)
-        if order.producer_id != user_id:
+        if not self._is_order_producer(order, user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Vous n'avez pas le droit de modifier cette commande"
             )
         
         # Sauvegarder l'ancien statut
-        old_status = order.status
+        old_status = self._value_of(order.status)
+        new_status = self._value_of(status_change.new_status)
+        self._validate_status_transition(old_status, new_status)
+
+        if old_status == "confirmed" and new_status == "preparing":
+            self._decrement_stock_for_order(order)
+        if new_status == "cancelled":
+            if old_status in {"preparing", "ready"}:
+                self._restore_stock_for_order(order)
+            self._release_pickup_slot(order)
         
         # Mettre à jour le statut (utilise flush())
-        order.status = status_change.new_status
+        order.status = new_status
         self.db.flush()
         
         # Créer l'entrée d'historique (utilise flush())
         self.status_history_repo.create(
             order_id=order.id,
             old_status=old_status,
-            new_status=status_change.new_status,
+            new_status=new_status,
             comment=status_change.comment,
             changed_by=user_id
         )
@@ -505,7 +604,7 @@ class OrderService:
             )
         
         # Seul le producteur peut ajouter du tracking
-        if order.producer_id != user_id:
+        if not self._is_order_producer(order, user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Accès refusé"
@@ -541,21 +640,19 @@ class OrderService:
             )
         
         # Vérifier que l'utilisateur peut annuler
-        if order.user_id != user_id and order.producer_id != user_id:
+        if order.user_id != user_id and not self._is_order_producer(order, user_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Vous ne pouvez pas annuler cette commande"
             )
         
         # Vérifier que la commande peut être annulée
-        if order.status in ["completed", "cancelled"]:
+        old_status = self._value_of(order.status)
+        if old_status in {"completed", "cancelled"}:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cette commande ne peut plus être annulée"
             )
-        
-        # Sauvegarder l'ancien statut
-        old_status = order.status
         
         # Mettre à jour le statut
         order.status = "cancelled"
@@ -570,13 +667,12 @@ class OrderService:
             changed_by=user_id
         )
         
-        # Restaurer les stocks
-        for item in order.items:
-            if item.product:
-                if item.variant_id and item.variant:
-                    item.variant.stock += item.quantity
-                else:
-                    item.product.stock_quantity += item.quantity
+        # Restaurer les stocks uniquement si déjà décrémentés.
+        if old_status in {"preparing", "ready"}:
+            self._restore_stock_for_order(order)
+
+        # Libérer la capacité du créneau de retrait si nécessaire.
+        self._release_pickup_slot(order)
         
         # Commit final
         self.db.commit()
