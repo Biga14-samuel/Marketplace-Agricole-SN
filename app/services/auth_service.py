@@ -80,7 +80,7 @@ class AuthService:
 
             # Si on skip la vérification email, activer directement le compte
             if settings.SKIP_EMAIL_VERIFICATION:
-                print(f"🚀 Mode développement: activation automatique du compte {user.email}")
+                print(f"[dev] Auto-activating account {user.email}")
                 user = self.user_repo.verify_email(user)
 
             # Assigner le rôle demandé (Customer/Producer), insensible à la casse.
@@ -114,12 +114,12 @@ class AuthService:
 
             # En mode développement on n'envoie pas d'email mais on affiche le lien
             if settings.SKIP_EMAIL_VERIFICATION:
-                print(f"⚠️ Mode développement: envoi d'email désactivé pour {user.email}")
-                print(f"🔗 Lien de vérification (si besoin): {settings.FRONTEND_URL}/auth/verify-email?token={verification_token}")
+                print(f"[dev] Email sending disabled for {user.email}")
+                print(f"[dev] Verification link: {settings.FRONTEND_URL}/auth/verify-email?token={verification_token}")
             else:
                 # Le routeur se chargera d'ajouter la tâche d'envoi en arrière-plan.
-                print(f"📧 Préparé pour envoi d'email de vérification à: {user.email}")
-                print(f"🔗 Lien de vérification (manuel): {settings.FRONTEND_URL}/auth/verify-email?token={verification_token}")
+                print(f"[info] Verification email queued for: {user.email}")
+                print(f"[info] Manual verification link: {settings.FRONTEND_URL}/auth/verify-email?token={verification_token}")
 
             return user, verification_token
 
@@ -316,6 +316,32 @@ class AuthService:
         )
         
         return reset_token
+
+    def resend_verification_email(self, email: str) -> Optional[str]:
+        """
+        Regénère un token de vérification d'email pour un compte non vérifié.
+
+        Retourne None si l'email n'existe pas ou est déjà vérifié, afin de ne pas
+        divulguer d'information sensible.
+        """
+        user = self.user_repo.get_by_email(email)
+        if not user or user.is_verified:
+            return None
+
+        verification_token = generate_verification_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
+        self.email_verification_repo.create(
+            user_id=user.id,
+            token=verification_token,
+            expires_at=expires_at
+        )
+
+        if settings.SKIP_EMAIL_VERIFICATION:
+            print(f"[dev] Resend verification link: {settings.FRONTEND_URL}/auth/verify-email?token={verification_token}")
+        else:
+            print(f"[info] Verification email re-queued for: {user.email}")
+
+        return verification_token
     
     def reset_password(self, token: str, new_password: str) -> User:
         """Réinitialise le mot de passe d'un utilisateur"""
@@ -376,6 +402,56 @@ class AuthService:
         self.refresh_token_repo.revoke_all_user_tokens(user.id)
         
         return updated_user
+
+    def update_user_profile(
+        self,
+        user_id: int,
+        email: Optional[str] = None,
+        phone: Optional[str] = None
+    ) -> tuple[User, Optional[str]]:
+        """
+        Met à jour l'email et/ou le téléphone de l'utilisateur connecté.
+
+        Si l'email change, le compte repasse en non vérifié et un nouveau
+        token de vérification est généré.
+        """
+        user = self.user_repo.get_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Utilisateur non trouvé"
+            )
+
+        verification_token: Optional[str] = None
+
+        if email is not None and email != user.email:
+            existing_user = self.user_repo.get_by_email(email)
+            if existing_user and existing_user.id != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Un utilisateur avec cet email existe déjà"
+                )
+            user.email = email
+            user.is_verified = False
+            verification_token = generate_verification_token()
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
+            self.email_verification_repo.create(
+                user_id=user.id,
+                token=verification_token,
+                expires_at=expires_at
+            )
+
+        if phone is not None and phone != user.phone:
+            existing_phone = self.user_repo.get_by_phone(phone)
+            if existing_phone and existing_phone.id != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Un utilisateur avec ce numéro de téléphone existe déjà"
+                )
+            user.phone = phone
+
+        updated_user = self.user_repo.update(user)
+        return updated_user, verification_token
     
     def get_current_user(self, token: str) -> User:
         """Récupère l'utilisateur actuel à partir du token"""

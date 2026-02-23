@@ -2,16 +2,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+import bcrypt as bcrypt_lib
 from app.core.config import settings
 import secrets
 
-# Configuration du contexte de hachage
-# Utilisation de 10 rounds pour le développement (plus rapide)
-# En production, utiliser 12 rounds ou plus
+# NOTE:
+# - bcrypt 5.x est incompatible avec passlib 1.7.x pour le backend bcrypt.
+# - On utilise pbkdf2_sha256 pour le hash principal (compatible partout),
+#   et on garde une vérification legacy des hashes bcrypt existants.
 pwd_context = CryptContext(
-    schemes=["bcrypt"], 
+    schemes=["pbkdf2_sha256"],
     deprecated="auto",
-    bcrypt__rounds=10  # Réduit de 12 à 10 pour accélérer le développement
+    pbkdf2_sha256__rounds=29000
 )
 
 
@@ -39,7 +41,21 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         True si le mot de passe correspond, False sinon
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    # Compatibilité avec les anciens hashes bcrypt déjà en base
+    if hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+        try:
+            # bcrypt compare historiquement seulement les 72 premiers bytes.
+            return bcrypt_lib.checkpw(
+                plain_password.encode("utf-8")[:72],
+                hashed_password.encode("utf-8")
+            )
+        except (ValueError, TypeError):
+            return False
+
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except (ValueError, TypeError):
+        return False
 
 
 def create_access_token(data: dict, expires_delta: timedelta = None):

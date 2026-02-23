@@ -40,6 +40,12 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     status_code=status.HTTP_201_CREATED,
     summary="Créer un profil client"
 )
+@router.post(
+    "/me",
+    response_model=CustomerProfileResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Créer mon profil client (alias)"
+)
 def create_customer_profile(
     profile_data: CustomerProfileCreate,
     current_user=Depends(get_current_user),
@@ -57,6 +63,11 @@ def create_customer_profile(
     response_model=CustomerProfileResponse,
     summary="Obtenir mon profil client"
 )
+@router.get(
+    "/me",
+    response_model=CustomerProfileResponse,
+    summary="Obtenir mon profil client (alias)"
+)
 def get_my_profile(
     current_user=Depends(get_current_user),
     customer_service: CustomerProfileService = Depends(get_customer_service)
@@ -72,6 +83,11 @@ def get_my_profile(
     "/profile/complete",
     response_model=CustomerProfileComplete,
     summary="Obtenir mon profil complet avec adresses"
+)
+@router.get(
+    "/me/complete",
+    response_model=CustomerProfileComplete,
+    summary="Obtenir mon profil complet (alias)"
 )
 def get_my_complete_profile(
     current_user=Depends(get_current_user),
@@ -89,6 +105,11 @@ def get_my_complete_profile(
     response_model=CustomerProfileResponse,
     summary="Mettre à jour mon profil client"
 )
+@router.put(
+    "/me",
+    response_model=CustomerProfileResponse,
+    summary="Mettre à jour mon profil client (alias)"
+)
 def update_my_profile(
     profile_data: CustomerProfileUpdate,
     current_user=Depends(get_current_user),
@@ -105,6 +126,11 @@ def update_my_profile(
     "/profile",
     response_model=MessageResponse,
     summary="Supprimer mon profil client"
+)
+@router.delete(
+    "/me",
+    response_model=MessageResponse,
+    summary="Supprimer mon profil client (alias)"
 )
 def delete_my_profile(
     current_user=Depends(get_current_user),
@@ -126,6 +152,12 @@ def delete_my_profile(
     status_code=status.HTTP_201_CREATED,
     summary="Ajouter une adresse"
 )
+@router.post(
+    "/me/addresses",
+    response_model=AddressResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Ajouter une adresse (alias)"
+)
 def create_address(
     address_data: AddressCreate,
     current_user=Depends(get_current_user),
@@ -143,6 +175,11 @@ def create_address(
     response_model=List[AddressResponse],
     summary="Obtenir toutes mes adresses"
 )
+@router.get(
+    "/me/addresses",
+    response_model=List[AddressResponse],
+    summary="Obtenir toutes mes adresses (alias)"
+)
 def get_my_addresses(
     current_user=Depends(get_current_user),
     address_service: AddressService = Depends(get_address_service)
@@ -158,6 +195,11 @@ def get_my_addresses(
     "/addresses/{address_id}",
     response_model=AddressResponse,
     summary="Obtenir une adresse spécifique"
+)
+@router.get(
+    "/me/addresses/{address_id}",
+    response_model=AddressResponse,
+    summary="Obtenir une adresse spécifique (alias)"
 )
 def get_address(
     address_id: int,
@@ -175,6 +217,11 @@ def get_address(
     "/addresses/{address_id}",
     response_model=AddressResponse,
     summary="Mettre à jour une adresse"
+)
+@router.put(
+    "/me/addresses/{address_id}",
+    response_model=AddressResponse,
+    summary="Mettre à jour une adresse (alias)"
 )
 def update_address(
     address_id: int,
@@ -194,6 +241,11 @@ def update_address(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Supprimer une adresse"
 )
+@router.delete(
+    "/me/addresses/{address_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Supprimer une adresse (alias)"
+)
 def delete_address(
     address_id: int,
     current_user=Depends(get_current_user),
@@ -209,6 +261,11 @@ def delete_address(
     "/addresses/{address_id}/set-default",
     response_model=AddressResponse,
     summary="Définir une adresse par défaut"
+)
+@router.post(
+    "/me/addresses/{address_id}/set-default",
+    response_model=AddressResponse,
+    summary="Définir une adresse par défaut (alias)"
 )
 def set_default_address(
     address_id: int,

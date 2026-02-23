@@ -436,7 +436,7 @@ class OrderService:
                 )
             # Vérifier que l'adresse appartient à l'utilisateur
             address = self.address_repo.get_by_id(checkout_request.delivery_address_id)
-            if not address or address.user_id != user_id:
+            if not address or not address.customer or address.customer.user_id != user_id:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Adresse invalide"

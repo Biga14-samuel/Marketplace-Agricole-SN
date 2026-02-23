@@ -1,14 +1,16 @@
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, date, time
 from decimal import Decimal
 from pydantic import BaseModel
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_user_optional
 from app.services.payment_service import PaymentService
 from app.models.profiles import ProducerProfile
+from app.models.orders import Order
+from app.models.payments import Payment, Invoice, PaymentMethod
 from app.schemas.payments import (
     PaymentCreate, PaymentResponse, PaymentStats,
     PaymentMethodCreate, PaymentMethodResponse,
@@ -16,7 +18,7 @@ from app.schemas.payments import (
     InvoiceResponse,
     ProducerPayoutResponse, ProducerPayoutCalculation
 )
-from app.models.payments import PaymentStatus, InvoiceStatus
+from app.models.payments import PaymentStatus, InvoiceStatus, PaymentMethodType, PaymentProvider
 
 
 # Créer le routeur - le préfixe /api/v1/payments est ajouté par main.py
@@ -34,6 +36,34 @@ class ProducerPayoutRequestBody(BaseModel):
     commission_rate: Decimal = Decimal("0.15")
 
 
+class PaymentInitiateRequestBody(BaseModel):
+    order_id: int
+    payment_method: str
+    provider: Optional[str] = None
+    amount: Decimal
+    currency: str = "XAF"
+
+
+class PaymentInitiateResponseBody(BaseModel):
+    payment_id: int
+    status: str
+    transaction_id: Optional[str] = None
+    provider_redirect_url: Optional[str] = None
+
+
+class PaymentConfirmBody(BaseModel):
+    transaction_id: str
+    provider_reference: Optional[str] = None
+
+
+class PaymentMethodCreateCurrentBody(BaseModel):
+    type: PaymentMethodType
+    last4: Optional[str] = None
+    brand: Optional[str] = None
+    is_default: bool = False
+    stripe_payment_method_id: Optional[str] = None
+
+
 def _get_current_producer_id(db: Session, user_id: int) -> int:
     producer = db.query(ProducerProfile).filter(ProducerProfile.user_id == user_id).first()
     if not producer:
@@ -45,9 +75,214 @@ def _get_current_producer_id(db: Session, user_id: int) -> int:
     return producer.id
 
 
+def _parse_datetime_or_date(value: str, field_name: str, end_of_day: bool = False) -> datetime:
+    """
+    Accepte:
+    - YYYY-MM-DD
+    - YYYY-MM-DDTHH:MM:SS[.ffffff][+TZ]
+    """
+    try:
+        if len(value) == 10:
+            parsed_date = date.fromisoformat(value)
+            return datetime.combine(parsed_date, time.max if end_of_day else time.min)
+
+        normalized = value.replace("Z", "+00:00")
+        parsed_dt = datetime.fromisoformat(normalized)
+        # Le service manipule des datetime naïfs côté DB.
+        return parsed_dt.replace(tzinfo=None) if parsed_dt.tzinfo else parsed_dt
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"{field_name} invalide. Utilisez YYYY-MM-DD ou ISO datetime."
+        )
+
+
+def _map_client_payment_method(method: str) -> PaymentMethodType:
+    mapping = {
+        "card": PaymentMethodType.CARD,
+        "credit_card": PaymentMethodType.CARD,
+        "debit_card": PaymentMethodType.CARD,
+        "stripe": PaymentMethodType.CARD,
+        "paypal": PaymentMethodType.CARD,
+        "bank_transfer": PaymentMethodType.TRANSFER,
+        "transfer": PaymentMethodType.TRANSFER,
+        "mobile_money": PaymentMethodType.WALLET,
+        "wallet": PaymentMethodType.WALLET,
+        "cash": PaymentMethodType.CASH,
+    }
+    normalized = (method or "").strip().lower()
+    if normalized not in mapping:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Méthode de paiement non supportée: {method}"
+        )
+    return mapping[normalized]
+
+
+def _map_client_provider(provider: Optional[str]) -> Optional[PaymentProvider]:
+    if not provider:
+        return None
+    normalized = provider.strip().lower()
+    if normalized == "stripe":
+        return PaymentProvider.STRIPE
+    if normalized == "paypal":
+        return PaymentProvider.PAYPAL
+    # Les providers Mobile Money MVP sont acceptés côté payload, mais non stockés
+    # dans l'enum provider actuel.
+    if normalized in {"mtn", "orange", "express_union", "mtn_mobile_money", "orange_money"}:
+        return None
+    return None
+
+
 # ============================================================================
 # ENDPOINTS - PAYMENT (Paiements)
 # ============================================================================
+
+@router.post(
+    "/initiate",
+    response_model=PaymentInitiateResponseBody,
+    status_code=status.HTTP_201_CREATED
+)
+def initiate_payment(
+    payload: PaymentInitiateRequestBody,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Endpoint orienté parcours client.
+    Initialise un paiement pour une commande du client connecté.
+    """
+    order = db.query(Order).filter(Order.id == payload.order_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Commande introuvable"
+        )
+    if order.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous ne pouvez pas initier le paiement de cette commande"
+        )
+
+    payment_method = _map_client_payment_method(payload.payment_method)
+    provider = _map_client_provider(payload.provider)
+    transaction_id = f"PAY-{payload.order_id}-{current_user.id}-{int(datetime.utcnow().timestamp())}"
+
+    service = PaymentService(db)
+    created = service.create_payment(
+        PaymentCreate(
+            order_id=payload.order_id,
+            payment_method=payment_method,
+            amount=payload.amount,
+            currency=payload.currency,
+            provider=provider,
+            transaction_id=transaction_id,
+            metadata=payload.provider
+        )
+    )
+    return PaymentInitiateResponseBody(
+        payment_id=created.id,
+        status=created.status.value if hasattr(created.status, "value") else str(created.status),
+        transaction_id=created.transaction_id,
+        provider_redirect_url=None
+    )
+
+
+@router.get("/{payment_id}/status")
+def get_payment_status(
+    payment_id: int,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Retourne l'état simplifié d'un paiement pour polling client.
+    """
+    payment = db.query(Payment).filter(Payment.id == payment_id).first()
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Paiement introuvable"
+        )
+    order = db.query(Order).filter(Order.id == payment.order_id).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Commande liée au paiement introuvable"
+        )
+
+    producer_profile = db.query(ProducerProfile).filter(ProducerProfile.user_id == current_user.id).first()
+    is_owner = order.user_id == current_user.id
+    is_related_producer = bool(producer_profile and order.producer_id == producer_profile.id)
+    if not (is_owner or is_related_producer):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Accès refusé à ce paiement"
+        )
+
+    return {
+        "payment_id": payment.id,
+        "status": payment.status.value if hasattr(payment.status, "value") else str(payment.status),
+        "transaction_id": payment.transaction_id
+    }
+
+
+@router.post("/confirm")
+def confirm_payment(
+    payload: PaymentConfirmBody,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Confirme un paiement via son transaction_id (flux provider/mobile money).
+    """
+    service = PaymentService(db)
+    payment = service.repository.get_payment_by_transaction_id(payload.transaction_id)
+    if not payment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Transaction introuvable"
+        )
+
+    order = db.query(Order).filter(Order.id == payment.order_id).first()
+    if not order or order.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous ne pouvez pas confirmer ce paiement"
+        )
+
+    updated = service.update_payment_status(payment.id, PaymentStatus.COMPLETED, payload.transaction_id)
+
+    existing_invoice = db.query(Invoice).filter(Invoice.order_id == order.id).first()
+    if not existing_invoice:
+        service.create_invoice_for_order(order.id)
+
+    return {
+        "payment_id": updated.id,
+        "status": updated.status.value if hasattr(updated.status, "value") else str(updated.status),
+        "transaction_id": updated.transaction_id,
+        "provider_reference": payload.provider_reference
+    }
+
+
+@router.get("/history", response_model=List[PaymentResponse])
+def get_payment_history(
+    role: str = Query("customer", description="customer|producer"),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Historique des paiements pour le client ou le producteur connecté.
+    """
+    query = db.query(Payment).join(Order, Payment.order_id == Order.id)
+
+    if role == "producer":
+        producer_id = _get_current_producer_id(db, current_user.id)
+        query = query.filter(Order.producer_id == producer_id)
+    else:
+        query = query.filter(Order.user_id == current_user.id)
+
+    payments = query.order_by(Payment.created_at.desc()).all()
+    return [PaymentResponse.model_validate(item) for item in payments]
 
 @router.post("/", response_model=PaymentResponse, status_code=status.HTTP_201_CREATED)
 def create_payment(
@@ -112,8 +347,8 @@ def update_payment_status(
 
 @router.get("/stats/", response_model=PaymentStats)
 def get_payment_statistics(
-    start_date: datetime = Query(..., description="Date de début de la période"),
-    end_date: datetime = Query(..., description="Date de fin de la période"),
+    start_date: str = Query(..., description="Date de début (YYYY-MM-DD ou ISO datetime)"),
+    end_date: str = Query(..., description="Date de fin (YYYY-MM-DD ou ISO datetime)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -122,8 +357,11 @@ def get_payment_statistics(
     Retourne le nombre total de paiements, les montants par statut,
     et d'autres métriques utiles pour le tableau de bord financier.
     """
+    start_dt = _parse_datetime_or_date(start_date, "start_date")
+    end_dt = _parse_datetime_or_date(end_date, "end_date", end_of_day=True)
+
     service = PaymentService(db)
-    return service.get_payment_statistics(start_date, end_date)
+    return service.get_payment_statistics(start_dt, end_dt)
 
 
 # ============================================================================
@@ -148,6 +386,27 @@ def create_payment_method(
     return service.create_payment_method(payment_method_data)
 
 
+@router.post("/methods/me", response_model=PaymentMethodResponse, status_code=status.HTTP_201_CREATED)
+def create_my_payment_method(
+    payment_method_data: PaymentMethodCreateCurrentBody,
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Sauvegarde un moyen de paiement pour l'utilisateur connecté.
+    """
+    service = PaymentService(db)
+    payload = PaymentMethodCreate(
+        user_id=current_user.id,
+        type=payment_method_data.type,
+        last4=payment_method_data.last4,
+        brand=payment_method_data.brand,
+        is_default=payment_method_data.is_default,
+        stripe_payment_method_id=payment_method_data.stripe_payment_method_id
+    )
+    return service.create_payment_method(payload)
+
+
 @router.get("/methods/{method_id}", response_model=PaymentMethodResponse)
 def get_payment_method(
     method_id: int,
@@ -156,6 +415,18 @@ def get_payment_method(
     """Récupère les détails d'un moyen de paiement spécifique."""
     service = PaymentService(db)
     return service.get_payment_method(method_id)
+
+
+@router.get("/methods", response_model=List[PaymentMethodResponse])
+def get_my_payment_methods(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Récupère les moyens de paiement de l'utilisateur connecté.
+    """
+    service = PaymentService(db)
+    return service.get_user_payment_methods(current_user.id)
 
 
 @router.get("/methods/user/{user_id}", response_model=List[PaymentMethodResponse])
@@ -176,7 +447,8 @@ def get_user_payment_methods(
 @router.patch("/methods/{method_id}/set-default", response_model=PaymentMethodResponse)
 def set_default_payment_method(
     method_id: int,
-    user_id: int = Query(..., description="ID de l'utilisateur propriétaire"),
+    user_id: Optional[int] = Query(None, description="ID de l'utilisateur propriétaire"),
+    current_user=Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -185,14 +457,22 @@ def set_default_payment_method(
     L'ancien moyen par défaut (s'il existe) sera automatiquement
     marqué comme non-défaut.
     """
+    resolved_user_id = user_id or (current_user.id if current_user else None)
+    if not resolved_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="user_id requis si aucun token d'authentification n'est fourni"
+        )
+
     service = PaymentService(db)
-    return service.set_default_payment_method(method_id, user_id)
+    return service.set_default_payment_method(method_id, resolved_user_id)
 
 
 @router.delete("/methods/{method_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_payment_method(
     method_id: int,
-    user_id: int = Query(..., description="ID de l'utilisateur propriétaire"),
+    user_id: Optional[int] = Query(None, description="ID de l'utilisateur propriétaire"),
+    current_user=Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """
@@ -201,8 +481,15 @@ def delete_payment_method(
     L'utilisateur ne pourra plus l'utiliser pour de futurs paiements,
     mais les paiements déjà effectués avec ce moyen restent en base.
     """
+    resolved_user_id = user_id or (current_user.id if current_user else None)
+    if not resolved_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="user_id requis si aucun token d'authentification n'est fourni"
+        )
+
     service = PaymentService(db)
-    service.delete_payment_method(method_id, user_id)
+    service.delete_payment_method(method_id, resolved_user_id)
 
 
 # ============================================================================
@@ -266,6 +553,28 @@ def create_invoice_for_order(
     """
     service = PaymentService(db)
     return service.create_invoice_for_order(order_id)
+
+
+@router.get("/invoices", response_model=List[InvoiceResponse])
+def get_my_invoices(
+    role: str = Query("customer", description="customer|producer"),
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Liste des factures de l'utilisateur connecté.
+    - customer: factures liées à ses commandes.
+    - producer: factures liées aux commandes qu'il a reçues.
+    """
+    query = db.query(Invoice).join(Order, Invoice.order_id == Order.id)
+    if role == "producer":
+        producer_id = _get_current_producer_id(db, current_user.id)
+        query = query.filter(Order.producer_id == producer_id)
+    else:
+        query = query.filter(Order.user_id == current_user.id)
+
+    invoices = query.order_by(Invoice.issue_date.desc()).all()
+    return [InvoiceResponse.model_validate(invoice) for invoice in invoices]
 
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)

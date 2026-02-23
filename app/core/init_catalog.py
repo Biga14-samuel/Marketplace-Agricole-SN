@@ -23,9 +23,9 @@ def init_catalog(db: Session) -> None:
         existing = category_repo.get_by_slug(cat_data["slug"])
         if not existing:
             category_repo.create(**cat_data)
-            print(f"✅ Catégorie '{cat_data['name']}' créée")
+            print(f"[ok] Category '{cat_data['name']}' created")
         else:
-            print(f"ℹ️  Catégorie '{cat_data['name']}' existe déjà")
+            print(f"[info] Category '{cat_data['name']}' already exists")
     
     # Créer les tags de base
     tags = [
@@ -39,9 +39,9 @@ def init_catalog(db: Session) -> None:
         existing = tag_repo.get_by_slug(tag_data["slug"])
         if not existing:
             tag_repo.create(**tag_data)
-            print(f"✅ Tag '{tag_data['name']}' créé")
+            print(f"[ok] Tag '{tag_data['name']}' created")
         else:
-            print(f"ℹ️  Tag '{tag_data['name']}' existe déjà")
+            print(f"[info] Tag '{tag_data['name']}' already exists")
     
     # Créer les unités de base - Marché Camerounais
     units = [
@@ -58,9 +58,9 @@ def init_catalog(db: Session) -> None:
         existing = unit_repo.get_by_id(1)  # Vérification simple
         if db.query(Unit).filter(Unit.abbreviation == unit_data["abbreviation"]).first() is None:
             unit_repo.create(**unit_data)
-            print(f"✅ Unité '{unit_data['name']}' créée")
+            print(f"[ok] Unit '{unit_data['name']}' created")
         else:
-            print(f"ℹ️  Unité '{unit_data['name']}' existe déjà")
+            print(f"[info] Unit '{unit_data['name']}' already exists")
 
 
 if __name__ == "__main__":
@@ -68,8 +68,8 @@ if __name__ == "__main__":
     
     db = SessionLocal()
     try:
-        print("🔄 Initialisation du catalogue...")
+        print("[init] Initializing catalog...")
         init_catalog(db)
-        print("✅ Initialisation terminée")
+        print("[ok] Initialization completed")
     finally:
         db.close()

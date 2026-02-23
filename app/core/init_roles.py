@@ -33,9 +33,9 @@ def init_roles(db: Session) -> None:
                 name=role_data["name"],
                 description=role_data["description"]
             )
-            print(f"✅ Rôle '{role_data['name']}' créé")
+            print(f"[ok] Role '{role_data['name']}' created")
         else:
-            print(f"ℹ️  Rôle '{role_data['name']}' existe déjà")
+            print(f"[info] Role '{role_data['name']}' already exists")
 
 
 if __name__ == "__main__":
@@ -43,8 +43,8 @@ if __name__ == "__main__":
     
     db = SessionLocal()
     try:
-        print("🔄 Initialisation des rôles...")
+        print("[init] Initializing roles...")
         init_roles(db)
-        print("✅ Initialisation terminée")
+        print("[ok] Initialization completed")
     finally:
         db.close()

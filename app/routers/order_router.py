@@ -2,10 +2,13 @@ from fastapi import APIRouter, Depends, status, Cookie, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
+from datetime import datetime, timedelta
+from decimal import Decimal
 
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_current_user_optional
 from app.services.order_service import CartService, OrderService
+from app.models.orders import Order
 from app.schemas.order_schema import (
     CartItemCreate, CartItemUpdate, CartItemResponse, CartResponse,
     CheckoutRequest, OrderResponse, OrderItemResponse,
@@ -188,6 +191,41 @@ def checkout(
     return OrderResponse.model_validate(order)
 
 
+@router.get(
+    "/checkout/summary",
+    summary="Résumé checkout (montants avant confirmation)"
+)
+def get_checkout_summary(
+    current_user=Depends(get_current_user),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """
+    Donne un aperçu des montants du checkout pour le panier courant.
+    """
+    cart = order_service.cart_service.get_cart(current_user.id, None)
+    if not cart.items:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le panier est vide"
+        )
+
+    subtotal = sum((item.subtotal for item in cart.items), Decimal("0.00"))
+    tax_amount = subtotal * Decimal("0.055")
+    # Le mode de livraison n'étant pas encore choisi ici, on expose 0 par défaut.
+    delivery_fee = Decimal("0.00")
+    discount_amount = Decimal("0.00")
+    total = subtotal + tax_amount + delivery_fee - discount_amount
+
+    return {
+        "subtotal": subtotal,
+        "tax_amount": tax_amount,
+        "delivery_fee": delivery_fee,
+        "discount_amount": discount_amount,
+        "total": total,
+        "estimated_delivery_date": (datetime.utcnow() + timedelta(days=2)).date().isoformat(),
+    }
+
+
 # ============= Order Management Endpoints =============
 
 @router.get(
@@ -221,6 +259,31 @@ def get_my_orders(
     )
     total = len(orders)  # TODO: Implement proper count
     
+    return OrderListResponse(
+        orders=[OrderResponse.model_validate(order) for order in orders],
+        total=total,
+        page=(skip // limit) + 1,
+        limit=limit
+    )
+
+
+@router.get(
+    "/my",
+    response_model=OrderListResponse,
+    summary="Mes commandes (alias)"
+)
+def get_my_orders_alias(
+    skip: int = 0,
+    limit: int = 100,
+    status_filter: Optional[str] = None,
+    current_user = Depends(get_current_user),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """
+    Alias de compatibilité vers /my-orders.
+    """
+    orders = order_service.get_my_orders(current_user.id, skip, limit, status_filter)
+    total = len(orders)
     return OrderListResponse(
         orders=[OrderResponse.model_validate(order) for order in orders],
         total=total,
@@ -270,6 +333,42 @@ def get_producer_orders(
     )
     total = len(orders)  # TODO: Implement proper count
     
+    return OrderListResponse(
+        orders=[OrderResponse.model_validate(order) for order in orders],
+        total=total,
+        page=(skip // limit) + 1,
+        limit=limit
+    )
+
+
+@router.get(
+    "/producer",
+    response_model=OrderListResponse,
+    summary="Commandes reçues (Producteur) - alias"
+)
+def get_producer_orders_alias(
+    skip: int = 0,
+    limit: int = 100,
+    status_filter: Optional[str] = None,
+    current_user = Depends(get_current_user),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """
+    Alias de compatibilité vers /producer-orders.
+    """
+    from app.repositories.profile_repository import ProducerProfileRepository
+
+    producer_repo = ProducerProfileRepository(order_service.db)
+    producer = producer_repo.get_by_user_id(current_user.id)
+
+    if not producer:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seuls les producteurs peuvent accéder à cette ressource"
+        )
+
+    orders = order_service.get_producer_orders(producer.id, skip, limit, status_filter)
+    total = len(orders)
     return OrderListResponse(
         orders=[OrderResponse.model_validate(order) for order in orders],
         total=total,
@@ -471,6 +570,35 @@ def get_order_tracking(
     tracking_repo = OrderTrackingRepository(order_service.db)
     tracking = tracking_repo.get_order_tracking(order.id)
     
+    return [OrderTrackingResponse.model_validate(t) for t in tracking]
+
+
+@router.get(
+    "/tracking/{order_number}",
+    response_model=List[OrderTrackingResponse],
+    summary="Voir le suivi d'une commande via son numéro"
+)
+def get_order_tracking_by_number(
+    order_number: str,
+    current_user = Depends(get_current_user),
+    order_service: OrderService = Depends(get_order_service)
+):
+    """
+    Récupère l'historique de tracking à partir du numéro de commande.
+    """
+    order = order_service.db.query(Order).filter(Order.order_number == order_number).first()
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Commande non trouvée"
+        )
+
+    # Vérifie aussi les droits d'accès (client concerné ou producteur concerné).
+    order_service.get_order(order.id, current_user.id)
+
+    from app.repositories.order_repository import OrderTrackingRepository
+    tracking_repo = OrderTrackingRepository(order_service.db)
+    tracking = tracking_repo.get_order_tracking(order.id)
     return [OrderTrackingResponse.model_validate(t) for t in tracking]
 
 

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status, Request, HTTPException, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Optional
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_token
@@ -11,11 +12,11 @@ from app.schemas.auth_schema import (
     UserCreate, UserResponse, LoginRequest, LoginResponse,
     RefreshTokenRequest, RefreshTokenResponse, PasswordResetRequest,
     PasswordResetConfirm, PasswordChange, EmailVerificationConfirm,
-    MessageResponse
+    EmailVerificationRequest, UserUpdate, MessageResponse
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
@@ -24,10 +25,17 @@ def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
 
 
 async def get_current_user(
-    auth: HTTPAuthorizationCredentials = Depends(security),
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
     """Récupère l'utilisateur actuel à partir du token"""
+    if auth is None or not auth.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token d'accès manquant",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     token = auth.credentials
     
     # Décoder le token
@@ -90,7 +98,7 @@ async def register(
     
     # En mode SKIP, pas besoin d'envoyer d'email
     if settings.SKIP_EMAIL_VERIFICATION:
-        print(f"⚠️ Mode SKIP: Pas d'envoi d'email pour {user.email}")
+        print(f"[dev] SKIP mode: no email sent for {user.email}")
     else:
         # Envoyer l'email de vérification en arrière-plan
         from app.core.email import send_verification_email_in_background
@@ -101,7 +109,7 @@ async def register(
             token=verification_token,
             user_name=user_name
         )
-        print(f"📧 Email de vérification ajouté à la file d'attente pour {user.email}")
+        print(f"[info] Verification email queued for {user.email}")
     
     return MessageResponse(
         message="Inscription réussie. Votre compte est activé." if settings.SKIP_EMAIL_VERIFICATION else "Inscription réussie. Veuillez vérifier votre email.",
@@ -185,6 +193,31 @@ def get_me(current_user: User = Depends(get_current_user)):
     return UserResponse.model_validate(current_user)
 
 
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    summary="Mettre à jour le profil utilisateur connecté"
+)
+def update_me(
+    user_data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    Met à jour l'email et/ou le téléphone de l'utilisateur connecté.
+    """
+    updated_user, verification_token = auth_service.update_user_profile(
+        user_id=current_user.id,
+        email=user_data.email,
+        phone=user_data.phone
+    )
+
+    if verification_token:
+        print(f"[info] New verification token generated for {updated_user.email}")
+
+    return UserResponse.model_validate(updated_user)
+
+
 @router.post(
     "/verify-email",
     response_model=MessageResponse,
@@ -206,6 +239,25 @@ def verify_email(
 
 
 @router.post(
+    "/resend-verification",
+    response_model=MessageResponse,
+    summary="Renvoyer l'email de vérification"
+)
+def resend_verification(
+    payload: EmailVerificationRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    Génère un nouveau lien de vérification pour un compte non vérifié.
+    """
+    token = auth_service.resend_verification_email(payload.email)
+    return MessageResponse(
+        message="Si cet email existe et n'est pas vérifié, un nouveau lien a été envoyé.",
+        detail=f"Token de vérification (dev mode): {token}" if token else None
+    )
+
+
+@router.post(
     "/password-reset/request",
     response_model=MessageResponse,
     summary="Demander une réinitialisation de mot de passe"
@@ -219,6 +271,25 @@ def request_password_reset(
     """
     token = auth_service.request_password_reset(reset_data.email)
     
+    return MessageResponse(
+        message="Si cet email existe, un lien de réinitialisation a été envoyé",
+        detail=f"Token de réinitialisation (dev mode): {token}"
+    )
+
+
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    summary="Alias - Demander une réinitialisation de mot de passe"
+)
+def forgot_password_alias(
+    reset_data: PasswordResetRequest,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    Alias compatible front pour la demande de reset de mot de passe.
+    """
+    token = auth_service.request_password_reset(reset_data.email)
     return MessageResponse(
         message="Si cet email existe, un lien de réinitialisation a été envoyé",
         detail=f"Token de réinitialisation (dev mode): {token}"
@@ -243,6 +314,22 @@ def confirm_password_reset(
 
 
 @router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    summary="Alias - Confirmer la réinitialisation de mot de passe"
+)
+def reset_password_alias(
+    reset_data: PasswordResetConfirm,
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    Alias compatible front pour la confirmation de reset de mot de passe.
+    """
+    auth_service.reset_password(reset_data.token, reset_data.new_password)
+    return MessageResponse(message="Mot de passe réinitialisé avec succès")
+
+
+@router.post(
     "/password/change",
     response_model=MessageResponse,
     summary="Changer le mot de passe"
@@ -261,6 +348,29 @@ def change_password(
         password_data.new_password
     )
     
+    return MessageResponse(
+        message="Mot de passe modifié avec succès. Veuillez vous reconnecter."
+    )
+
+
+@router.put(
+    "/change-password",
+    response_model=MessageResponse,
+    summary="Alias - Changer le mot de passe"
+)
+def change_password_alias(
+    password_data: PasswordChange,
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service)
+):
+    """
+    Alias compatible front pour le changement de mot de passe.
+    """
+    auth_service.change_password(
+        current_user.id,
+        password_data.old_password,
+        password_data.new_password
+    )
     return MessageResponse(
         message="Mot de passe modifié avec succès. Veuillez vous reconnecter."
     )
