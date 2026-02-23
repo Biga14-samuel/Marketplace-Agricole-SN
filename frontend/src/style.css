@@ -1,0 +1,493 @@
+/* Importation des polices Google */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Dancing+Script:wght@400;500;600&display=swap');
+
+/* Importation de Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   IDENTITÉ VISUELLE : FRAÎCHEUR, PROXIMITÉ & CONFIANCE
+   ============================================ */
+
+/* 1. PALETTE DE COULEURS NATURELLE - MIS À JOUR */
+:root {
+  /* Vert - Dominante (fraîcheur) */
+  --green-soft: #a7d397;
+  /* Boutons primaires, accents */
+  --green-light: #c6e6b3;
+  /* Arrière-plans, bordures */
+  --green-medium: #5a8c5a;
+  /* Textes secondaires */
+  --forest-dark: #2c5530;
+  /* Textes principaux */
+
+  /* Terre cuite - Secondaire (proximité) */
+  --terracotta: #d2691e;
+  /* Accents chaleureux, erreurs */
+  --terracotta-light: #e38d4a;
+  --terracotta-soft: #f0c9a7;
+
+  /* Crème/Naturel (confiance) */
+  --cream-light: #f8f4e9;
+  /* Arrière-plans */
+  --cream-medium: #e8e0d0;
+  /* Cartes, éléments */
+  --cream-dark: #d4c9b8;
+
+  /* Dégradés organiques */
+  --gradient-naturel: linear-gradient(135deg, var(--cream-light) 0%, #ffffff 100%);
+  --gradient-vert: linear-gradient(135deg, var(--green-soft) 0%, var(--green-light) 100%);
+  --gradient-terre: linear-gradient(135deg, var(--terracotta-light) 0%, var(--terracotta-soft) 100%);
+
+  /* Compatibilité avec l'ancienne palette */
+  --color-nature-500: var(--green-soft);
+  --color-fresh-500: var(--green-medium);
+  --color-forest-500: var(--forest-dark);
+  --color-earth-500: var(--terracotta);
+  --color-cream-500: var(--cream-light);
+
+  /* Accents supplémentaires */
+  --accent-bio: #45a348;
+  --accent-local: #d2691e;
+  --accent-season: #dfba41;
+
+  /* Nouvelles variables pour cohérence */
+  --bg-gradient-nature: linear-gradient(135deg,
+      rgba(248, 244, 233, 0.9) 0%,
+      rgba(255, 255, 255, 0.85) 50%,
+      rgba(198, 230, 179, 0.1) 100%);
+}
+
+/* 2. COURBES DE BÉZIER PERSONNALISÉES (Ultra-Fluide) */
+.ease-organic {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.ease-naturel {
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ease-gentle {
+  transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 3. TEXTURES ET FILIGRANES ORGANIQUES */
+.organic-pattern {
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(167, 211, 151, 0.05) 0%, transparent 20%),
+    radial-gradient(circle at 90% 80%, rgba(198, 230, 179, 0.03) 0%, transparent 20%);
+  background-size: 50% 50%, 60% 60%;
+}
+
+.leaf-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%235a8c5a' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
+  background-size: 300px 300px;
+  opacity: 0.4;
+}
+
+/* 4. ANIMATIONS D'AMBIANCE */
+@keyframes float-leaves {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  25% {
+    transform: translateY(-10px) rotate(-1deg);
+  }
+
+  75% {
+    transform: translateY(5px) rotate(1deg);
+  }
+}
+
+@keyframes subtle-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes gentle-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(167, 211, 151, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(167, 211, 151, 0.5);
+  }
+}
+
+.animate-float {
+  animation: float-leaves 20s ease-in-out infinite;
+}
+
+.animate-subtle-pulse {
+  animation: subtle-pulse 3s ease-in-out infinite;
+}
+
+.animate-gentle-glow {
+  animation: gentle-glow 4s ease-in-out infinite;
+}
+
+/* Styles personnalisés globaux */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-feature-settings: "cv11", "ss01";
+    font-variation-settings: "opsz" 32;
+  }
+
+  body {
+    @apply antialiased text-forest-dark;
+    background: var(--bg-gradient-nature);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  /* Typographie naturelle */
+  .font-organic {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    letter-spacing: -0.01em;
+    line-height: 1.6;
+  }
+
+  /* Custom scrollbar organique */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-green-light/10 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-green-soft/50 rounded-full hover:bg-green-medium/50 transition-all duration-300 ease-organic;
+  }
+}
+
+@layer components {
+
+  /* 5. OMBRES ORGANIQUES */
+  .shadow-organic {
+    box-shadow:
+      0 10px 40px rgba(44, 85, 48, 0.1),
+      0 2px 10px rgba(167, 211, 151, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .shadow-organic-hover {
+    box-shadow:
+      0 20px 60px rgba(44, 85, 48, 0.15),
+      0 8px 25px rgba(167, 211, 151, 0.25),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  /* Classes réutilisables - MISES À JOUR */
+  .btn-primary {
+    @apply px-6 py-3 bg-gradient-vert text-forest-dark font-semibold rounded-xl shadow-organic hover:shadow-organic-hover hover:scale-105 active:scale-95 transition-all duration-300 ease-organic focus:outline-none focus:ring-2 focus:ring-green-soft focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform-gpu;
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 bg-gradient-terre text-white font-semibold rounded-xl shadow-organic hover:shadow-organic-hover hover:scale-105 active:scale-95 transition-all duration-300 ease-organic focus:outline-none focus:ring-2 focus:ring-terracotta-light focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform-gpu;
+  }
+
+  .btn-outline {
+    @apply px-6 py-3 bg-transparent border-2 border-green-soft text-forest-dark font-semibold rounded-xl hover:bg-green-soft/10 hover:border-green-medium hover:text-forest-dark active:scale-95 transition-all duration-300 ease-organic focus:outline-none focus:ring-2 focus:ring-green-soft focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  /* Cartes de produits ORGANIQUES */
+  .product-card {
+    @apply bg-gradient-naturel rounded-2xl border border-green-light/30 shadow-organic overflow-hidden transform-gpu hover:shadow-organic-hover hover:scale-[1.02] hover:border-green-soft/50 transition-all duration-500 ease-organic;
+  }
+
+  /* Inputs stylisés ORGANIQUES */
+  .input-organic {
+    @apply w-full px-4 py-3 bg-cream-light/50 backdrop-blur-sm rounded-xl border-2 border-green-light/30 focus:border-green-soft focus:ring-2 focus:ring-green-soft/30 focus:ring-opacity-50 outline-none transition-all duration-300 ease-organic placeholder-green-medium/60 text-forest-dark hover:border-green-light hover:shadow-soft;
+  }
+
+  /* Badges NATURELS */
+  .badge-bio {
+    @apply px-3 py-1 bg-green-medium text-white text-xs font-bold rounded-full shadow-organic animate-subtle-pulse;
+  }
+
+  .badge-local {
+    @apply px-3 py-1 bg-terracotta text-white text-xs font-bold rounded-full shadow-organic;
+  }
+
+  .badge-season {
+    @apply px-3 py-1 bg-accent-season text-forest-dark text-xs font-bold rounded-full shadow-organic;
+  }
+
+  /* Layouts ORGANIQUES */
+  .split-screen {
+    @apply min-h-screen flex flex-col lg:flex-row;
+  }
+
+  .split-screen-left {
+    @apply lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center items-center relative overflow-hidden;
+    background: linear-gradient(135deg, rgba(44, 85, 48, 0.9) 0%, rgba(90, 140, 90, 0.8) 100%);
+  }
+
+  .split-screen-right {
+    @apply lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden;
+    background: var(--gradient-naturel);
+  }
+
+  /* 7. BORDURES ORGANIQUES */
+  .border-organic {
+    border: 2px solid;
+    border-image: linear-gradient(135deg, var(--green-soft), var(--green-light)) 1;
+    border-radius: 16px;
+  }
+
+  /* 8. TRANSITIONS DE PAGES (Router) */
+  .page-enter-active,
+  .page-leave-active {
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .page-enter-from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  .page-leave-to {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  /* 10. COMPOSANTS FORMULAIRES ORGANIQUES */
+  .form-input-organic {
+    @apply px-4 py-3 rounded-xl border-2 border-green-light/30 bg-cream-light/50 text-forest-dark placeholder-green-medium/60 focus:outline-none focus:ring-2 focus:ring-green-soft focus:border-transparent transition-all duration-300 ease-organic;
+  }
+
+  .form-label-organic {
+    @apply flex items-center text-sm font-medium text-forest-dark mb-2;
+  }
+
+  .btn-organic-primary {
+    @apply px-6 py-3 bg-gradient-vert text-forest-dark font-semibold rounded-xl shadow-organic hover:shadow-organic-hover hover:scale-105 active:scale-95 transition-all duration-300 ease-organic focus:outline-none focus:ring-2 focus:ring-green-soft focus:ring-offset-2;
+  }
+
+  .btn-organic-secondary {
+    @apply px-6 py-3 bg-gradient-naturel text-forest-dark font-semibold rounded-xl border-2 border-green-light/50 hover:bg-green-soft/10 hover:border-green-soft transition-all duration-300 ease-organic;
+  }
+
+  /* 11. CARDS ORGANIQUES */
+  .card-organic {
+    @apply bg-gradient-naturel rounded-2xl border border-green-light/30 shadow-organic overflow-hidden hover:shadow-organic-hover hover:scale-[1.02] transition-all duration-500 ease-organic;
+  }
+
+  /* 12. BADGES NATURELS */
+  .badge-naturel {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium transition-all duration-300 ease-organic;
+  }
+
+  .badge-green {
+    @apply bg-green-soft/20 text-forest-dark;
+  }
+
+  .badge-terracotta {
+    @apply bg-terracotta/10 text-terracotta;
+  }
+
+  .badge-cream {
+    @apply bg-cream-medium/50 text-forest-dark;
+  }
+}
+
+@layer utilities {
+
+  /* 3. DÉGRADÉS D'ARRIÈRE-PLAN */
+  .bg-gradient-naturel {
+    background: var(--gradient-naturel);
+  }
+
+  .bg-gradient-vert {
+    background: var(--gradient-vert);
+  }
+
+  .bg-gradient-terre {
+    background: var(--gradient-terre);
+  }
+
+  /* Text shadow pour améliorer la lisibilité */
+  .text-shadow {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  }
+
+  .text-shadow-none {
+    text-shadow: none;
+  }
+
+  /* Masquage du scrollbar mais garder le scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Pour les transitions transform GPU accélérées */
+  .transform-gpu {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  /* Pour les arrière-plans avec texture */
+  .bg-texture-paper {
+    @apply bg-paper-texture bg-20;
+  }
+
+  .bg-texture-leaves {
+    @apply bg-leaf-pattern bg-200 opacity-5;
+  }
+
+  .bg-texture-grid {
+    @apply bg-grid-pattern bg-60 opacity-10;
+  }
+
+  /* Mix blend modes */
+  .mix-blend-multiply {
+    mix-blend-mode: multiply;
+  }
+
+  .mix-blend-screen {
+    mix-blend-mode: screen;
+  }
+
+  .mix-blend-overlay {
+    mix-blend-mode: overlay;
+  }
+}
+
+/* Animations CSS avancées */
+@keyframes float-delay-1 {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-15px) rotate(180deg);
+  }
+}
+
+@keyframes float-delay-2 {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-25px) rotate(-180deg);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Support du mode sombre - MIS À JOUR */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --green-soft: #8abf7a;
+    --green-light: #a5d495;
+    --green-medium: #4a7a4a;
+    --forest-dark: #1a3a1e;
+    --cream-light: #1a1915;
+    --cream-medium: #2a2924;
+    --cream-dark: #3a3934;
+  }
+
+  body {
+    @apply bg-nature-950 text-nature-100;
+    background: linear-gradient(135deg,
+        rgba(26, 25, 21, 0.95) 0%,
+        rgba(42, 41, 36, 0.85) 50%,
+        rgba(74, 122, 74, 0.1) 100%);
+  }
+
+  .product-card {
+    @apply bg-nature-900/50 border-nature-700;
+  }
+
+  .input-organic {
+    @apply bg-nature-800/50 border-nature-700 text-nature-100 placeholder-nature-500;
+  }
+
+  .bg-gradient-naturel {
+    background: linear-gradient(135deg, var(--cream-light) 0%, var(--cream-medium) 100%);
+  }
+}
+
+/* Animation globale d'arrière-plan pour toute l'application */
+.app-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -10;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(167, 211, 151, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(198, 230, 179, 0.05) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(248, 244, 233, 0.15) 0%, transparent 50%);
+  animation: gentle-glow 8s ease-in-out infinite alternate;
+}
+
+/* Responsive design amélioré */
+@media (max-width: 768px) {
+  .split-screen {
+    @apply flex-col;
+  }
+
+  .split-screen-left,
+  .split-screen-right {
+    @apply w-full p-6;
+  }
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline {
+    @apply px-4 py-2.5 text-sm;
+  }
+}
+
+/* Impression */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
