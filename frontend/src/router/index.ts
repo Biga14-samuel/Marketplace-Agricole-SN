@@ -16,25 +16,11 @@ const router = createRouter({
             component: () => import('../views/HomeView.vue')
         },
         
-        // Route de test temporaire
-        {
-            path: '/test-auth',
-            name: 'TestAuth',
-            component: () => import('../components/SimpleAuthTest.vue')
-        },
-        
         // Route de debug
         {
             path: '/debug',
             name: 'Debug',
             component: () => import('../views/DebugView.vue')
-        },
-        
-        // Route d'urgence qui MARCHE
-        {
-            path: '/emergency-auth',
-            name: 'EmergencyAuth',
-            component: () => import('../views/EmergencyAuth.vue')
         },
         
         // Routes importées

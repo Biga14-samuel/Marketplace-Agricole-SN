@@ -454,6 +454,8 @@
 </template>
 
 <script>
+import paymentService from '../services/paymentService'
+
 export default {
     name: 'PaymentStatsView',
     data() {
@@ -468,89 +470,34 @@ export default {
                 { id: 'quarter', label: 'Trimestre' },
                 { id: 'year', label: 'Année' }
             ],
-            totalRevenue: 12485.50,
-            revenueChange: 15.2,
-            averageTransaction: 68.40,
-            totalTransactions: 182,
-            conversionRate: 42.5,
-            revenueData: [
-                { label: 'Lun', value: 420 },
-                { label: 'Mar', value: 580 },
-                { label: 'Mer', value: 510 },
-                { label: 'Jeu', value: 690 },
-                { label: 'Ven', value: 820 },
-                { label: 'Sam', value: 950 },
-                { label: 'Dim', value: 720 },
-                { label: 'Lun', value: 640 },
-                { label: 'Mar', value: 710 },
-                { label: 'Mer', value: 890 }
-            ],
-            paymentMethods: [
-                { name: 'Carte Bancaire', icon: '💳', color: '#2E8B57', percentage: 65, transactions: 118 },
-                { name: 'PayPal', icon: '🔗', color: '#00308F', percentage: 22, transactions: 40 },
-                { name: 'Virement', icon: '🏦', color: '#B8860B', percentage: 8, transactions: 15 },
-                { name: 'Espèces', icon: '💰', color: '#8B4513', percentage: 5, transactions: 9 }
-            ],
-            recentTransactions: [
-                {
-                    id: 1,
-                    customer: { name: 'Marie Dubois', email: 'marie.dubois@email.com', initials: 'MD' },
-                    date: '15 Fév 2026',
-                    time: '14:30',
-                    method: { name: 'Carte', icon: '💳', color: '#2E8B57' },
-                    amount: 89.50,
-                    status: 'Complété'
-                },
-                {
-                    id: 2,
-                    customer: { name: 'Jean Martin', email: 'jean.martin@email.com', initials: 'JM' },
-                    date: '14 Fév 2026',
-                    time: '11:15',
-                    method: { name: 'PayPal', icon: '🔗', color: '#00308F' },
-                    amount: 42.00,
-                    status: 'Complété'
-                },
-                {
-                    id: 3,
-                    customer: { name: 'Sophie Leroy', email: 'sophie.leroy@email.com', initials: 'SL' },
-                    date: '14 Fév 2026',
-                    time: '09:45',
-                    method: { name: 'Virement', icon: '🏦', color: '#B8860B' },
-                    amount: 156.80,
-                    status: 'En attente'
-                },
-                {
-                    id: 4,
-                    customer: { name: 'Pierre Bernard', email: 'pierre.bernard@email.com', initials: 'PB' },
-                    date: '13 Fév 2026',
-                    time: '16:20',
-                    method: { name: 'Carte', icon: '💳', color: '#2E8B57' },
-                    amount: 34.90,
-                    status: 'Complété'
-                },
-                {
-                    id: 5,
-                    customer: { name: 'Élise Petit', email: 'elise.petit@email.com', initials: 'EP' },
-                    date: '12 Fév 2026',
-                    time: '13:10',
-                    method: { name: 'Espèces', icon: '💰', color: '#8B4513' },
-                    amount: 25.00,
-                    status: 'Complété'
-                }
-            ]
+            totalRevenue: 0,
+            revenueChange: 0,
+            averageTransaction: 0,
+            totalTransactions: 0,
+            conversionRate: 0,
+            revenueData: [],
+            paymentMethods: [],
+            recentTransactions: []
         }
+    },
+    watch: {
+        activePeriod() {
+            this.loadPaymentStats()
+        }
+    },
+    mounted() {
+        this.loadPaymentStats()
     },
     methods: {
         formatCurrency(value) {
-            return new Intl.NumberFormat('fr-FR', {
+            return new Intl.NumberFormat('fr-CM', {
                 style: 'currency',
-                currency: 'EUR',
+                currency: 'XAF',
                 minimumFractionDigits: 0,
-                maximumFractionDigits: 2
-            }).format(value)
+                maximumFractionDigits: 0
+            }).format(Number(value || 0))
         },
         getPieSegment(index, totalSegments, percentage) {
-            // Calcule les segments d'un graphique circulaire
             const startAngle = (index / totalSegments) * 360
             const angle = (percentage / 100) * 360
             const endAngle = startAngle + angle
@@ -566,6 +513,119 @@ export default {
             const largeArcFlag = angle > 180 ? 1 : 0
 
             return `path('M 50 50 L ${x1} ${y1} A 50 50 0 ${largeArcFlag} 1 ${x2} ${y2} Z')`
+        },
+        mapMethodVisual(method) {
+            const value = String(method || '').toLowerCase()
+            if (value.includes('mtn')) return { name: 'MTN Mobile Money', icon: '📱', color: '#2E8B57' }
+            if (value.includes('orange')) return { name: 'Orange Money', icon: '📱', color: '#F97316' }
+            if (value.includes('card') || value.includes('credit')) return { name: 'Carte Bancaire', icon: '💳', color: '#0EA5E9' }
+            if (value.includes('bank') || value.includes('transfer')) return { name: 'Virement', icon: '🏦', color: '#B8860B' }
+            if (value.includes('cash')) return { name: 'Espèces', icon: '💰', color: '#8B4513' }
+            return { name: 'Paiement', icon: '💳', color: '#2E8B57' }
+        },
+        getStatusLabel(status) {
+            const value = String(status || '').toLowerCase()
+            if (value === 'completed' || value === 'paid' || value === 'success') return 'Complété'
+            if (value === 'failed') return 'Échoué'
+            return 'En attente'
+        },
+        async loadPaymentStats() {
+            try {
+                const period = this.activePeriod === 'quarter' ? 'year' : this.activePeriod
+                const [stats, payments] = await Promise.all([
+                    paymentService.getPaymentStats(period),
+                    paymentService.getUserPayments()
+                ])
+
+                const allPayments = Array.isArray(payments) ? payments : []
+                const successful = allPayments.filter((p) => {
+                    const status = String(p?.status || '').toLowerCase()
+                    return status === 'completed' || status === 'paid' || status === 'success'
+                })
+
+                this.totalRevenue = Number(stats?.totalRevenue ?? successful.reduce((sum, p) => sum + Number(p?.amount || 0), 0))
+                this.totalTransactions = Number(stats?.totalTransactions ?? allPayments.length)
+                this.averageTransaction = this.totalTransactions > 0
+                    ? this.totalRevenue / this.totalTransactions
+                    : 0
+                this.conversionRate = this.totalTransactions > 0
+                    ? Math.round((successful.length / this.totalTransactions) * 1000) / 10
+                    : 0
+                this.revenueChange = 0
+
+                const dayMap = new Map()
+                for (let i = 9; i >= 0; i--) {
+                    const date = new Date()
+                    date.setDate(date.getDate() - i)
+                    const key = date.toISOString().slice(0, 10)
+                    dayMap.set(key, {
+                        label: date.toLocaleDateString('fr-CM', { weekday: 'short' }),
+                        value: 0
+                    })
+                }
+
+                successful.forEach((payment) => {
+                    const key = new Date(payment?.createdAt || Date.now()).toISOString().slice(0, 10)
+                    if (dayMap.has(key)) {
+                        dayMap.get(key).value += Number(payment?.amount || 0)
+                    }
+                })
+                this.revenueData = Array.from(dayMap.values())
+
+                const methodCounters = new Map()
+                allPayments.forEach((payment) => {
+                    const visual = this.mapMethodVisual(payment?.method)
+                    const key = visual.name
+                    const item = methodCounters.get(key) || { ...visual, transactions: 0 }
+                    item.transactions += 1
+                    methodCounters.set(key, item)
+                })
+                const methodTotal = allPayments.length || 1
+                this.paymentMethods = Array.from(methodCounters.values()).map((item) => ({
+                    ...item,
+                    percentage: Math.round((item.transactions / methodTotal) * 100)
+                }))
+
+                this.recentTransactions = allPayments
+                    .slice()
+                    .sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0))
+                    .slice(0, 10)
+                    .map((payment) => {
+                        const method = this.mapMethodVisual(payment?.method)
+                        const customerName = payment?.customerName || payment?.customer?.name || 'Client'
+                        const created = new Date(payment?.createdAt || Date.now())
+                        const initials = customerName
+                            .split(' ')
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map((part) => part[0]?.toUpperCase() || '')
+                            .join('')
+                            .slice(0, 2)
+
+                        return {
+                            id: payment?.id,
+                            customer: {
+                                name: customerName,
+                                email: payment?.customerEmail || payment?.customer?.email || '',
+                                initials: initials || 'CL'
+                            },
+                            date: created.toLocaleDateString('fr-CM', { day: '2-digit', month: 'short', year: 'numeric' }),
+                            time: created.toLocaleTimeString('fr-CM', { hour: '2-digit', minute: '2-digit' }),
+                            method,
+                            amount: Number(payment?.amount || 0),
+                            status: this.getStatusLabel(payment?.status)
+                        }
+                    })
+            } catch (error) {
+                this.totalRevenue = 0
+                this.revenueChange = 0
+                this.averageTransaction = 0
+                this.totalTransactions = 0
+                this.conversionRate = 0
+                this.revenueData = []
+                this.paymentMethods = []
+                this.recentTransactions = []
+            }
         }
     }
 }
@@ -667,3 +727,4 @@ export default {
     }
 }
 </style>
+

@@ -343,10 +343,11 @@ export const LANGUAGE_OPTIONS: Array<{ value: string; label: string }> = [
  */
 export const COUNTRIES: Array<{ code: string; name: string }> = [
     { code: 'CM', name: 'Cameroun' },
-    { code: 'FR', name: 'France' },
-    { code: 'BE', name: 'Belgique' },
-    { code: 'CH', name: 'Suisse' },
-    { code: 'CA', name: 'Canada' },
+    { code: 'TD', name: 'Tchad' },
+    { code: 'GA', name: 'Gabon' },
+    { code: 'CG', name: 'Congo' },
+    { code: 'SN', name: 'Sénégal' },
+    { code: 'CI', name: "Côte d'Ivoire" },
 ];
 
 /**

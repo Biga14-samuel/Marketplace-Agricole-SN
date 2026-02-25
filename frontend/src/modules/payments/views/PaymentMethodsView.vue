@@ -783,6 +783,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { formatCurrency } from '../utils/currencyFormatter'
+import paymentMethodService from '../services/paymentMethodService'
 
 // Composants décoratifs
 const LeafDecoration = {
@@ -822,45 +823,7 @@ export default {
         const selectedMethodType = ref('')
         const methodToDelete = ref(null)
 
-        // Données de test pour les méthodes de paiement
-        const paymentMethods = ref([
-            {
-                id: 1,
-                name: 'MTN Mobile Money',
-                type: 'mobile-money',
-                maskedNumber: '699 •••• 1234',
-                operator: 'MTN Mobile Money',
-                isDefault: true,
-                status: 'active',
-                addedDate: '2024-01-15',
-                lastUsed: '2024-03-15',
-                lastAmount: 15750
-            },
-            {
-                id: 2,
-                name: 'Carte Visa',
-                type: 'credit-card',
-                maskedNumber: '•••• 4242',
-                expiration: '06/26',
-                isDefault: false,
-                status: 'active',
-                addedDate: '2024-02-10',
-                lastUsed: '2024-03-10',
-                lastAmount: 8900
-            },
-            {
-                id: 3,
-                name: 'Orange Money',
-                type: 'mobile-money',
-                maskedNumber: '655 •••• 5678',
-                operator: 'Orange Money',
-                isDefault: false,
-                status: 'expired',
-                addedDate: '2023-11-20',
-                lastUsed: '2024-01-05',
-                lastAmount: 4500
-            }
-        ])
+        const paymentMethods = ref([])
 
         // Nouvelle méthode
         const newMethod = ref({
@@ -917,7 +880,7 @@ export default {
         // Methods
         const formatDate = (dateString) => {
             const date = new Date(dateString)
-            return date.toLocaleDateString('fr-FR', {
+            return date.toLocaleDateString('fr-CM', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric'
@@ -984,67 +947,114 @@ export default {
             showAddMethodModal.value = true
         }
 
-        const addNewMethod = () => {
-            if (!isFormValid.value) return
+        const mapServiceMethod = (method) => {
+            const details = method?.details || {}
+            const normalizedType = String(method?.type || '').toLowerCase()
+            let type = 'mobile-money'
+            if (normalizedType.includes('card') || normalizedType.includes('credit')) type = 'credit-card'
+            if (normalizedType.includes('bank') || normalizedType.includes('transfer')) type = 'bank-account'
 
-            // Générer un ID unique
-            const newId = Math.max(...paymentMethods.value.map(m => m.id), 0) + 1
+            const phoneNumber = details?.phoneNumber || details?.phone || ''
+            const cardLast4 = details?.last4 || details?.cardLast4 || ''
+            const accountNumber = details?.accountNumber || ''
+            const maskedNumber = phoneNumber
+                ? `${String(phoneNumber).slice(0, 3)} •••• ${String(phoneNumber).slice(-4)}`
+                : cardLast4
+                    ? `•••• ${cardLast4}`
+                    : accountNumber
+                        ? `•••${String(accountNumber).slice(-3)}`
+                        : 'Non renseigné'
 
-            // Créer la nouvelle méthode selon le type
-            let newMethodData = {
-                id: newId,
-                isDefault: paymentMethods.value.length === 0, // Première méthode = par défaut
-                status: 'active',
-                addedDate: new Date().toISOString().split('T')[0],
-                lastUsed: null,
+            const expiryMonth = details?.expiryMonth
+            const expiryYear = details?.expiryYear
+            const expiration = expiryMonth && expiryYear
+                ? `${String(expiryMonth).padStart(2, '0')}/${String(expiryYear).slice(-2)}`
+                : undefined
+
+            return {
+                id: method?.id,
+                name: method?.name || 'Méthode de paiement',
+                type,
+                maskedNumber,
+                operator: details?.provider || method?.provider || '',
+                expiration,
+                isDefault: Boolean(method?.isDefault),
+                status: method?.status === 'active' || method?.isActive ? 'active' : 'expired',
+                addedDate: method?.createdAt || new Date().toISOString(),
+                lastUsed: method?.lastUsedAt || null,
                 lastAmount: 0
-            }
-
-            switch (selectedMethodType.value) {
-                case 'mobile-money':
-                    newMethodData.name = `${newMethod.value.operator}`
-                    newMethodData.type = 'mobile-money'
-                    newMethodData.maskedNumber = `${newMethod.value.phoneNumber.slice(0, 3)} •••• ${newMethod.value.phoneNumber.slice(-4)}`
-                    newMethodData.operator = newMethod.value.operator
-                    break
-                case 'credit-card':
-                    newMethodData.name = 'Carte Visa'
-                    newMethodData.type = 'credit-card'
-                    newMethodData.maskedNumber = `•••• ${newMethod.value.cardNumber.slice(-4)}`
-                    newMethodData.expiration = newMethod.value.expiration
-                    break
-                case 'bank-account':
-                    newMethodData.name = `Compte ${newMethod.value.bankName}`
-                    newMethodData.type = 'bank-account'
-                    newMethodData.maskedNumber = `•••${newMethod.value.accountNumber.slice(-3)}`
-                    break
-            }
-
-            paymentMethods.value.push(newMethodData)
-            showAddMethodModal.value = false
-            selectedMethodType.value = ''
-
-            // Réinitialiser le formulaire
-            newMethod.value = {
-                operator: '',
-                phoneNumber: '',
-                cardNumber: '',
-                expiration: '',
-                cvv: '',
-                cardHolder: '',
-                bankName: '',
-                accountNumber: '',
-                bankCode: '',
-                accountHolder: '',
-                isDefault: false
             }
         }
 
-        const setAsDefault = (method) => {
-            // Mettre à jour toutes les méthodes
-            paymentMethods.value.forEach(m => {
-                m.isDefault = m.id === method.id
-            })
+        const loadPaymentMethods = async () => {
+            try {
+                const methods = await paymentMethodService.getPaymentMethods()
+                paymentMethods.value = Array.isArray(methods) ? methods.map(mapServiceMethod) : []
+            } catch (error) {
+                console.error('Erreur chargement des méthodes de paiement:', error)
+                paymentMethods.value = []
+            }
+        }
+
+        const addNewMethod = async () => {
+            if (!isFormValid.value) return
+            try {
+                if (selectedMethodType.value === 'mobile-money') {
+                    await paymentMethodService.addMobileMoneyAccount({
+                        provider: newMethod.value.operator,
+                        phoneNumber: newMethod.value.phoneNumber,
+                        accountName: newMethod.value.accountHolder || '',
+                        isDefault: newMethod.value.isDefault
+                    })
+                } else if (selectedMethodType.value === 'credit-card') {
+                    const [month, year] = String(newMethod.value.expiration || '').split('/')
+                    await paymentMethodService.addCard({
+                        cardNumber: newMethod.value.cardNumber.replace(/\s/g, ''),
+                        cardHolder: newMethod.value.cardHolder,
+                        expiryMonth: Number(month || 0),
+                        expiryYear: Number(`20${year || '0'}`),
+                        cvv: newMethod.value.cvv,
+                        isDefault: newMethod.value.isDefault
+                    })
+                } else if (selectedMethodType.value === 'bank-account') {
+                    await paymentMethodService.addBankAccount({
+                        bankName: newMethod.value.bankName,
+                        accountNumber: newMethod.value.accountNumber,
+                        accountHolder: newMethod.value.accountHolder,
+                        bankCode: newMethod.value.bankCode,
+                        isDefault: newMethod.value.isDefault
+                    })
+                }
+
+                await loadPaymentMethods()
+                showAddMethodModal.value = false
+                selectedMethodType.value = ''
+
+                newMethod.value = {
+                    operator: '',
+                    phoneNumber: '',
+                    cardNumber: '',
+                    expiration: '',
+                    cvv: '',
+                    cardHolder: '',
+                    bankName: '',
+                    accountNumber: '',
+                    bankCode: '',
+                    accountHolder: '',
+                    isDefault: false
+                }
+            } catch (error) {
+                console.error('Erreur ajout méthode de paiement:', error)
+            }
+        }
+
+        const setAsDefault = async (method) => {
+            try {
+                await paymentMethodService.setDefaultPaymentMethod(String(method.id))
+                await loadPaymentMethods()
+            } catch (error) {
+                console.error('Erreur définition méthode par défaut:', error)
+            }
         }
 
         const editMethod = (method) => {
@@ -1057,25 +1067,19 @@ export default {
             methodToDelete.value = method
         }
 
-        const deleteMethod = () => {
+        const deleteMethod = async () => {
             if (!methodToDelete.value) return
-
-            // Si on supprime la méthode par défaut, définir une autre méthode comme défaut
-            if (methodToDelete.value.isDefault) {
-                const otherMethods = paymentMethods.value.filter(m => m.id !== methodToDelete.value.id)
-                if (otherMethods.length > 0) {
-                    otherMethods[0].isDefault = true
-                }
+            try {
+                await paymentMethodService.removePaymentMethod(String(methodToDelete.value.id))
+                methodToDelete.value = null
+                await loadPaymentMethods()
+            } catch (error) {
+                console.error('Erreur suppression méthode de paiement:', error)
             }
-
-            // Supprimer la méthode
-            paymentMethods.value = paymentMethods.value.filter(m => m.id !== methodToDelete.value.id)
-            methodToDelete.value = null
         }
 
-        onMounted(() => {
-            // Charger les méthodes de paiement depuis l'API
-            // fetchPaymentMethods()
+        onMounted(async () => {
+            await loadPaymentMethods()
         })
 
         return {

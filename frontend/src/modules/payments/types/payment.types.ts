@@ -25,9 +25,7 @@ export enum PAYMENT_METHODS {
 }
 
 export enum PAYMENT_CURRENCIES {
-    XAF = 'XAF',
-    EUR = 'EUR',
-    USD = 'USD'
+    XAF = 'XAF'
 }
 
 export enum INVOICE_STATUS {

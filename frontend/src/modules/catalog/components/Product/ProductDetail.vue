@@ -141,12 +141,12 @@
                         <!-- Miniatures avec animation de sélection -->
                         <div class="image-thumbnails">
                             <div v-for="(image, index) in product.images" :key="image.id || index"
-                                @click="selectImage(index)" class="thumbnail-item" :class="{
+                                @click="selectImage(Number(index))" class="thumbnail-item" :class="{
                                     'active': currentImageIndex === index,
                                     'loading': thumbnailLoading[index]
                                 }">
                                 <img :src="image.url" :alt="image.alt_text || product.name" class="thumbnail-image"
-                                    @load="handleThumbnailLoad(index)" />
+                                    @load="handleThumbnailLoad(Number(index))" />
                                 <div class="thumbnail-overlay"></div>
                             </div>
                         </div>
@@ -189,7 +189,7 @@
                                 <div class="rating-details">
                                     <span class="rating-value">{{ product.rating.toFixed(1) }}</span>
                                     <span class="rating-count">
-                                        ({{ product.review_count || 0 }} avis)
+                                        ({{ totalReviewCount }} avis)
                                     </span>
 
                                     <div v-if="showRatingAnimation" class="rating-animation">
@@ -237,9 +237,9 @@
                             <div class="description-keywords" v-if="product.tags && product.tags.length > 0">
                                 <div class="keywords-container">
                                     <div v-for="(tag, index) in product.tags" :key="tag.id" class="keyword-item" :style="{
-                                        animationDelay: `${index * 0.1}s`,
+                                        animationDelay: `${Number(index) * 0.1}s`,
                                         '--tag-color': tag.color || '#5a8c5a'
-                                    }" @mouseenter="keywordHoverIndex = index" @mouseleave="keywordHoverIndex = -1">
+                                    }" @mouseenter="keywordHoverIndex = Number(index)" @mouseleave="keywordHoverIndex = -1">
                                         <span class="keyword-icon">{{ getTagIcon(tag.name) }}</span>
                                         <span class="keyword-text">{{ tag.name }}</span>
                                     </div>
@@ -483,7 +483,7 @@
                             <div class="product-guarantees">
                                 <div class="guarantee-item">
                                     <span class="guarantee-icon">🚚</span>
-                                    <span class="guarantee-text">Livraison gratuite dès 50€</span>
+                                    <span class="guarantee-text">Livraison gratuite dès 50 FCFA</span>
                                 </div>
 
                                 <div class="guarantee-item">
@@ -596,7 +596,7 @@
                     </div>
 
                     <!-- Autres produits du producteur -->
-                    <div class="producer-other-products">
+                    <div v-if="producerProducts.length > 0" class="producer-other-products">
                         <h4 class="section-subtitle">
                             <span class="subtitle-icon">📦</span>
                             Autres produits de ce producteur
@@ -830,7 +830,7 @@
 
                                             <div class="certification-item">
                                                 <span class="certification-icon">📍</span>
-                                                <span class="certification-text">Origine France Garantie</span>
+                                                <span class="certification-text">Origine Cameroun Garantie</span>
                                             </div>
                                         </div>
                                     </div>
@@ -847,7 +847,7 @@
                     <h2 class="section-title">
                         <span class="title-icon">💬</span>
                         Avis clients
-                        <span class="reviews-count">({{ product.review_count || 0 }})</span>
+                        <span class="reviews-count">({{ totalReviewCount }})</span>
                     </h2>
                     <div class="section-decoration"></div>
                 </div>
@@ -857,17 +857,17 @@
                     <div class="reviews-summary">
                         <div class="summary-rating">
                             <div class="rating-average">
-                                <span class="average-value">{{ product.rating?.toFixed(1) || '4.5' }}</span>
+                                <span class="average-value">{{ averageRating.toFixed(1) }}</span>
                                 <span class="average-max">/5</span>
                             </div>
 
                             <div class="rating-stars">
                                 <div class="stars-display">
-                                    <div v-for="n in 5" :key="n" class="star">
+                                    <div v-for="n in 5" :key="n" class="star" :class="{ 'filled': n <= Math.round(averageRating) }">
                                         ⭐
                                     </div>
                                 </div>
-                                <span class="rating-total">{{ product.review_count || 0 }} avis</span>
+                                <span class="rating-total">{{ totalReviewCount }} avis</span>
                             </div>
                         </div>
 
@@ -879,6 +879,9 @@
                                 </div>
                                 <span class="distribution-percentage">{{ rating.percentage }}%</span>
                             </div>
+                            <p v-if="ratingDistribution.length === 0" class="text-sm text-amber-700/70">
+                                Aucun détail de répartition disponible pour ce produit.
+                            </p>
                         </div>
 
                         <button @click="openReviewModal" class="add-review-btn">
@@ -969,10 +972,13 @@
                                     </div>
                                 </div>
                             </div>
+                            <p v-if="filteredReviews.length === 0" class="text-sm text-amber-700/70">
+                                Aucun avis disponible pour le moment.
+                            </p>
                         </div>
 
                         <!-- Pagination des avis -->
-                        <div class="reviews-pagination">
+                        <div v-if="totalReviewPages > 1" class="reviews-pagination">
                             <button @click="previousReviewPage" class="pagination-btn prev-btn"
                                 :disabled="reviewPage === 1">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1000,7 +1006,7 @@
             </div>
 
             <!-- Section produits similaires -->
-            <div class="related-products-section animate-slide-in-up">
+            <div v-if="relatedProducts.length > 0" class="related-products-section animate-slide-in-up">
                 <div class="section-header">
                     <h2 class="section-title">
                         <span class="title-icon">🔄</span>
@@ -1028,7 +1034,7 @@
             </div>
 
             <!-- FAQ du produit -->
-            <div class="faq-section animate-slide-in-up">
+            <div v-if="productFAQs.length > 0" class="faq-section animate-slide-in-up">
                 <div class="section-header">
                     <h2 class="section-title">
                         <span class="title-icon">❓</span>
@@ -1152,6 +1158,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from '@/modules/catalog/store/modules/product.store'
+import { productsApi } from '@/modules/catalog/services/api/products.api'
 import { useCartStore } from '@/modules/orders/stores/cart.store'
 import ProductCard from './ProductCard.vue'
 import ShareModal from './ShareModal.vue'
@@ -1211,69 +1218,28 @@ const restockDate = computed(() => {
     return 'Bientôt disponible'
 })
 
-// Données de test
-const producerProducts = ref([
-    { id: 1, name: 'Tomates Cerises', price: 4.50, unit: { symbol: 'kg' }, images: [] },
-    { id: 2, name: 'Concombres Bio', price: 3.20, unit: { symbol: 'pièce' }, images: [] },
-    { id: 3, name: 'Salade Laitue', price: 2.80, unit: { symbol: 'pièce' }, images: [] },
-])
+interface ProductReview {
+    id: string | number
+    author: string
+    date: string
+    rating: number
+    title: string
+    content: string
+    verified?: boolean
+    helpful?: boolean
+    helpful_count?: number
+    images?: string[]
+}
 
-const relatedProducts = ref([
-    { id: 4, name: 'Carottes Nouvelles', price: 2.90, unit: { symbol: 'kg' }, images: [] },
-    { id: 5, name: 'Radis Roses', price: 3.10, unit: { symbol: 'botte' }, images: [] },
-    { id: 6, name: 'Oignons Rouges', price: 3.50, unit: { symbol: 'kg' }, images: [] },
-    { id: 7, name: 'Ail Frais', price: 5.20, unit: { symbol: 'kg' }, images: [] },
-])
+interface ProductFAQ {
+    question: string
+    answer: string
+}
 
-const ratingDistribution = ref([
-    { stars: 5, percentage: 75 },
-    { stars: 4, percentage: 15 },
-    { stars: 3, percentage: 5 },
-    { stars: 2, percentage: 3 },
-    { stars: 1, percentage: 2 },
-])
-
-const reviews = ref([
-    {
-        id: 1,
-        author: 'Marie D.',
-        date: '2024-01-15',
-        rating: 5,
-        title: 'Excellente qualité',
-        content: 'Produit frais et savoureux, je recommande !',
-        verified: true,
-        helpful: false,
-        helpful_count: 12,
-        images: []
-    },
-    {
-        id: 2,
-        author: 'Pierre L.',
-        date: '2024-01-10',
-        rating: 4,
-        title: 'Très bon produit',
-        content: 'Qualité au rendez-vous, un peu cher mais ça vaut le coup.',
-        verified: true,
-        helpful: false,
-        helpful_count: 5,
-        images: []
-    }
-])
-
-const productFAQs = ref([
-    {
-        question: 'Comment conserver ce produit ?',
-        answer: 'Conserver au réfrigérateur entre 4°C et 8°C. Consommer dans les 7 jours suivant la réception.'
-    },
-    {
-        question: 'Le produit est-il certifié bio ?',
-        answer: 'Oui, tous nos produits sont certifiés agriculture biologique par un organisme agréé.'
-    },
-    {
-        question: 'Puis-je visiter la ferme du producteur ?',
-        answer: 'Oui, le producteur accueille les visiteurs sur rendez-vous. Contactez-nous pour organiser une visite.'
-    }
-])
+const producerProducts = ref<any[]>([])
+const relatedProducts = ref<any[]>([])
+const reviews = ref<ProductReview[]>([])
+const productFAQs = ref<ProductFAQ[]>([])
 
 const featureTabs = ref([
     { id: 'nutrition', label: 'Nutrition', icon: '🥗' },
@@ -1432,6 +1398,40 @@ const producerDescription = computed(() => {
     return product.value.producer?.description || 'Producteur passionné par une agriculture respectueuse de l\'environnement et des saveurs authentiques.'
 })
 
+const totalReviewCount = computed(() => {
+    if (reviews.value.length > 0) {
+        return reviews.value.length
+    }
+
+    const backendCount = Number(product.value.review_count || 0)
+    return Number.isFinite(backendCount) ? backendCount : 0
+})
+
+const averageRating = computed(() => {
+    if (reviews.value.length > 0) {
+        const sum = reviews.value.reduce((acc, review) => acc + review.rating, 0)
+        return sum / reviews.value.length
+    }
+
+    const backendAverage = Number(product.value.average_rating ?? product.value.rating ?? 0)
+    return Number.isFinite(backendAverage) ? backendAverage : 0
+})
+
+const ratingDistribution = computed(() => {
+    if (reviews.value.length === 0) {
+        return []
+    }
+
+    const total = reviews.value.length
+    return [5, 4, 3, 2, 1].map(stars => {
+        const count = reviews.value.filter(review => review.rating === stars).length
+        return {
+            stars,
+            percentage: Math.round((count / total) * 100)
+        }
+    })
+})
+
 const filteredReviews = computed(() => {
     let filtered = [...reviews.value]
 
@@ -1463,7 +1463,7 @@ const filteredReviews = computed(() => {
 
 const totalReviewPages = computed(() => {
     const itemsPerPage = 5
-    return Math.ceil(reviews.value.length / itemsPerPage)
+    return Math.max(1, Math.ceil(reviews.value.length / itemsPerPage))
 })
 
 const cartQuantity = computed(() => {
@@ -1478,7 +1478,7 @@ const shouldPulseCartButton = computed(() => {
 const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
-        currency: 'EUR',
+        currency: 'XAF',
         minimumFractionDigits: 2
     }).format(price)
 }
@@ -1630,13 +1630,9 @@ const addToCart = async () => {
         await new Promise(resolve => setTimeout(resolve, 800))
 
         // Ajouter au store du panier
-        cartStore.addItem({
-            id: product.value.id,
-            name: product.value.name,
-            price: displayPrice.value,
-            quantity: quantity.value,
-            image: mainImageUrl.value,
-            unit: product.value.unit?.symbol
+        await cartStore.addToCart({
+            productId: product.value.id,
+            quantity: quantity.value
         })
 
         // Afficher la notification
@@ -1775,6 +1771,73 @@ const viewAllRelated = () => {
     router.push(`/catalog?category=${product.value.category?.id}`)
 }
 
+const normalizeReview = (rawReview: any, index: number): ProductReview => {
+    return {
+        id: rawReview?.id ?? `review-${index}`,
+        author: rawReview?.author || rawReview?.user_name || 'Client',
+        date: rawReview?.date || rawReview?.created_at || new Date().toISOString(),
+        rating: Number(rawReview?.rating || 0),
+        title: rawReview?.title || 'Avis client',
+        content: rawReview?.content || rawReview?.comment || '',
+        verified: Boolean(rawReview?.verified ?? rawReview?.is_verified_purchase),
+        helpful: Boolean(rawReview?.helpful),
+        helpful_count: Number(rawReview?.helpful_count || 0),
+        images: Array.isArray(rawReview?.images) ? rawReview.images : []
+    }
+}
+
+const hydrateDetailSections = async (productId: string) => {
+    const rawReviews = Array.isArray(product.value?.reviews) ? product.value.reviews : []
+    reviews.value = rawReviews.map((review, index) => normalizeReview(review, index))
+    reviewPage.value = 1
+    starFilter.value = 0
+
+    const rawFaqs = Array.isArray(product.value?.faqs) ? product.value.faqs : []
+    productFAQs.value = rawFaqs
+        .filter((faq: any) => faq?.question && faq?.answer)
+        .map((faq: any) => ({
+            question: faq.question,
+            answer: faq.answer
+        }))
+    openFAQ.value = -1
+
+    const rawProducerProducts = Array.isArray(product.value?.producer?.products)
+        ? product.value.producer.products
+        : []
+
+    producerProducts.value = rawProducerProducts.filter((item: any) => String(item?.id) !== productId)
+
+    const rawRelatedProducts = Array.isArray(product.value?.related_products)
+        ? product.value.related_products
+        : []
+
+    relatedProducts.value = rawRelatedProducts.filter((item: any) => String(item?.id) !== productId)
+
+    if (relatedProducts.value.length === 0 && product.value?.category_id) {
+        try {
+            const relatedResponse = await productsApi.searchProducts({
+                page: 1,
+                limit: 12,
+                category_id: String(product.value.category_id)
+            })
+
+            relatedProducts.value = relatedResponse.products
+                .filter(item => String(item.id) !== productId)
+                .slice(0, 8)
+
+            if (producerProducts.value.length === 0 && product.value?.producer?.id) {
+                const producerId = String(product.value.producer.id)
+                producerProducts.value = relatedProducts.value.filter(
+                    (item: any) => String(item?.producer?.id || '') === producerId
+                )
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement des produits liés:', error)
+            relatedProducts.value = []
+        }
+    }
+}
+
 const openReviewModal = () => {
     showReviewModal.value = true
 }
@@ -1828,6 +1891,7 @@ onMounted(async () => {
         try {
             const data = await productStore.getCompleteProduct(productId)
             product.value = data || productStore.currentProduct || {}
+            await hydrateDetailSections(productId)
 
             // Initialiser le chargement des miniatures
             if (product.value.images) {

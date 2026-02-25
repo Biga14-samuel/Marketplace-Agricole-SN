@@ -210,6 +210,10 @@ export const useProducerStore = defineStore('producer', () => {
             return profile.value;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? getErrorMessage(error) : 'Erreur lors du chargement du profil';
+            profile.value = null;
+            documents.value = [];
+            pickupPoints.value = [];
+            slots.value = [];
             profileError.value = errorMessage;
             throw error;
         } finally {
@@ -292,12 +296,17 @@ export const useProducerStore = defineStore('producer', () => {
             documentsError.value = null;
 
             const response = await ProducerDocumentService.getDocuments();
-            documents.value = response.documents || [];
-            pagination.totalItems = response.total || 0;
-            pagination.totalPages = response.pages || 1;
+            const normalizedDocuments = Array.isArray((response as any)?.documents)
+                ? (response as any).documents
+                : (Array.isArray(response as any) ? (response as any) : []);
+
+            documents.value = normalizedDocuments;
+            pagination.totalItems = Number((response as any)?.total ?? normalizedDocuments.length);
+            pagination.totalPages = Number((response as any)?.pages ?? 1);
 
             return documents.value;
         } catch (error: unknown) {
+            documents.value = [];
             documentsError.value = getErrorMessage(error);
             throw error;
         } finally {
@@ -402,13 +411,18 @@ export const useProducerStore = defineStore('producer', () => {
             isPickupPointsLoading.value = true;
             pickupPointsError.value = null;
 
-            const response = await PickupPointService.getPickupPoints();
-            pickupPoints.value = response.pickup_points || [];
-            pagination.totalItems = response.total || 0;
-            pagination.totalPages = response.pages || 1;
+            const response: any = await PickupPointService.getPickupPoints();
+            const normalizedPoints = Array.isArray(response)
+                ? response
+                : (Array.isArray(response?.pickup_points) ? response.pickup_points : []);
+
+            pickupPoints.value = normalizedPoints;
+            pagination.totalItems = Number(response?.total ?? normalizedPoints.length);
+            pagination.totalPages = Number(response?.pages ?? 1);
 
             return pickupPoints.value;
         } catch (error: unknown) {
+            pickupPoints.value = [];
             pickupPointsError.value = getErrorMessage(error);
             throw error;
         } finally {
@@ -566,7 +580,7 @@ export const useProducerStore = defineStore('producer', () => {
             // Charger les créneaux pour chaque point de retrait
             for (const point of pickupPoints.value) {
                 try {
-                    const response = await PickupSlotService.getSlots({ pickup_point_id: point.id });
+                    const response = await PickupPointService.getPickupSlots(String(point.id));
                     allSlots.push(...response.slots);
                 } catch (error) {
                     console.error(`Erreur lors du chargement des créneaux pour le point ${point.id}:`, error);
@@ -591,7 +605,7 @@ export const useProducerStore = defineStore('producer', () => {
             isSlotsLoading.value = true;
             slotsError.value = null;
 
-            const response = await PickupSlotService.getSlots({ pickup_point_id: pickupPointId });
+            const response = await PickupPointService.getPickupSlots(String(pickupPointId));
             slots.value = response.slots;
 
             return slots.value;
@@ -611,7 +625,7 @@ export const useProducerStore = defineStore('producer', () => {
             isSlotsLoading.value = true;
             slotsError.value = null;
 
-            const slot = await PickupSlotService.createSlot(slotData);
+            const slot = await PickupPointService.createPickupSlot(String(pickupPointId), slotData);
             slots.value.push(slot);
             selectedSlot.value = slot;
 

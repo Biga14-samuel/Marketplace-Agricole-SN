@@ -330,10 +330,9 @@ export const COUNTRIES: Array<{
     postalCodePattern?: RegExp;
 }> = [
         { code: 'CM', name: 'Cameroun', flag: '🇨🇲', phoneCode: '+237' },
-        { code: 'FR', name: 'France', flag: '🇫🇷', phoneCode: '+33' },
-        { code: 'BE', name: 'Belgique', flag: '🇧🇪', phoneCode: '+32' },
-        { code: 'CH', name: 'Suisse', flag: '🇨🇭', phoneCode: '+41' },
-        { code: 'CA', name: 'Canada', flag: '🇨🇦', phoneCode: '+1' },
+        { code: 'TD', name: 'Tchad', flag: '🇹🇩', phoneCode: '+235' },
+        { code: 'GA', name: 'Gabon', flag: '🇬🇦', phoneCode: '+241' },
+        { code: 'CG', name: 'Congo', flag: '🇨🇬', phoneCode: '+242' },
         { code: 'SN', name: 'Sénégal', flag: '🇸🇳', phoneCode: '+221' },
         { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮', phoneCode: '+225' },
     ];

@@ -464,6 +464,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import InvoiceListItem from './InvoiceListItem.vue'
 import InvoiceGridItem from './InvoiceGridItem.vue'
+import invoiceService from '../services/invoiceService'
 import {
     PlusCircleIcon,
     ArrowTrendingUpIcon,
@@ -481,7 +482,8 @@ import {
     ChevronLeftIcon,
     ChevronRightIcon,
     CheckIcon,
-    Checkbox
+    CurrencyDollarIcon,
+    ShareIcon
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
@@ -501,87 +503,8 @@ interface Invoice {
     currency: string
 }
 
-// Données mockées
 const loading = ref(true)
-const invoices = ref<Invoice[]>([
-    {
-        id: '1',
-        invoice_number: '2024-00123',
-        customer_name: 'Restaurant Le Gourmet',
-        customer_email: 'contact@legourmet.cm',
-        issue_date: '2024-03-15',
-        due_date: '2024-04-15',
-        total: 87500,
-        status: 'paid',
-        payment_method: 'Mobile Money (MTN)',
-        items_count: 12,
-        currency: 'XAF'
-    },
-    {
-        id: '2',
-        invoice_number: '2024-00124',
-        customer_name: 'Épicerie du Marché',
-        customer_email: 'marche@epicerie.cm',
-        issue_date: '2024-03-18',
-        due_date: '2024-04-18',
-        total: 42300,
-        status: 'sent',
-        payment_method: 'Carte bancaire',
-        items_count: 8,
-        currency: 'XAF'
-    },
-    {
-        id: '3',
-        invoice_number: '2024-00125',
-        customer_name: 'Hôtel La Paillote',
-        customer_email: 'reservation@lapaillote.cm',
-        issue_date: '2024-03-20',
-        due_date: '2024-04-20',
-        total: 156200,
-        status: 'overdue',
-        payment_method: 'Virement bancaire',
-        items_count: 25,
-        currency: 'XAF'
-    },
-    {
-        id: '4',
-        invoice_number: '2024-00126',
-        customer_name: 'Cafétéria Université',
-        customer_email: 'cafet@univ.cm',
-        issue_date: '2024-03-22',
-        total: 28900,
-        status: 'draft',
-        payment_method: 'Non défini',
-        items_count: 6,
-        currency: 'XAF'
-    },
-    {
-        id: '5',
-        invoice_number: '2024-00127',
-        customer_name: 'Boulangerie Artisanale',
-        customer_email: 'pain@artisan.cm',
-        issue_date: '2024-03-25',
-        due_date: '2024-04-25',
-        total: 15400,
-        status: 'paid',
-        payment_method: 'Orange Money',
-        items_count: 5,
-        currency: 'XAF'
-    },
-    {
-        id: '6',
-        invoice_number: '2024-00128',
-        customer_name: 'Super Marché Central',
-        customer_email: 'contact@supermarche.cm',
-        issue_date: '2024-03-28',
-        due_date: '2024-04-28',
-        total: 89200,
-        status: 'sent',
-        payment_method: 'Carte bancaire',
-        items_count: 18,
-        currency: 'XAF'
-    }
-])
+const invoices = ref<Invoice[]>([])
 
 // Filtres
 const searchQuery = ref('')
@@ -616,6 +539,38 @@ const statusOptions = [
     { value: 'overdue', label: 'En retard', badgeClass: 'bg-red-100 text-red-800 border border-red-200' }
 ]
 
+const normalizeInvoiceStatus = (status: unknown): Invoice['status'] => {
+    const normalized = String(status || '').toLowerCase()
+    if (normalized === 'draft') return 'draft'
+    if (normalized === 'paid' || normalized === 'completed') return 'paid'
+    if (normalized === 'overdue' || normalized === 'late') return 'overdue'
+    return 'sent'
+}
+
+const mapBackendInvoice = (invoice: any): Invoice => ({
+    id: String(invoice?.id ?? ''),
+    invoice_number: String(invoice?.invoice_number ?? invoice?.invoiceNumber ?? ''),
+    customer_name: String(
+        invoice?.customer_name ??
+        invoice?.customerName ??
+        invoice?.customer?.name ??
+        'Client'
+    ),
+    customer_email: String(
+        invoice?.customer_email ??
+        invoice?.customerEmail ??
+        invoice?.customer?.email ??
+        ''
+    ),
+    issue_date: String(invoice?.issue_date ?? invoice?.issueDate ?? invoice?.created_at ?? invoice?.createdAt ?? new Date().toISOString()),
+    due_date: invoice?.due_date ?? invoice?.dueDate,
+    total: Number(invoice?.total ?? invoice?.total_amount ?? invoice?.totalAmount ?? 0),
+    status: normalizeInvoiceStatus(invoice?.status),
+    payment_method: String(invoice?.payment_method ?? invoice?.paymentMethod ?? 'Non renseigné'),
+    items_count: Number(invoice?.items_count ?? invoice?.items?.length ?? 0),
+    currency: String(invoice?.currency ?? 'XAF')
+})
+
 // Statistiques
 const stats = computed(() => [
     {
@@ -628,7 +583,7 @@ const stats = computed(() => [
         iconBg: 'bg-primary-100',
         iconColor: 'text-primary-600',
         trend: 'up' as const,
-        change: '+12%'
+        change: '0%'
     },
     {
         label: 'À payer',
@@ -640,7 +595,7 @@ const stats = computed(() => [
         iconBg: 'bg-orange-100',
         iconColor: 'text-orange-600',
         trend: 'up' as const,
-        change: '+8%'
+        change: '0%'
     },
     {
         label: 'Payées',
@@ -652,7 +607,7 @@ const stats = computed(() => [
         iconBg: 'bg-emerald-100',
         iconColor: 'text-emerald-600',
         trend: 'up' as const,
-        change: '+15%'
+        change: '0%'
     },
     {
         label: 'Montant total',
@@ -664,7 +619,7 @@ const stats = computed(() => [
         iconBg: 'bg-nature-100',
         iconColor: 'text-nature-600',
         trend: 'up' as const,
-        change: '+22%'
+        change: '0%'
     }
 ])
 
@@ -985,12 +940,22 @@ const showToast = (message: string, details: string, type: 'success' | 'info', i
     }, 5000)
 }
 
+const loadInvoices = async () => {
+    loading.value = true
+    try {
+        const userInvoices = await invoiceService.getUserInvoices()
+        invoices.value = Array.isArray(userInvoices) ? userInvoices.map(mapBackendInvoice) : []
+    } catch (error) {
+        invoices.value = []
+        showToast('Erreur', 'Impossible de charger vos factures', 'info', QuestionMarkCircleIcon)
+    } finally {
+        loading.value = false
+    }
+}
+
 // Lifecycle
 onMounted(() => {
-    // Simulation de chargement
-    setTimeout(() => {
-        loading.value = false
-    }, 800)
+    loadInvoices()
 })
 </script>
 
@@ -1083,13 +1048,5 @@ onMounted(() => {
     --color-nature-600: #57534e;
     --color-nature-900: #1c1917;
 }
+</style>
 
-</script>< !-- Import des composants manquants --><script lang="ts">import CurrencyDollarIcon from '@heroicons/vue/24/outline/CurrencyDollarIcon'
-import ShareIcon from '@heroicons/vue/24/outline/ShareIcon'
-
-export {
-    CurrencyDollarIcon,
-    ShareIcon
-}
-
-</script>

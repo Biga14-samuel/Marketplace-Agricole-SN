@@ -244,7 +244,7 @@
                                                                     </option>
                                                                     <option v-for="unit in baseUnits" :key="unit.id"
                                                                         :value="unit.id">
-                                                                        {{ unit.name }} ({{ unit.abbreviation }})
+                                                                        {{ unit.name }} ({{ unit.symbol || unit.abbreviation }})
                                                                     </option>
                                                                 </select>
                                                             </div>
@@ -552,6 +552,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useUnitStore } from '@/modules/catalog/store/modules/unit.store'
+import { UnitCategory } from '@/modules/catalog/services/models/unit.model'
 
 interface Props {
     unitId?: string
@@ -607,7 +608,7 @@ const unitTypes = [
 ]
 
 // Unités de base pour les conversions
-const baseUnits = ref<any[]>([])
+const baseUnits = ref<Array<{ id: string; name: string; symbol?: string; abbreviation?: string }>>([])
 
 // Données du formulaire
 const formData = reactive({
@@ -616,7 +617,7 @@ const formData = reactive({
     type: 'weight' as 'weight' | 'volume' | 'piece',
     description: '',
     conversion_factor: 1,
-    base_unit_id: null as number | null,
+    base_unit_id: null as string | null,
     allow_decimal: true,
     is_active: true
 })
@@ -690,16 +691,21 @@ const handleSubmit = async () => {
     isSubmitting.value = true
 
     try {
+        const normalizedCategory: UnitCategory =
+            formData.type === 'piece'
+                ? UnitCategory.COUNT
+                : formData.type === 'volume'
+                    ? UnitCategory.VOLUME
+                    : UnitCategory.WEIGHT
+
         // Préparer les données pour l'API
         const submitData = {
             name: formData.name.trim(),
-            abbreviation: formData.abbreviation.trim().toUpperCase(),
-            type: formData.type,
-            description: formData.description?.trim() || null,
-            conversion_factor: formData.conversion_factor || null,
-            base_unit_id: formData.base_unit_id || null,
-            allow_decimal: formData.allow_decimal,
-            is_active: formData.is_active
+            symbol: formData.abbreviation.trim().toUpperCase(),
+            description: formData.description?.trim() || undefined,
+            category: normalizedCategory,
+            conversion_factor: formData.base_unit_id ? formData.conversion_factor : undefined,
+            base_unit_id: formData.base_unit_id || undefined
         }
 
         if (isEditMode.value && props.unitId) {
@@ -744,7 +750,18 @@ onMounted(async () => {
         try {
             const unit = await unitStore.fetchUnitById(props.unitId)
             if (unit) {
-                Object.assign(formData, unit)
+                formData.name = unit.name || ''
+                formData.abbreviation = unit.symbol || ''
+                formData.description = unit.description || ''
+                formData.conversion_factor = unit.conversion_factor || 1
+                formData.base_unit_id = unit.base_unit_id || null
+                formData.type = unit.category === 'volume'
+                    ? 'volume'
+                    : unit.category === 'count'
+                        ? 'piece'
+                        : 'weight'
+                formData.allow_decimal = true
+                formData.is_active = true
             }
         } catch (error) {
             console.error('Erreur lors du chargement de l\'unité:', error)
@@ -826,3 +843,7 @@ onMounted(async () => {
     transform: scaleX(1);
 }
 </style>
+
+
+
+

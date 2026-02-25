@@ -210,7 +210,7 @@
                                     Prix de base *
                                 </label>
                                 <div class="price-input-wrapper">
-                                    <div class="price-prefix">€</div>
+                                    <div class="price-prefix"> FCFA</div>
                                     <input v-model.number="formData.price" type="number" step="0.01" min="0"
                                         placeholder="0,00" class="price-input"
                                         :class="{ 'input-error': errors.price }" />
@@ -232,11 +232,11 @@
                                 <div class="comparison-grid">
                                     <div class="comparison-item">
                                         <span class="comparison-label">Moyenne du marché</span>
-                                        <span class="comparison-value">€4.50/kg</span>
+                                        <span class="comparison-value"> FCFA4.50/kg</span>
                                     </div>
                                     <div class="comparison-item">
                                         <span class="comparison-label">Bio équivalent</span>
-                                        <span class="comparison-value">€6.20/kg</span>
+                                        <span class="comparison-value"> FCFA6.20/kg</span>
                                     </div>
                                     <div class="comparison-item">
                                         <span class="comparison-label">Votre prix</span>
@@ -276,8 +276,18 @@
                                     <span class="label-icon">⚖️</span>
                                     Unité de vente *
                                 </label>
-                                <UnitSelector v-model="formData.unit_id" :error="!!errors.unit_id"
-                                    @change="onUnitChange" />
+                                <div class="relative">
+                                    <select :value="formData.unit_id ?? ''" @change="onNativeUnitChange"
+                                        class="form-input-organic" :class="{ 'input-error': errors.unit_id }">
+                                        <option value="" disabled>Sélectionnez une unité...</option>
+                                        <option v-for="unit in availableUnits" :key="unit.id" :value="unit.id">
+                                            {{ unit.name }}{{ unit.symbol ? ` (${unit.symbol})` : '' }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <p v-if="availableUnits.length === 0" class="mt-2 text-sm text-terracotta">
+                                    Aucune unité disponible. Veuillez créer des unités de vente.
+                                </p>
                                 <transition name="fade">
                                     <div v-if="selectedUnit" class="unit-preview">
                                         <div class="unit-display">
@@ -319,7 +329,7 @@
                                 <div class="calculation-formula">
                                     <div class="formula-item">
                                         <span>Prix de base</span>
-                                        <span>{{ formData.price || 0 }}€</span>
+                                        <span>{{ formData.price || 0 }} FCFA</span>
                                     </div>
                                     <div class="formula-item">
                                         <span>× Quantité</span>
@@ -685,7 +695,6 @@ import { useCategoryStore } from '@/modules/catalog/store/modules/category.store
 import { useUnitStore } from '@/modules/catalog/store/modules/unit.store'
 import { useTagStore } from '@/modules/catalog/store/modules/tag.store'
 import CategorySelector from '../Category/CategorySelector.vue'
-import UnitSelector from '../Unit/UnitSelector.vue'
 import TagSelector from '../Tag/TagSelector.vue'
 import ProductImageUploader from '../ProductImage/ProductImageUploader.vue'
 
@@ -712,7 +721,7 @@ const router = useRouter()
 const isEditMode = computed(() => !!props.productId)
 const currentStep = ref(0)
 const isSubmitting = ref(false)
-const showPreview = ref(true)
+const showPreview = ref(false)
 const calculationQuantity = ref(1)
 const imageAltText = ref('')
 const autoSaveTimer = ref<ReturnType<typeof setTimeout> | null>(null)
@@ -765,8 +774,20 @@ const selectedCategory = computed(() => {
     return categoryStore.categories.find(c => c.id === formData.category_id) || null
 })
 
+const availableUnits = computed(() => {
+    return (unitStore.units || [])
+        .filter((unit: any) => unit && unit.is_active !== false)
+        .map((unit: any) => ({
+            id: String(unit.id),
+            name: unit.name || 'Unité',
+            symbol: unit.symbol || unit.abbreviation || '',
+            description: unit.description || ''
+        }))
+})
+
 const selectedUnit = computed(() => {
-    return unitStore.units.find(u => u.id === formData.unit_id) || null
+    const selectedId = formData.unit_id ? String(formData.unit_id) : ''
+    return availableUnits.value.find(unit => unit.id === selectedId) || null
 })
 
 const selectedTags = computed(() => {
@@ -865,7 +886,7 @@ const isFormValid = computed(() => {
 const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
-        currency: 'EUR',
+        currency: 'XAF',
         minimumFractionDigits: 2
     }).format(price)
 }
@@ -896,6 +917,14 @@ const onCategoryChange = (category: any) => {
 
 const onUnitChange = (unit: any) => {
     console.log('Unité sélectionnée:', unit)
+}
+
+const onNativeUnitChange = (event: Event) => {
+    const target = event.target as HTMLSelectElement
+    const value = target.value || null
+    formData.unit_id = value
+    const unit = availableUnits.value.find((item) => item.id === value) || null
+    onUnitChange(unit)
 }
 
 const onTagsChange = (tags: any[]) => {
@@ -1016,6 +1045,7 @@ const loadProductData = async () => {
 
         if (productStore.currentProduct) {
             Object.assign(formData, productStore.currentProduct)
+            formData.unit_id = formData.unit_id ? String(formData.unit_id) : null
 
             // Charger les données associées
             if (formData.category_id) {
@@ -1067,7 +1097,7 @@ onUnmounted(() => {
 }
 
 .organic-background {
-    @apply absolute inset-0 bg-leaf-pattern opacity-5;
+    @apply absolute inset-0 bg-leaf-pattern opacity-5 pointer-events-none;
     animation: float-leaves 60s linear infinite;
 }
 
@@ -1142,12 +1172,21 @@ onUnmounted(() => {
 }
 
 .step-hint {
-    @apply block text-xs text-green-medium/70;
+    @apply block text-xs text-green-medium/70 pointer-events-none;
+}
+
+/* Les blocs d'aide ne doivent jamais bloquer la saisie des champs */
+.input-decoration,
+.textarea-decoration,
+.inspiration-hint,
+.uploader-tips,
+.tip-item {
+    pointer-events: none;
 }
 
 /* Form container */
 .form-container {
-    @apply max-w-6xl mx-auto relative z-10;
+    @apply max-w-6xl mx-auto relative z-30;
 }
 
 .form-section {
@@ -1310,7 +1349,7 @@ onUnmounted(() => {
 
 /* Navigation */
 .form-navigation {
-    @apply fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-green-light/30 py-4 z-20;
+    @apply mt-8 bg-white/90 backdrop-blur-md border border-green-light/30 py-4 z-10 rounded-2xl shadow-organic;
 }
 
 .navigation-content {
@@ -1367,7 +1406,9 @@ onUnmounted(() => {
 
 /* Floating preview */
 .floating-preview {
-    @apply fixed right-4 bottom-20 w-80 z-10;
+    @apply mt-4 ml-auto w-full max-w-md z-10;
+    position: sticky;
+    bottom: 1rem;
 }
 
 .preview-header {
@@ -1379,7 +1420,7 @@ onUnmounted(() => {
 }
 
 .preview-toggle {
-    @apply w-6 h-6 flex items-center justify-center rounded-full bg-green-soft/20 text-green-medium hover:bg-green-soft/30 transition-all duration-300;
+    @apply w-6 h-6 flex items-center justify-center rounded-full bg-green-soft/20 text-green-medium hover:bg-green-soft/30 transition-all duration-300 pointer-events-auto;
 }
 
 .preview-content {
@@ -1493,3 +1534,4 @@ onUnmounted(() => {
     background: linear-gradient(to bottom, var(--green-light), var(--green-medium));
 }
 </style>
+

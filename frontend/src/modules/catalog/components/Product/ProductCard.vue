@@ -553,7 +553,7 @@ const shouldPulseCartButton = computed(() => {
 const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
-        currency: 'EUR',
+        currency: 'XAF',
         minimumFractionDigits: 2
     }).format(price)
 }

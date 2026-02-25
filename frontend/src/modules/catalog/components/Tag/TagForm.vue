@@ -798,3 +798,4 @@ input[type="color"]::-webkit-color-swatch {
     border-radius: 10px;
 }
 </style>
+

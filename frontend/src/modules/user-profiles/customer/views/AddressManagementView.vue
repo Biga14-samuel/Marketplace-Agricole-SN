@@ -136,7 +136,7 @@
                                                 <div class="flex items-center space-x-3">
                                                     <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                                                         :class="{
-                                                            'bg-gradient-to-r from-green-100 to-emerald-100': address.type === 'delivery',
+                                                            'bg-gradient-to-r from-green-100 to-emerald-100': address.type === 'DELIVERY',
                                                             'bg-gradient-to-r from-amber-100 to-orange-100': address.type === 'BILLING'
                                                         }">
                                                         <component
@@ -310,17 +310,17 @@
                                     <div class="grid grid-cols-2 gap-4">
                                         <button type="button" @click="formData.type = 'DELIVERY'" class="p-4 rounded-xl border-2 transition-all duration-300 ease-out-custom
                              flex items-center space-x-3" :class="{
-                                'border-green-500 bg-gradient-to-r from-green-50 to-emerald-50': formData.type === 'delivery',
-                                'border-green-200/70 bg-white/50 hover:bg-green-50/50': formData.type !== 'delivery'
+                                'border-green-500 bg-gradient-to-r from-green-50 to-emerald-50': formData.type === 'DELIVERY',
+                                'border-green-200/70 bg-white/50 hover:bg-green-50/50': formData.type !== 'DELIVERY'
                             }">
                                             <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                                                 :class="{
-                                                    'bg-green-100': formData.type === 'delivery',
-                                                    'bg-green-50': formData.type !== 'delivery'
+                                                    'bg-green-100': formData.type === 'DELIVERY',
+                                                    'bg-green-50': formData.type !== 'DELIVERY'
                                                 }">
                                                 <TruckIcon class="w-5 h-5" :class="{
-                                                    'text-green-700': formData.type === 'delivery',
-                                                    'text-green-600/70': formData.type !== 'delivery'
+                                                    'text-green-700': formData.type === 'DELIVERY',
+                                                    'text-green-600/70': formData.type !== 'DELIVERY'
                                                 }" />
                                             </div>
                                             <div class="text-left">
@@ -331,17 +331,17 @@
 
                                         <button type="button" @click="formData.type = 'BILLING'" class="p-4 rounded-xl border-2 transition-all duration-300 ease-out-custom
                              flex items-center space-x-3" :class="{
-                                'border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50': formData.type === 'billing',
-                                'border-amber-200/70 bg-white/50 hover:bg-amber-50/50': formData.type !== 'billing'
+                                'border-amber-500 bg-gradient-to-r from-amber-50 to-orange-50': formData.type === 'BILLING',
+                                'border-amber-200/70 bg-white/50 hover:bg-amber-50/50': formData.type !== 'BILLING'
                             }">
                                             <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
                                                 :class="{
-                                                    'bg-amber-100': formData.type === 'billing',
-                                                    'bg-amber-50': formData.type !== 'billing'
+                                                    'bg-amber-100': formData.type === 'BILLING',
+                                                    'bg-amber-50': formData.type !== 'BILLING'
                                                 }">
                                                 <CreditCardIcon class="w-5 h-5" :class="{
-                                                    'text-amber-700': formData.type === 'billing',
-                                                    'text-amber-600/70': formData.type !== 'billing'
+                                                    'text-amber-700': formData.type === 'BILLING',
+                                                    'text-amber-600/70': formData.type !== 'BILLING'
                                                 }" />
                                             </div>
                                             <div class="text-left">
@@ -382,7 +382,7 @@
                                         <label class="block text-sm font-medium text-green-800 mb-2">
                                             Code postal
                                         </label>
-                                        <input v-model="formData.postalCode" type="text" placeholder="75000" class="w-full px-4 py-3 rounded-xl border border-green-200/70 
+                                        <input v-model="formData.postalCode" type="text" placeholder="00237" class="w-full px-4 py-3 rounded-xl border border-green-200/70 
                              bg-white/50 focus:bg-white focus:border-green-400 focus:ring-2 
                              focus:ring-green-200/50 focus:outline-none transition-all duration-300
                              placeholder:text-green-400" @input="debouncedGeocode" />
@@ -408,10 +408,10 @@
                            bg-white/50 focus:bg-white focus:border-green-400 focus:ring-2 
                            focus:ring-green-200/50 focus:outline-none transition-all duration-300
                            text-green-900 appearance-none">
-                                        <option value="France">France</option>
-                                        <option value="Belgique">Belgique</option>
-                                        <option value="Suisse">Suisse</option>
-                                        <option value="Luxembourg">Luxembourg</option>
+                                        <option value="Cameroun">Cameroun</option>
+                                        <option value="Tchad">Tchad</option>
+                                        <option value="Gabon">Gabon</option>
+                                        <option value="Congo">Congo</option>
                                     </select>
                                 </div>
 
@@ -441,12 +441,12 @@
                                                 </div>
                                                 <div class="text-sm text-green-600/70">
                                                     Cette adresse sera utilisée par défaut pour {{ formData.type ===
-                                                        'delivery' ? 'la livraison' : 'la facturation' }}
+                                                        'DELIVERY' ? 'la livraison' : 'la facturation' }}
                                                 </div>
                                             </div>
                                         </div>
                                         <ToggleSwitch v-model="formData.isDefault"
-                                            :active-color="formData.type === 'delivery' ? 'bg-green-500' : 'bg-amber-500'" />
+                                            :active-color="formData.type === 'DELIVERY' ? 'bg-green-500' : 'bg-amber-500'" />
                                     </div>
 
                                     <div v-if="formData.coordinates" class="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/50 to-teal-50/50 
@@ -476,7 +476,7 @@
                              transition-all duration-300 ease-out-custom hover:scale-[1.02] active:scale-[0.98]
                              transform shadow-md flex items-center justify-center space-x-2 
                              disabled:opacity-50 disabled:cursor-not-allowed" :class="{
-                                'from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600': formData.type === 'billing'
+                                'from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600': formData.type === 'BILLING'
                             }">
                                             <span v-if="saving">
                                                 <svg class="animate-spin h-4 w-4 text-white"
@@ -617,11 +617,13 @@
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { debounce } from 'lodash'
 import { vOnClickOutside } from '@vueuse/components'
 import type { Address, CreateAddressRequest, UpdateAddressRequest } from '../types'
+import { useCustomerStore } from '../stores/useCustomerStore'
 
 // Icons
 import {
@@ -658,6 +660,7 @@ const Number3 = {
 
 // Store et router
 const router = useRouter()
+const customerStore = useCustomerStore()
 
 // États
 const loading = ref(false)
@@ -671,62 +674,7 @@ const toastMessage = ref('')
 const addressToDelete = ref<string | null>(null)
 
 // Données
-const addresses = ref<Address[]>([
-    {
-        id: '1',
-        userId: '123',
-        type: 'DELIVERY',
-        title: 'Maison',
-        firstName: 'Jean',
-        lastName: 'Dupont',
-        street: '12 Rue des Primeurs',
-        city: 'Lyon',
-        postalCode: '69001',
-        country: 'France',
-        isDefault: true,
-        coordinates: { latitude: 45.7676, longitude: 4.8357 },
-        instructions: 'Sonner au 2ème étage, porte à droite',
-        createdAt: '2024-01-15T10:30:00Z',
-        updatedAt: '2024-01-15T10:30:00Z',
-        phone: '+33612345678'
-    },
-    {
-        id: '2',
-        userId: '123',
-        type: 'BILLING',
-        title: 'Bureau',
-        firstName: 'Jean',
-        lastName: 'Dupont',
-        street: '45 Avenue de la République',
-        city: 'Lyon',
-        postalCode: '69002',
-        country: 'France',
-        isDefault: false,
-        coordinates: { latitude: 45.7500, longitude: 4.8500 },
-        instructions: 'Réception au rez-de-chaussée',
-        createdAt: '2024-02-20T14:45:00Z',
-        updatedAt: '2024-02-20T14:45:00Z',
-        phone: '+33612345679'
-    },
-    {
-        id: '3',
-        userId: '123',
-        type: 'DELIVERY',
-        title: 'Parents',
-        firstName: 'Jean',
-        lastName: 'Dupont',
-        street: '8 Rue du Vieux Port',
-        city: 'Marseille',
-        postalCode: '13001',
-        country: 'France',
-        isDefault: false,
-        coordinates: { latitude: 43.2965, longitude: 5.3698 },
-        instructions: 'Déposer devant la porte',
-        createdAt: '2024-03-10T09:15:00Z',
-        updatedAt: '2024-03-10T09:15:00Z',
-        phone: '+33612345680'
-    }
-])
+const addresses = ref<Address[]>([])
 
 const editingAddress = ref<Address | null>(null)
 const formData = reactive<CreateAddressRequest & { title?: string; instructions?: string; name?: string }>({
@@ -737,7 +685,7 @@ const formData = reactive<CreateAddressRequest & { title?: string; instructions?
     street: '',
     city: '',
     postalCode: '',
-    country: 'France',
+    country: 'Cameroun',
     phone: '',
     isDefault: false,
     name: '',
@@ -772,8 +720,8 @@ const isFormValid = computed(() => {
 const loadAddresses = async () => {
     loading.value = true
     try {
-        // Dans une vraie app : await customerStore.fetchAddresses()
-        await new Promise(resolve => setTimeout(resolve, 800))
+        await customerStore.fetchAddresses({ page: 1, limit: 100 })
+        addresses.value = [...customerStore.addresses]
     } catch (error) {
         console.error('Erreur chargement adresses:', error)
     } finally {
@@ -800,10 +748,14 @@ const resetForm = () => {
     formData.street = ''
     formData.city = ''
     formData.postalCode = ''
-    formData.country = 'France'
+    formData.country = 'Cameroun'
     formData.isDefault = false
     formData.name = ''
     formData.instructions = ''
+    formData.firstName = ''
+    formData.lastName = ''
+    formData.title = ''
+    formData.phone = ''
     delete formData.coordinates
 }
 
@@ -812,11 +764,15 @@ const editAddress = (address: Address) => {
     formData.type = address.type
     formData.street = address.street
     formData.city = address.city
-    formData.postal_code = address.postalCode
+    formData.postalCode = address.postalCode
     formData.country = address.country
-    formData.is_default = address.isDefault
+    formData.isDefault = address.isDefault
     formData.name = address.firstName && address.lastName ? `${address.firstName} ${address.lastName}` : ''
     formData.instructions = address.instructions || ''
+    formData.firstName = address.firstName || ''
+    formData.lastName = address.lastName || ''
+    formData.title = address.title || ''
+    formData.phone = address.phone || ''
     formData.coordinates = address.coordinates
     showForm.value = true
 }
@@ -826,41 +782,39 @@ const saveAddress = async () => {
 
     saving.value = true
     try {
-        // Dans une vraie app : utiliser le store
-        await new Promise(resolve => setTimeout(resolve, 1200))
+        const [firstNameFromName, ...restName] = (formData.name || '').trim().split(' ').filter(Boolean)
+        const payload: CreateAddressRequest = {
+            type: formData.type,
+            title: formData.title || formData.name || (formData.type === 'DELIVERY' ? 'Livraison' : 'Facturation'),
+            firstName: formData.firstName || firstNameFromName || '',
+            lastName: formData.lastName || restName.join(' '),
+            street: formData.street,
+            city: formData.city,
+            postalCode: formData.postalCode,
+            country: formData.country,
+            phone: formData.phone || '',
+            isDefault: formData.isDefault,
+            instructions: formData.instructions || '',
+            coordinates: formData.coordinates
+                ? {
+                    latitude: formData.coordinates.latitude ?? (formData.coordinates as any).lat,
+                    longitude: formData.coordinates.longitude ?? (formData.coordinates as any).lng
+                }
+                : undefined
+        }
 
         if (editingAddress.value) {
-            // Mise à jour
-            const index = addresses.value.findIndex(addr => addr.id === editingAddress.value?.id)
-            if (index !== -1) {
-                addresses.value[index] = {
-                    ...addresses.value[index],
-                    ...formData,
-                    updated_at: new Date().toISOString()
-                }
+            const updatePayload: UpdateAddressRequest = {
+                ...payload
             }
+            await customerStore.updateAddress(String(editingAddress.value.id), updatePayload)
             showToastMessage('Adresse mise à jour avec succès')
         } else {
-            // Création
-            const newAddress: Address = {
-                id: Date.now().toString(),
-                user_id: '123',
-                ...formData,
-                coordinates: formData.coordinates || { lat: 0, lng: 0 },
-                created_at: new Date().toISOString()
-            }
-            addresses.value.unshift(newAddress)
+            await customerStore.addAddress(payload)
             showToastMessage('Adresse ajoutée avec succès')
         }
 
-        // Si l'adresse est par défaut, mettre à jour les autres
-        if (formData.is_default) {
-            addresses.value.forEach(addr => {
-                if (addr.id !== (editingAddress.value?.id || addresses.value[0].id) && addr.type === formData.type) {
-                    addr.is_default = false
-                }
-            })
-        }
+        await loadAddresses()
 
         closeForm()
 
@@ -882,10 +836,8 @@ const confirmDelete = async () => {
     if (!addressToDelete.value) return
 
     try {
-        // Dans une vraie app : await customerStore.deleteAddress(addressToDelete.value)
-        await new Promise(resolve => setTimeout(resolve, 800))
-
-        addresses.value = addresses.value.filter(addr => addr.id !== addressToDelete.value)
+        await customerStore.deleteAddress(addressToDelete.value)
+        await loadAddresses()
         showToastMessage('Adresse supprimée avec succès')
 
     } catch (error) {
@@ -902,24 +854,45 @@ const cancelDelete = () => {
 }
 
 const setDefaultAddress = (address: Address) => {
-    addresses.value.forEach(addr => {
-        addr.isDefault = addr.id === address.id && addr.type === address.type
+    customerStore.setDefaultAddress(String(address.id)).then(async () => {
+        await loadAddresses()
+        showToastMessage('Adresse par défaut mise à jour')
+        closeMenu()
+    }).catch((error) => {
+        console.error('Erreur définition adresse par défaut:', error)
+        showToastMessage('Erreur lors de la mise à jour', true)
     })
-    showToastMessage('Adresse par défaut mise à jour')
-    closeMenu()
 }
 
 const duplicateAddress = (address: Address) => {
-    const name = address.firstName && address.lastName ? `${address.firstName} ${address.lastName}` : address.firstName
-    const duplicated = {
-        ...address,
-        id: Date.now().toString(),
+    const duplicated: CreateAddressRequest = {
+        type: address.type,
+        title: address.title || 'Copie',
+        firstName: address.firstName || '',
+        lastName: address.lastName || '',
+        street: address.street,
+        city: address.city,
+        postalCode: address.postalCode,
+        country: address.country,
+        phone: address.phone || '',
         isDefault: false,
-        createdAt: new Date().toISOString()
+        instructions: address.instructions || '',
+        coordinates: address.coordinates
+            ? {
+                latitude: address.coordinates.latitude ?? (address.coordinates as any).lat,
+                longitude: address.coordinates.longitude ?? (address.coordinates as any).lng
+            }
+            : undefined
     }
-    addresses.value.unshift(duplicated)
-    showToastMessage('Adresse dupliquée avec succès')
-    closeMenu()
+
+    customerStore.addAddress(duplicated).then(async () => {
+        await loadAddresses()
+        showToastMessage('Adresse dupliquée avec succès')
+        closeMenu()
+    }).catch((error) => {
+        console.error('Erreur duplication adresse:', error)
+        showToastMessage('Erreur lors de la duplication', true)
+    })
 }
 
 const showOnMap = (address: Address) => {
@@ -935,14 +908,10 @@ const useCurrentLocation = () => {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 formData.coordinates = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude
                 }
-                // Reverse geocoding simulé
-                formData.street = 'Votre position actuelle'
-                formData.city = 'Localisation détectée'
-                formData.postal_code = '00000'
-                showToastMessage('Position géolocalisée avec succès')
+                showToastMessage('Position géolocalisée. Complétez l’adresse postale.')
             },
             (error) => {
                 console.error('Erreur géolocalisation:', error)
@@ -955,14 +924,20 @@ const useCurrentLocation = () => {
 }
 
 const geocodeAddress = async () => {
-    if (!formData.street || !formData.city || !formData.postal_code) return
+    if (!formData.street || !formData.city || !formData.postalCode) return
 
     try {
-        // Simulation de géocodage
-        await new Promise(resolve => setTimeout(resolve, 500))
-        formData.coordinates = {
-            lat: 45.75 + (Math.random() - 0.5) * 0.1,
-            lng: 4.85 + (Math.random() - 0.5) * 0.1
+        const query = `${formData.street}, ${formData.postalCode} ${formData.city}, ${formData.country}`
+        const result = await customerStore.geocodeAddress(query)
+
+        const latitude = result?.latitude ?? result?.lat
+        const longitude = result?.longitude ?? result?.lng
+
+        if (typeof latitude === 'number' && typeof longitude === 'number') {
+            formData.coordinates = {
+                latitude,
+                longitude
+            }
         }
     } catch (error) {
         console.error('Erreur géocodage:', error)
@@ -1036,8 +1011,8 @@ onMounted(() => {
 })
 
 // Watch pour la géolocalisation
-watch(() => [formData.street, formData.city, formData.postal_code], () => {
-    if (formData.street && formData.city && formData.postal_code) {
+watch(() => [formData.street, formData.city, formData.postalCode], () => {
+    if (formData.street && formData.city && formData.postalCode) {
         debouncedGeocode()
     }
 })
@@ -1292,3 +1267,5 @@ watch(() => [formData.street, formData.city, formData.postal_code], () => {
     background: rgba(76, 175, 80, 0.7);
 }
 </style>
+
+

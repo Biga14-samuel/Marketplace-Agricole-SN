@@ -1,20 +1,32 @@
-// @ts-nocheck
 // modules/catalog/store/modules/product.store.ts
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { productsApi } from '../../services/api/products.api';
-import type { SearchProductsParams, ProductsSearchResponse } from '../../services/models/product.model';
-import { ProductHelper, ProductInventoryManager } from '../../services/models/product.model';
+import type {
+  CreateProductImageRequest,
+  CreateVariantRequest,
+  CreateStockAlertRequest
+} from '../../services/api/products.api';
+import type {
+  SearchProductsParams,
+  ProductsSearchResponse,
+  CreateProductRequest,
+  UpdateProductRequest,
+  UpdateStockRequest
+} from '../../services/models/product.model';
 import {
-  type CreateProductImageRequest
-} from '../../services/models/productImage.model';
-import {
-  type CreateVariantRequest
-} from '../../services/models/productVariant.model';
-import {
-  type CreateStockAlertRequest
-} from '../../services/models/stockAlert.model';
+  Product,
+  ProductImage,
+  ProductVariant,
+  StockAlert,
+  ProductHelper,
+  ProductInventoryManager
+} from '../../services/models/product.model';
+
+type ProductSearchResults = Omit<ProductsSearchResponse, 'products'> & {
+  products: Product[];
+};
 
 export const useProductStore = defineStore('product', () => {
   // ============================================
@@ -28,7 +40,7 @@ export const useProductStore = defineStore('product', () => {
   const currentProduct = ref<Product | null>(null);
 
   // Produit complet avec toutes les relations
-  const completeProduct = ref<CompleteProduct | null>(null);
+  const completeProduct = ref<Product | null>(null);
 
   // État de chargement
   const loading = ref<boolean>(false);
@@ -38,7 +50,7 @@ export const useProductStore = defineStore('product', () => {
 
   // Cache pour les produits par ID
   const productsCache = ref<Map<string, Product>>(new Map());
-  const completeProductsCache = ref<Map<string, CompleteProduct>>(new Map());
+  const completeProductsCache = ref<Map<string, Product>>(new Map());
 
   // État de l'opération en cours
   const operationStatus = ref<'idle' | 'creating' | 'updating' | 'deleting' | 'fetching' | 'uploading'>('idle');
@@ -55,9 +67,11 @@ export const useProductStore = defineStore('product', () => {
   });
 
   // Résultats de la recherche (avec pagination)
-  const searchResults = ref<ProductsSearchResponse>({
+  const searchResults = ref<ProductSearchResults>({
     products: [],
     total: 0,
+    page: 1,
+    limit: 20,
     total_pages: 1,
   });
 
@@ -87,7 +101,7 @@ export const useProductStore = defineStore('product', () => {
   });
 
   // Produit par ID
-  const getProductById = computed(() => (id: string) =>
+  const findProductById = computed(() => (id: string) =>
     products.value.find(product => product.id === id) || null
   );
 
@@ -134,7 +148,7 @@ export const useProductStore = defineStore('product', () => {
   // Produits sélectionnés
   const selectedProductList = computed(() =>
     Array.from(selectedProducts.value)
-      .map(id => getProductById.value(id))
+      .map(id => findProductById.value(id))
       .filter(Boolean) as Product[]
   );
 
@@ -195,7 +209,7 @@ export const useProductStore = defineStore('product', () => {
       }
 
       const newProductData = await productsApi.createProduct(data);
-      const newProduct = new Product(newProductData);
+      const newProduct = Product.fromApiData(newProductData);
 
       // Ajouter à la liste
       products.value.push(newProduct);
@@ -220,7 +234,7 @@ export const useProductStore = defineStore('product', () => {
    * Rechercher des produits
    * Endpoint: GET /api/v1/products-catalog/products/
    */
-  const searchProducts = async (params?: SearchProductsParams, merge = false): Promise<ProductsSearchResponse> => {
+  const searchProducts = async (params?: SearchProductsParams, merge = false): Promise<ProductSearchResults> => {
     try {
       operationStatus.value = 'fetching';
       loading.value = true;
@@ -232,26 +246,31 @@ export const useProductStore = defineStore('product', () => {
       }
 
       const response = await productsApi.searchProducts(currentFilters.value);
-      searchResults.value = response;
+      const mappedProducts = response.products.map(product => Product.fromApiData(product));
+      const mappedResponse: ProductSearchResults = {
+        ...response,
+        products: mappedProducts,
+      };
+      searchResults.value = mappedResponse;
 
       // Mettre à jour la liste des produits
       if (merge && currentFilters.value.page && currentFilters.value.page > 1) {
         // Ajouter à la liste existante (pour le scroll infini)
         const existingIds = new Set(products.value.map(p => p.id));
-        const newProducts = response.products.filter(p => !existingIds.has(p.id));
+        const newProducts = mappedProducts.filter(p => !existingIds.has(p.id));
         products.value.push(...newProducts);
       } else {
         // Remplacer la liste
-        products.value = response.products;
+        products.value = mappedProducts;
       }
 
       // Mettre à jour le cache
-      response.products.forEach(product => {
+      mappedProducts.forEach(product => {
         productsCache.value.set(product.id, product);
         inventoryManager.value.addProduct(product);
       });
 
-      return response;
+      return mappedResponse;
     } catch (err: any) {
       error.value = err.message || 'Erreur lors de la recherche des produits';
       throw err;
@@ -265,25 +284,30 @@ export const useProductStore = defineStore('product', () => {
    * Obtenir mes produits
    * Endpoint: GET /api/v1/products-catalog/products/my-products
    */
-  const getMyProducts = async (params?: Omit<SearchProductsParams, 'search'>): Promise<ProductsSearchResponse> => {
+  const getMyProducts = async (params?: Omit<SearchProductsParams, 'search'>): Promise<ProductSearchResults> => {
     try {
       operationStatus.value = 'fetching';
       loading.value = true;
       error.value = null;
 
       const response = await productsApi.getMyProducts(params);
-      searchResults.value = response;
+      const mappedProducts = response.products.map(product => Product.fromApiData(product));
+      const mappedResponse: ProductSearchResults = {
+        ...response,
+        products: mappedProducts,
+      };
+      searchResults.value = mappedResponse;
 
       // Mettre à jour la liste des produits
-      products.value = response.products;
+      products.value = mappedProducts;
 
       // Mettre à jour le cache
-      response.products.forEach(product => {
+      mappedProducts.forEach(product => {
         productsCache.value.set(product.id, product);
         inventoryManager.value.addProduct(product);
       });
 
-      return response;
+      return mappedResponse;
     } catch (err: any) {
       error.value = err.message || 'Erreur lors de la récupération de vos produits';
       throw err;
@@ -310,7 +334,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const product = await productsApi.getProductById(productId);
+      const productData = await productsApi.getProductById(productId);
+      const product = Product.fromApiData(productData);
 
       // Mettre à jour le cache
       productsCache.value.set(product.id, product);
@@ -353,7 +378,8 @@ export const useProductStore = defineStore('product', () => {
         throw new Error(`Un produit avec le SKU "${data.sku}" existe déjà`);
       }
 
-      const updatedProduct = await productsApi.updateProduct(productId, data);
+      const updatedProductData = await productsApi.updateProduct(productId, data);
+      const updatedProduct = Product.fromApiData(updatedProductData);
 
       // Mettre à jour le cache
       productsCache.value.set(productId, updatedProduct);
@@ -431,7 +457,7 @@ export const useProductStore = defineStore('product', () => {
    * Obtenir un produit complet
    * Endpoint: GET /api/v1/products-catalog/products/{product_id}/complete
    */
-  const getCompleteProduct = async (productId: string, forceRefresh = false): Promise<CompleteProduct> => {
+  const getCompleteProduct = async (productId: string, forceRefresh = false): Promise<Product> => {
     try {
       // Vérifier le cache d'abord
       const cachedCompleteProduct = completeProductsCache.value.get(productId);
@@ -444,7 +470,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const complete = await productsApi.getCompleteProduct(productId);
+      const completeData = await productsApi.getCompleteProduct(productId);
+      const complete = Product.fromApiData(completeData);
       completeProduct.value = complete;
       completeProductsCache.value.set(productId, complete);
 
@@ -474,7 +501,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const updatedProduct = await productsApi.updateStock(productId, data);
+      const updatedProductData = await productsApi.updateStock(productId, data);
+      const updatedProduct = Product.fromApiData(updatedProductData);
 
       // Mettre à jour le cache
       productsCache.value.set(productId, updatedProduct);
@@ -516,7 +544,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const image = await productsApi.addProductImage(productId, data);
+      const imageData = await productsApi.addProductImage(productId, data);
+      const image = ProductImage.fromApiData(imageData);
 
       // Mettre à jour le produit complet dans le cache
       const cachedComplete = completeProductsCache.value.get(productId);
@@ -552,7 +581,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const images = await productsApi.getProductImages(productId);
+      const imagesData = await productsApi.getProductImages(productId);
+      const images = imagesData.map(image => ProductImage.fromApiData(image));
 
       // Mettre à jour le produit complet dans le cache
       const cachedComplete = completeProductsCache.value.get(productId);
@@ -585,7 +615,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const variant = await productsApi.addProductVariant(productId, data);
+      const variantData = await productsApi.addProductVariant(productId, data);
+      const variant = ProductVariant.fromApiData(variantData);
 
       // Mettre à jour le produit complet dans le cache
       const cachedComplete = completeProductsCache.value.get(productId);
@@ -621,7 +652,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const variants = await productsApi.getProductVariants(productId);
+      const variantsData = await productsApi.getProductVariants(productId);
+      const variants = variantsData.map(variant => ProductVariant.fromApiData(variant));
 
       // Mettre à jour le produit complet dans le cache
       const cachedComplete = completeProductsCache.value.get(productId);
@@ -654,7 +686,8 @@ export const useProductStore = defineStore('product', () => {
       loading.value = true;
       error.value = null;
 
-      const alert = await productsApi.createStockAlert(productId, data);
+      const alertData = await productsApi.createStockAlert(productId, data);
+      const alert = StockAlert.fromApiData(alertData);
 
       // Mettre à jour le produit complet dans le cache
       const cachedComplete = completeProductsCache.value.get(productId);
@@ -857,8 +890,17 @@ export const useProductStore = defineStore('product', () => {
    */
   const resetFilters = (): void => {
     currentFilters.value = {
+      page: 1,
+      limit: 20,
+      sort_by: 'created_at',
+      sort_order: 'desc',
     };
     searchResults.value = {
+      products: [],
+      total: 0,
+      page: 1,
+      limit: 20,
+      total_pages: 1,
     };
   };
 
@@ -901,7 +943,7 @@ export const useProductStore = defineStore('product', () => {
     // Getters
     allProducts,
     filteredProducts,
-    getProductById,
+    findProductById,
     getProductBySKU,
     inStockProducts,
     outOfStockProducts,

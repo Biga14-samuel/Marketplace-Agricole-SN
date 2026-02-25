@@ -8,10 +8,45 @@
     :root {
         --color-primary: #45a348;
         --color-secondary: #ff8c42;
+
+        --app-bg-start: #f8f4e9;
+        --app-bg-middle: #ffffff;
+        --app-bg-end: #eaf5e5;
+        --app-surface: #ffffff;
+        --app-surface-muted: #f8f4e9;
+        --app-border: rgba(44, 85, 48, 0.16);
+        --app-text-primary: #1f2937;
+        --app-text-secondary: #4b5563;
+        --app-input-bg: #ffffff;
+        --app-input-text: #1f2937;
+        --app-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    }
+
+    :root[data-theme='dark'] {
+        --color-primary: #8fcf74;
+        --color-secondary: #f4b06d;
+
+        --app-bg-start: #101611;
+        --app-bg-middle: #172019;
+        --app-bg-end: #101611;
+        --app-surface: #1a241d;
+        --app-surface-muted: #202d23;
+        --app-border: rgba(167, 211, 151, 0.28);
+        --app-text-primary: #e5e7eb;
+        --app-text-secondary: #cbd5e1;
+        --app-input-bg: #111827;
+        --app-input-text: #f3f4f6;
+        --app-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
     }
 
     body {
         @apply antialiased;
+        color: var(--app-text-primary);
+        background:
+            radial-gradient(circle at 18% 12%, rgba(167, 211, 151, 0.12) 0%, transparent 38%),
+            radial-gradient(circle at 84% 82%, rgba(255, 140, 66, 0.08) 0%, transparent 40%),
+            linear-gradient(145deg, var(--app-bg-start), var(--app-bg-middle) 55%, var(--app-bg-end));
+        transition: background-color 220ms ease, color 220ms ease, background 220ms ease;
     }
 }
 
@@ -296,4 +331,118 @@
     .recommended-highlight::before {
         transition: none !important;
     }
+}
+
+/* Préférences d'apparence utilisateur (depuis les paramètres du compte) */
+:root.app-reduced-motion *,
+:root.app-reduced-motion *::before,
+:root.app-reduced-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+:root.app-compact {
+    font-size: 15px;
+}
+
+:root.app-high-contrast {
+    --app-border: rgba(44, 85, 48, 0.3);
+    --app-text-primary: #111827;
+    --app-text-secondary: #1f2937;
+}
+
+:root[data-theme='dark'].app-high-contrast {
+    --app-border: rgba(229, 231, 235, 0.4);
+    --app-text-primary: #f9fafb;
+    --app-text-secondary: #e5e7eb;
+}
+
+/* ============================
+   Dark Theme Global Overrides
+   ============================ */
+
+:root[data-theme='dark'] {
+    color-scheme: dark;
+}
+
+:root[data-theme='dark'] .bg-white,
+:root[data-theme='dark'] .bg-white\/95,
+:root[data-theme='dark'] .bg-white\/90,
+:root[data-theme='dark'] .bg-white\/80,
+:root[data-theme='dark'] .bg-white\/70,
+:root[data-theme='dark'] .bg-white\/60 {
+    background-color: var(--app-surface) !important;
+}
+
+:root[data-theme='dark'] .bg-cream-light,
+:root[data-theme='dark'] .bg-cream-light\/50,
+:root[data-theme='dark'] .bg-cream-light\/60,
+:root[data-theme='dark'] .bg-cream-light\/70,
+:root[data-theme='dark'] .bg-cream-light\/80 {
+    background-color: var(--app-surface-muted) !important;
+}
+
+:root[data-theme='dark'] .shadow,
+:root[data-theme='dark'] .shadow-sm,
+:root[data-theme='dark'] .shadow-md,
+:root[data-theme='dark'] .shadow-lg,
+:root[data-theme='dark'] .shadow-xl,
+:root[data-theme='dark'] .shadow-2xl {
+    box-shadow: var(--app-shadow) !important;
+}
+
+:root[data-theme='dark'] .text-gray-900,
+:root[data-theme='dark'] .text-gray-800,
+:root[data-theme='dark'] .text-gray-700,
+:root[data-theme='dark'] .text-gray-600,
+:root[data-theme='dark'] .text-nature-gray {
+    color: var(--app-text-secondary) !important;
+}
+
+:root[data-theme='dark'] .text-forest-green,
+:root[data-theme='dark'] .text-forest-dark,
+:root[data-theme='dark'] .text-forest-green-900,
+:root[data-theme='dark'] .text-forest-green-800,
+:root[data-theme='dark'] .text-forest-green-700,
+:root[data-theme='dark'] .text-forest-green-600 {
+    color: #d1fae5 !important;
+}
+
+:root[data-theme='dark'] .border,
+:root[data-theme='dark'] .border-gray-100,
+:root[data-theme='dark'] .border-gray-200,
+:root[data-theme='dark'] .border-gray-300,
+:root[data-theme='dark'] .border-forest-green,
+:root[data-theme='dark'] .border-forest-green\/10,
+:root[data-theme='dark'] .border-forest-green\/20,
+:root[data-theme='dark'] .border-green-light,
+:root[data-theme='dark'] .border-green-light\/20,
+:root[data-theme='dark'] .border-green-light\/30,
+:root[data-theme='dark'] .border-green-light\/40 {
+    border-color: var(--app-border) !important;
+}
+
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] select {
+    background-color: var(--app-input-bg) !important;
+    color: var(--app-input-text) !important;
+    border-color: var(--app-border) !important;
+}
+
+:root[data-theme='dark'] input::placeholder,
+:root[data-theme='dark'] textarea::placeholder {
+    color: #9ca3af !important;
+}
+
+:root[data-theme='dark'] .card-organic,
+:root[data-theme='dark'] .product-card,
+:root[data-theme='dark'] .info-card,
+:root[data-theme='dark'] .category-card,
+:root[data-theme='dark'] .modal-content,
+:root[data-theme='dark'] .confirm-modal-content {
+    background-color: var(--app-surface) !important;
+    border-color: var(--app-border) !important;
 }

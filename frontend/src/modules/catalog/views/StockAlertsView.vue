@@ -27,9 +27,9 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
             <select v-model="filters.category" class="w-full border border-gray-300 rounded-lg px-3 py-2">
               <option value="">Toutes</option>
-              <option value="fruits">Fruits</option>
-              <option value="legumes">Légumes</option>
-              <option value="cereales">Céréales</option>
+              <option v-for="category in availableCategories" :key="category" :value="category">
+                {{ category }}
+              </option>
             </select>
           </div>
           <div>
@@ -106,16 +106,24 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useProductStore } from '@/modules/catalog/store/modules/product.store'
+import type { Product } from '@/modules/catalog/services/models/product.model'
 
 interface StockAlert {
   id: string
+  productId: string
   productName: string
+  category: string
   currentStock: number
   threshold: number
   level: 'low' | 'out' | 'critical'
   message: string
   createdAt: string
 }
+
+const router = useRouter()
+const productStore = useProductStore()
 
 const alerts = ref<StockAlert[]>([])
 const filters = ref({
@@ -124,9 +132,20 @@ const filters = ref({
   search: ''
 })
 
+const availableCategories = computed(() => {
+  return Array.from(
+    new Set(
+      alerts.value
+        .map(alert => alert.category)
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b, 'fr'))
+})
+
 const filteredAlerts = computed(() => {
   return alerts.value.filter(alert => {
     if (filters.value.status && alert.level !== filters.value.status) return false
+    if (filters.value.category && alert.category !== filters.value.category) return false
     if (filters.value.search && !alert.productName.toLowerCase().includes(filters.value.search.toLowerCase())) return false
     return true
   })
@@ -163,14 +182,59 @@ const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('fr-FR')
 }
 
-const refreshAlerts = () => {
-  // TODO: Implémenter le rafraîchissement des alertes
-  console.log('Rafraîchissement des alertes...')
+const buildAlertFromProduct = (product: Product): StockAlert | null => {
+  const currentStock = Number(product.stock_quantity || 0)
+  const threshold = Number(product.low_stock_threshold || 5)
+
+  if (currentStock > threshold) {
+    return null
+  }
+
+  const level: StockAlert['level'] =
+    currentStock <= 0 ? 'out' : currentStock <= Math.max(1, Math.floor(threshold * 0.5)) ? 'critical' : 'low'
+
+  const categoryName = product.category?.name || 'Non classée'
+
+  const messageByLevel: Record<StockAlert['level'], string> = {
+    critical: `Stock critique: réapprovisionnement urgent pour ${product.name}.`,
+    out: `${product.name} est en rupture de stock.`,
+    low: `${product.name} est en dessous du seuil minimum.`
+  }
+
+  return {
+    id: `${product.id}-${level}`,
+    productId: product.id,
+    productName: product.name,
+    category: categoryName,
+    currentStock,
+    threshold,
+    level,
+    message: messageByLevel[level],
+    createdAt: new Date().toISOString()
+  }
+}
+
+const loadAlerts = async () => {
+  try {
+    const response = await productStore.getMyProducts({ page: 1, limit: 200 })
+    alerts.value = response.products
+      .map(buildAlertFromProduct)
+      .filter((alert): alert is StockAlert => Boolean(alert))
+  } catch (error) {
+    console.error('Erreur lors du chargement des alertes de stock:', error)
+    alerts.value = []
+  }
+}
+
+const refreshAlerts = async () => {
+  await loadAlerts()
 }
 
 const updateStock = (alert: StockAlert) => {
-  // TODO: Implémenter la mise à jour du stock
-  console.log('Mise à jour du stock pour:', alert.productName)
+  router.push({
+    path: '/producer/inventory',
+    query: { productId: alert.productId }
+  })
 }
 
 const dismissAlert = (alertId: string) => {
@@ -178,26 +242,6 @@ const dismissAlert = (alertId: string) => {
 }
 
 onMounted(() => {
-  // Données de test
-  alerts.value = [
-    {
-      id: '1',
-      productName: 'Tomates cerises',
-      currentStock: 2,
-      threshold: 10,
-      level: 'low',
-      message: 'Le stock est en dessous du seuil minimum',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: '2',
-      productName: 'Courgettes',
-      currentStock: 0,
-      threshold: 5,
-      level: 'out',
-      message: 'Produit en rupture de stock',
-      createdAt: new Date().toISOString()
-    }
-  ]
+  void loadAlerts()
 })
 </script>

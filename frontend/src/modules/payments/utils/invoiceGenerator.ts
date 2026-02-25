@@ -346,15 +346,15 @@ export class InvoiceGenerator {
     }
 
     private formatDate(date: Date): string {
-        return date.toLocaleDateString('fr-FR', {
+        return date.toLocaleDateString('fr-CM', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'
         });
     }
 
-    private formatCurrency(amount: number, currency: string = 'EUR'): string {
-        return new Intl.NumberFormat('fr-FR', {
+    private formatCurrency(amount: number, currency: string = 'XAF'): string {
+        return new Intl.NumberFormat('fr-CM', {
             style: 'currency',
             currency: currency
         }).format(amount);
@@ -368,63 +368,3 @@ export class InvoiceGenerator {
     }
 }
 
-// Exemple d'utilisation
-export async function createExampleInvoice(): Promise<void> {
-    const generator = new InvoiceGenerator();
-
-    const invoiceData: InvoiceData = {
-        invoiceNumber: 'FAC-2023-001',
-        issueDate: new Date(),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 jours
-        company: {
-            name: 'Tech Solutions SARL',
-            address: '123 Rue de la Technologie\n75001 Paris',
-            phone: '+33 1 23 45 67 89',
-            email: 'contact@techsolutions.fr',
-            siret: '123 456 789 00010',
-            logo: './logo.png' // Chemin vers un logo optionnel
-        },
-        client: {
-            name: 'Entreprise Client SA',
-            address: '456 Avenue des Clients\n69002 Lyon',
-            email: 'compta@cliententreprise.fr',
-            phone: '+33 4 56 78 90 12',
-            siret: '987 654 321 00020'
-        },
-        items: [
-            {
-                description: 'Développement application web',
-                quantity: 10,
-                unitPrice: 500,
-                taxRate: 20
-            },
-            {
-                description: 'Hébergement mensuel',
-                quantity: 3,
-                unitPrice: 50,
-                taxRate: 20
-            },
-            {
-                description: 'Formation technique',
-                quantity: 8,
-                unitPrice: 75,
-                taxRate: 10
-            }
-        ],
-        currency: 'EUR',
-        paymentTerms: 'Paiement sous 30 jours. Pénailité de retard: 1,5% par mois.',
-        notes: 'Tous les prix sont nets.\nEn cas de retard de paiement, des frais de recouvrement seront appliqués.'
-    };
-
-    try {
-        await generator.initialize();
-        await generator.generatePDF(invoiceData, './facture-exemple.pdf');
-    } finally {
-        await generator.close();
-    }
-}
-
-// Exécuter l'exemple si le script est lancé directement
-if (require.main === module) {
-    createExampleInvoice().catch(console.error);
-}

@@ -1,15 +1,13 @@
 <template>
   <div v-if="order" class="min-h-screen relative overflow-hidden">
     <!-- Arrière-plan organique -->
-    <div class="fixed inset-0 z-0"></div>
+    <div class="fixed inset-0 z-0">
       <!-- Dégradé radial naturel -->
       <div class="absolute inset-0 bg-gradient-radial from-soft-green/20 via-cream-light/10 to-transparent"></div>
       
       <!-- Texture filigrane organique -->
       <div class="absolute inset-0 opacity-[0.02]">
-        <div class="absolute inset-0" 
-             style="background-image: url('data:image/svg+xml,%3Csvg width=\"100\" height=\"100\" viewBox=\"0 0 100 100\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cpath d=\"M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z\" fill=\"%232E7D32\" fill-opacity=\"0.1\" fill-rule=\"evenodd\"/%3E%3C/svg%3E');">
-        </div>
+        <div class="absolute inset-0 order-detail-texture"></div>
       </div>
       
       <!-- Éléments décoratifs flottants -->
@@ -162,10 +160,10 @@
                       
                       <div class="text-right">
                         <div class="text-lg font-bold text-forest-green">
-                          {{ (item.price * item.quantity).toFixed(2) }} €
+                          {{ formatCurrency(item.price * item.quantity) }}
                         </div>
                         <div class="text-sm text-nature-gray">
-                          {{ item.price }} € l'unité
+                          {{ formatCurrency(item.price) }} l'unité
                         </div>
                       </div>
                     </div>
@@ -173,7 +171,7 @@
                 </div>
                 
                 <!-- Séparateur organique -->
-                <div v-if="index < order.items.length - 1" class="relative px-4">
+                <div v-if="Number(index) < order.items.length - 1" class="relative px-4">
                   <div class="h-px bg-gradient-to-r from-transparent via-cream-light to-transparent"></div>
                 </div>
               </div>
@@ -190,20 +188,20 @@
             <div class="space-y-3">
               <div class="flex justify-between py-2">
                 <span class="text-nature-gray">Sous-total</span>
-                <span class="font-medium">{{ order.subtotal }} €</span>
+                <span class="font-medium">{{ formatCurrency(order.subtotal) }}</span>
               </div>
               
               <div class="flex justify-between py-2">
                 <span class="text-nature-gray">Frais de livraison</span>
                 <span class="font-medium text-success-dark">
-                  {{ order.shippingCost }} €
+                  {{ formatCurrency(order.shippingCost) }}
                 </span>
               </div>
               
               <div class="flex justify-between py-2">
                 <span class="text-nature-gray">Réduction</span>
                 <span class="font-medium text-success-dark">
-                  -{{ order.discount }} €
+                  -{{ formatCurrency(order.discount) }}
                 </span>
               </div>
               
@@ -217,7 +215,7 @@
               <div class="flex justify-between py-2 pt-4">
                 <span class="text-xl font-bold text-forest-green">Total</span>
                 <span class="text-2xl font-bold text-forest-green">
-                  {{ order.total }} €
+                  {{ formatCurrency(order.total) }}
                 </span>
               </div>
               
@@ -372,9 +370,11 @@
                   </div>
                   <div class="overflow-hidden h-2 text-xs flex rounded-full bg-cream-light">
                     <div 
-                      :style="{ width: getDeliveryProgress(order.deliveryStatus) + '%' }"
+                      :style="{
+                        width: getDeliveryProgress(order.deliveryStatus) + '%',
+                        transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
+                      }"
                       class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-soft-green to-forest-green transition-all duration-1000"
-                      :style="{ transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)' }"
                     ></div>
                   </div>
                 </div>
@@ -415,71 +415,86 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useOrdersStore } from '../stores/orders.store'
 
 const route = useRoute()
-const orderId = route.params.id
+const router = useRouter()
+const ordersStore = useOrdersStore()
+const order = ref<any>(null)
 
-// Données de démonstration
-const order = ref({
-      id: 'ORD-2023-00145',
-      date: '2023-10-15',
-      status: 'delivered',
-      deliveryStatus: 'delivered',
-      subtotal: 42.50,
-      shippingCost: 4.50,
-      discount: 2.00,
-      total: 45.00,
-      paymentMethod: 'Carte bancaire',
-      paymentDate: '2023-10-15',
-      shippingAddress: '12 Rue des Vergers, 75000 Paris',
-      estimatedDelivery: '2023-10-18',
-      trackingNumber: 'TRK-789456123',
-      items: [
-        {
-          id: 1,
-          name: 'Tomates anciennes',
-          description: 'Variétés anciennes cultivées en plein champ',
-          price: 3.50,
-          quantity: 2,
-          image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400',
-          isOrganic: true,
-          isLocal: true,
-          isSeasonal: true
-        },
-        {
-          id: 2,
-          name: 'Salade verte',
-          description: 'Cueillie le matin même',
-          price: 2.50,
-          quantity: 1,
-          image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400',
-          isOrganic: true,
-          isLocal: true,
-          isSeasonal: true
-        },
-        {
-          id: 3,
-          name: 'Fromage de chèvre',
-          description: 'Affiné 3 semaines',
-          price: 6.50,
-          quantity: 1,
-          image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400',
-          isOrganic: false,
-          isLocal: true,
-          isSeasonal: false
-        }
-      ],
-      producer: {
-        name: 'La Ferme du Val Joyeux',
-        location: 'Saint-Rémy (10km)',
-        image: 'https://images.unsplash.com/photo-1589923186741-b7d59d6b2c4a?w=400',
-        description: 'Producteur familial depuis 3 générations',
-        rating: 4.8,
-        reviewCount: 124,
-        type: 'Bio'
-      }
-    })
+const mapOrderStatus = (status: unknown): string => {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'completed' || normalized === 'ready') return 'delivered'
+  if (normalized === 'preparing') return 'preparing'
+  if (normalized === 'cancelled') return 'cancelled'
+  return 'pending'
+}
+
+const mapDeliveryStatus = (status: unknown): string => {
+  const normalized = String(status || '').toLowerCase()
+  if (normalized === 'completed') return 'delivered'
+  if (normalized === 'ready') return 'shipped'
+  if (normalized === 'preparing') return 'processing'
+  return 'pending'
+}
+
+const formatAddress = (rawOrder: any): string => {
+  if (rawOrder?.deliveryAddress?.address) return String(rawOrder.deliveryAddress.address)
+  if (rawOrder?.pickupPoint?.address) return String(rawOrder.pickupPoint.address)
+  return 'Cameroun'
+}
+
+const mapOrderDetail = (rawOrder: any) => ({
+  id: String(rawOrder?.orderNumber || rawOrder?.id || ''),
+  rawId: rawOrder?.id,
+  date: rawOrder?.createdAt || new Date().toISOString(),
+  status: mapOrderStatus(rawOrder?.status),
+  deliveryStatus: mapDeliveryStatus(rawOrder?.status),
+  subtotal: Number(rawOrder?.subtotal || 0),
+  shippingCost: Number(rawOrder?.deliveryFee || 0),
+  discount: Number(rawOrder?.discountAmount || 0),
+  total: Number(rawOrder?.totalAmount || 0),
+  paymentMethod: String(rawOrder?.paymentStatus || 'Non précisé'),
+  paymentDate: rawOrder?.updatedAt || rawOrder?.createdAt || new Date().toISOString(),
+  shippingAddress: formatAddress(rawOrder),
+  estimatedDelivery: rawOrder?.pickupSlot?.date || rawOrder?.updatedAt || rawOrder?.createdAt || new Date().toISOString(),
+  trackingNumber: rawOrder?.tracking?.[0]?.id || rawOrder?.trackingNumber || '',
+  items: Array.isArray(rawOrder?.items)
+    ? rawOrder.items.map((item: any) => ({
+        id: item?.id,
+        name: item?.productSnapshot?.name || item?.product?.name || 'Produit',
+        description: item?.productSnapshot?.description || '',
+        price: Number(item?.unitPrice || 0),
+        quantity: Number(item?.quantity || 0),
+        image: item?.productSnapshot?.images?.[0] || '',
+        isOrganic: false,
+        isLocal: true,
+        isSeasonal: false
+      }))
+    : [],
+  producer: {
+    name: rawOrder?.producer?.name || 'Producteur local',
+    location: rawOrder?.pickupPoint?.address || 'Cameroun',
+    image: rawOrder?.producer?.logo || '',
+    description: 'Producteur local',
+    rating: Number(rawOrder?.producer?.rating || 0),
+    reviewCount: Number(rawOrder?.producer?.reviewCount || 0),
+    type: 'Local'
+  }
+})
+
+const loadOrder = async () => {
+  const orderId = String(route.params.id || '')
+  if (!orderId) return
+
+  try {
+    const orderDetail = await ordersStore.fetchOrderDetail(orderId)
+    order.value = mapOrderDetail(orderDetail)
+  } catch (error) {
+    order.value = null
+  }
+}
 
 const getStatusClass = (status: string) => {
   const classes: Record<string, string> = {
@@ -532,7 +547,7 @@ const getDeliveryProgress = (status: string) => {
 }
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('fr-FR', {
+  return new Date(dateString).toLocaleDateString('fr-CM', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -540,44 +555,51 @@ const formatDate = (dateString: string) => {
   })
 }
 
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('fr-CM', {
+    style: 'currency',
+    currency: 'XAF',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Number(amount || 0))
+}
+
 const downloadInvoice = () => {
-  console.log('Téléchargement de la facture pour la commande:', order.value.id)
-  // Logique de téléchargement
+  if (order.value) {
+    console.log('Téléchargement de la facture pour la commande:', order.value.id)
+  }
 }
 
 const reorder = () => {
-  console.log('Recommander les produits de la commande:', order.value.id)
-  // Navigation vers le panier avec les produits pré-remplis
+  if (order.value) {
+    console.log('Recommander les produits de la commande:', order.value.id)
+  }
 }
 
 const contactProducer = () => {
-  if (order.value.producer) {
+  if (order.value?.producer) {
     console.log('Contacter le producteur:', order.value.producer.name)
-    // Ouverture du formulaire de contact
   }
 }
 
 const viewProducerProfile = () => {
-  if (order.value.producer) {
+  if (order.value?.producer) {
     console.log('Voir le profil du producteur:', order.value.producer.name)
-    // Navigation vers le profil du producteur
   }
 }
 
 const copyTrackingNumber = () => {
-  if (order.value.trackingNumber) {
+  if (order.value?.trackingNumber) {
     navigator.clipboard.writeText(order.value.trackingNumber)
-    // Afficher une notification de succès
   }
 }
 
 const openHelp = () => {
-  console.log('Ouvrir le centre d\'aide')
-  // Navigation vers le centre d'aide ou ouverture d'un modal
+  router.push('/support')
 }
 
 onMounted(() => {
-  // Animation d'entrée progressive
+  loadOrder()
   document.querySelectorAll('.animate-fade-in-up').forEach((el, index) => {
     (el as HTMLElement).style.animationDelay = `${index * 100}ms`
   })
@@ -633,37 +655,40 @@ onMounted(() => {
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
 
-:deep() {
-  .bg-forest-green { background-color: #2E7D32; }
-  .text-forest-green { color: #2E7D32; }
-  .bg-forest-green-dark { background-color: #1B5E20; }
-  .text-forest-green-dark { color: #1B5E20; }
-  .bg-soft-green { background-color: #A5D6A7; }
-  .text-soft-green { color: #A5D6A7; }
-  .bg-cream-light { background-color: #FFF8E1; }
-  .text-cream-light { color: #FFF8E1; }
-  .bg-clay-light { background-color: #FFAB91; }
-  .text-clay-light { color: #FFAB91; }
-  .text-nature-gray { color: #666; }
-  
-  /* Tags produits */
-  .bg-bio-tag { background-color: #4CAF50; }
-  .text-bio-tag { color: #4CAF50; }
-  .bg-local-tag { background-color: #2196F3; }
-  .text-local-tag { color: #2196F3; }
-  .bg-seasonal-tag { background-color: #FF9800; }
-  .text-seasonal-tag { color: #FF9800; }
-  
-  /* Status */
-  .bg-success-light { background-color: #C8E6C9; }
-  .text-success-dark { color: #2E7D32; }
-  .bg-warning-light { background-color: #FFF9C4; }
-  .text-warning-dark { color: #F57F17; }
-  .bg-info-light { background-color: #B3E5FC; }
-  .text-info-dark { color: #0288D1; }
-  .bg-error-light { background-color: #FFCDD2; }
-  .text-error-dark { color: #C62828; }
-  
-  .text-warning { color: #FF9800; }
+.order-detail-texture {
+  background-image: radial-gradient(circle at 1px 1px, rgba(46, 125, 50, 0.08) 1px, transparent 0);
+  background-size: 32px 32px;
 }
+
+.bg-forest-green { background-color: #2E7D32; }
+.text-forest-green { color: #2E7D32; }
+.bg-forest-green-dark { background-color: #1B5E20; }
+.text-forest-green-dark { color: #1B5E20; }
+.bg-soft-green { background-color: #A5D6A7; }
+.text-soft-green { color: #A5D6A7; }
+.bg-cream-light { background-color: #FFF8E1; }
+.text-cream-light { color: #FFF8E1; }
+.bg-clay-light { background-color: #FFAB91; }
+.text-clay-light { color: #FFAB91; }
+.text-nature-gray { color: #666; }
+
+/* Tags produits */
+.bg-bio-tag { background-color: #4CAF50; }
+.text-bio-tag { color: #4CAF50; }
+.bg-local-tag { background-color: #2196F3; }
+.text-local-tag { color: #2196F3; }
+.bg-seasonal-tag { background-color: #FF9800; }
+.text-seasonal-tag { color: #FF9800; }
+
+/* Status */
+.bg-success-light { background-color: #C8E6C9; }
+.text-success-dark { color: #2E7D32; }
+.bg-warning-light { background-color: #FFF9C4; }
+.text-warning-dark { color: #F57F17; }
+.bg-info-light { background-color: #B3E5FC; }
+.text-info-dark { color: #0288D1; }
+.bg-error-light { background-color: #FFCDD2; }
+.text-error-dark { color: #C62828; }
+.text-warning { color: #FF9800; }
 </style>
+

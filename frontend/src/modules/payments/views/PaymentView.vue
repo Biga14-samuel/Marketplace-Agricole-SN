@@ -459,6 +459,7 @@ import MobileMoneyPayment from '../components/MobileMoneyPayment.vue'
 import PaymentForm from '../components/PaymentForm.vue'
 import { formatCurrency } from '../utils/currencyFormatter'
 import { useCartStore } from '@/modules/orders/stores/cart.store'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
 
 // Composants décoratifs
 const LeafDecoration = {
@@ -491,54 +492,22 @@ export default {
     setup() {
         const router = useRouter()
         const cartStore = useCartStore()
+        const authStore = useAuthStore()
 
         const selectedPaymentMethod = ref('mobile-money')
         const showAddressModal = ref(false)
         const showHelpModal = ref(false)
         const promoCode = ref('')
         const currentYear = new Date().getFullYear()
-
-        // Données de test
-        const cartItems = ref([
-            {
-                id: 1,
-                name: 'Tomates cerises bio',
-                producer: 'Ferme des Collines',
-                origin: 'Local',
-                quantity: 2,
-                unitPrice: 1500,
-                totalPrice: 3000,
-                image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=400&fit=crop'
-            },
-            {
-                id: 2,
-                name: 'Avocats hass',
-                producer: 'Verger Tropical',
-                origin: 'Ouest',
-                quantity: 4,
-                unitPrice: 800,
-                totalPrice: 3200,
-                image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w-400&h=400&fit=crop'
-            },
-            {
-                id: 3,
-                name: 'Piments frais',
-                producer: 'Jardin Épicé',
-                origin: 'Local',
-                quantity: 1,
-                unitPrice: 1200,
-                totalPrice: 1200,
-                image: 'https://images.unsplash.com/photo-1592924356291-c6588c533e50?w=400&h=400&fit=crop'
-            }
-        ])
+        const EMPTY_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAAAACw='
 
         const delivery = ref({
-            address: 'Rue 1234, Quartier Bastos',
-            city: 'Yaoundé',
-            region: 'Centre',
-            type: 'Livraison à domicile',
-            timeSlot: 'Demain 14h-16h',
-            fee: 1500
+            address: 'Adresse a confirmer',
+            city: 'Ville non renseignee',
+            region: '',
+            type: 'Livraison standard',
+            timeSlot: 'Creneau a definir',
+            fee: 0
         })
 
         const paymentMethods = ref([
@@ -586,14 +555,40 @@ export default {
             }
         ])
 
-        const producers = ref([
-            { id: 1, name: 'Pierre', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face' },
-            { id: 2, name: 'Marie', avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400&h=400&fit=crop&crop=face' },
-            { id: 3, name: 'Jean', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face' }
-        ])
+        const cartItems = computed(() => {
+            const items = Array.isArray(cartStore.items) ? cartStore.items : []
+            return items.map((item) => ({
+                id: item?.id,
+                name: item?.product?.name || 'Produit',
+                producer: item?.product?.producer?.business_name || item?.product?.producer_name || 'Producteur',
+                origin: item?.product?.origin || 'Cameroun',
+                quantity: Number(item?.quantity || 0),
+                unitPrice: Number(item?.unitPrice || 0),
+                totalPrice: Number(item?.subtotal || 0),
+                image: item?.product?.images?.[0] || EMPTY_IMAGE
+            }))
+        })
+
+        const producers = computed(() => {
+            const byName = new Map()
+            cartItems.value.forEach((item, index) => {
+                if (!byName.has(item.producer)) {
+                    byName.set(item.producer, {
+                        id: `${index}-${item.producer}`,
+                        name: item.producer,
+                        avatar: EMPTY_IMAGE
+                    })
+                }
+            })
+            return Array.from(byName.values())
+        })
 
         // Computed
         const subtotal = computed(() => {
+            const storeSubtotal = Number(cartStore.subtotal || 0)
+            if (storeSubtotal > 0) {
+                return storeSubtotal
+            }
             return cartItems.value.reduce((sum, item) => sum + item.totalPrice, 0)
         })
 
@@ -613,7 +608,19 @@ export default {
         })
 
         const userInitials = computed(() => {
-            return 'MF'
+            const firstName = authStore.currentUser?.first_name || authStore.currentUser?.firstName || ''
+            const lastName = authStore.currentUser?.last_name || authStore.currentUser?.lastName || ''
+            const fromName = `${firstName} ${lastName}`.trim()
+            if (fromName) {
+                return fromName
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((part) => part.charAt(0).toUpperCase())
+                    .join('')
+            }
+
+            const email = authStore.currentUser?.email || ''
+            return email ? email.slice(0, 2).toUpperCase() : 'ML'
         })
 
         const carbonReduction = computed(() => {
@@ -629,39 +636,32 @@ export default {
             selectedPaymentMethod.value = methodId
         }
 
-        const removeItem = (itemId) => {
-            const index = cartItems.value.findIndex(item => item.id === itemId)
-            if (index !== -1) {
-                cartItems.value.splice(index, 1)
-            }
+        const removeItem = async (itemId) => {
+            await cartStore.removeCartItem(itemId)
         }
 
         const selectDeliveryOption = (option) => {
+            const baseDeliveryFee = Number(cartStore.cart?.deliveryFee || delivery.value.fee || 0)
             if (option === 'express') {
                 delivery.value = {
                     ...delivery.value,
                     type: 'Livraison express',
-                    timeSlot: 'Demain 10h-12h',
-                    fee: 3500
+                    timeSlot: 'A confirmer',
+                    fee: baseDeliveryFee
                 }
             } else {
                 delivery.value = {
                     ...delivery.value,
                     type: 'Livraison standard',
-                    timeSlot: 'Après-demain 14h-16h',
-                    fee: 1500
+                    timeSlot: 'A confirmer',
+                    fee: baseDeliveryFee
                 }
             }
             showAddressModal.value = false
         }
 
         const applyPromoCode = () => {
-            if (promoCode.value.toUpperCase() === 'FRAIS10') {
-                // Appliquer la réduction
-                alert('Code promo appliqué ! Réduction de 10%')
-            } else if (promoCode.value) {
-                alert('Code promo invalide')
-            }
+            // Le code promo doit etre valide cote API (aucune regle locale hardcodee).
             promoCode.value = ''
         }
 
@@ -671,10 +671,11 @@ export default {
             router.push('/payment/confirmation')
         }
 
-        onMounted(() => {
-            // Charger les données du panier depuis le store si disponible
-            if (cartStore.items && cartStore.items.length > 0) {
-                // Adaptez selon votre structure de données
+        onMounted(async () => {
+            await cartStore.fetchCart()
+            delivery.value = {
+                ...delivery.value,
+                fee: Number(cartStore.cart?.deliveryFee || 0)
             }
         })
 

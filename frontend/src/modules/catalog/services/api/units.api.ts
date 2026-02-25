@@ -43,7 +43,7 @@ export interface UnitsApi {
 export const unitsApi: UnitsApi = {
     createUnit: async (data: CreateUnitRequest): Promise<Unit> => {
         const response = await apiClient.post<Unit>(
-            '/products-catalog/units',
+            '/products-catalog/products/units',
             data
         );
         return response.data;
@@ -51,7 +51,7 @@ export const unitsApi: UnitsApi = {
 
     getAllUnits: async (): Promise<Unit[]> => {
         const response = await apiClient.get<Unit[]>(
-            '/products-catalog/units'
+            '/products-catalog/products/units'
         );
         return response.data;
     },

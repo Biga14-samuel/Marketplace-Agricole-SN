@@ -609,10 +609,10 @@ import TagFormModal from './TagForm.vue'
 import TagDeleteModal from './TagDeleteModal.vue'
 
 interface Tag {
-    id: number
+    id: string
     name: string
     slug: string
-    type: 'bio' | 'local' | 'season' | 'promo'
+    type: 'bio' | 'local' | 'season' | 'promo' | 'other'
     color: string
     is_active: boolean
     products_count?: number
@@ -634,7 +634,7 @@ const currentPage = ref(1)
 const itemsPerPage = ref(16)
 const showCreateModal = ref(false)
 const showDeleteModal = ref(false)
-const selectedTagId = ref<number | null>(null)
+const selectedTagId = ref<string | null>(null)
 const tagToDelete = ref<Tag | null>(null)
 
 // Données calculées
@@ -709,11 +709,37 @@ const promoTags = computed(() => {
 })
 
 // Méthodes
+const toSlug = (value: string): string =>
+    value
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+
+const inferTagType = (name: string): Tag['type'] => {
+    const normalized = name.toLowerCase()
+    if (normalized.includes('bio')) return 'bio'
+    if (normalized.includes('local')) return 'local'
+    if (normalized.includes('saison') || normalized.includes('season')) return 'season'
+    if (normalized.includes('promo') || normalized.includes('promotion')) return 'promo'
+    return 'other'
+}
+
 const loadTags = async () => {
     loading.value = true
     try {
         await tagStore.fetchAllTags()
-        tags.value = tagStore.tags
+        tags.value = tagStore.tags.map(tag => ({
+            id: String(tag.id),
+            name: tag.name,
+            slug: toSlug(tag.name),
+            type: inferTagType(tag.name),
+            color: tag.color || '#10B981',
+            is_active: true,
+            products_count: tag.usage_count || 0,
+            created_at: new Date(tag.created_at).toISOString(),
+            updated_at: new Date(tag.updated_at).toISOString(),
+        }))
     } catch (error) {
         console.error('Erreur lors du chargement des tags:', error)
     } finally {
@@ -965,3 +991,7 @@ onMounted(() => {
     background: linear-gradient(to bottom, #22c55e, #16a34a);
 }
 </style>
+
+
+
+

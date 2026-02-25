@@ -30,7 +30,7 @@ export const formatCurrencyXAF = (amount: number): string => {
  */
 export const formatCurrency = (amount: number, currency: PAYMENT_CURRENCIES = PAYMENT_CURRENCIES.XAF): string => {
     if (amount === null || amount === undefined) {
-        return currency === PAYMENT_CURRENCIES.XAF ? '0 FCFA' : `0 ${currency}`
+        return '0 FCFA'
     }
 
     const formatters: Record<PAYMENT_CURRENCIES, Intl.NumberFormat> = {
@@ -39,18 +39,6 @@ export const formatCurrency = (amount: number, currency: PAYMENT_CURRENCIES = PA
             currency: 'XAF',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
-        }),
-        [PAYMENT_CURRENCIES.EUR]: new Intl.NumberFormat('fr-FR', {
-            style: 'currency',
-            currency: 'EUR',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        }),
-        [PAYMENT_CURRENCIES.USD]: new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
         })
     }
 
@@ -88,8 +76,7 @@ export const formatCurrencyAbbreviated = (amount: number, currency: PAYMENT_CURR
         maximumFractionDigits: 1
     }).format(value)
 
-    const currencySymbol = currency === PAYMENT_CURRENCIES.XAF ? 'FCFA' : currency
-    return `${sign}${formattedValue}${suffix} ${currencySymbol}`
+    return `${sign}${formattedValue}${suffix} FCFA`
 }
 
 /**

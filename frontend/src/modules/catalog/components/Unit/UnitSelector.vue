@@ -1,5 +1,5 @@
 <template>
-    <div class="unit-selector-wrapper">
+    <div class="unit-selector-wrapper" :class="{ 'is-open': isOpen }">
         <!-- Étiquette avec icône organique -->
         <div class="flex items-center mb-3">
             <div class="icon-wrapper mr-2">
@@ -21,7 +21,7 @@
         <!-- Sélecteur principal avec effet organique -->
         <div class="relative" :class="{ 'has-error': error }">
             <!-- Bouton déclencheur -->
-            <button type="button" :id="id" ref="trigger" @click="toggleDropdown" @blur="onBlur" :disabled="disabled"
+            <button type="button" :id="id" ref="trigger" @click="toggleDropdown" :disabled="disabled"
                 :aria-expanded="isOpen"
                 :aria-label="selectedUnit ? `${selectedUnit.name} sélectionné` : 'Sélectionner une unité'"
                 class="unit-selector-trigger w-full transition-all duration-500 ease-out-custom" :class="[
@@ -135,7 +135,7 @@
 
                                 <!-- Liste des unités -->
                                 <ul v-else class="unit-list py-2">
-                                    <li v-for="unit in filteredUnits" :key="unit.id" @mousedown="selectUnit(unit)"
+                                    <li v-for="unit in filteredUnits" :key="unit.id" @mousedown.prevent="selectUnit(unit)"
                                         @mouseenter="setHoveredUnit(unit)"
                                         class="unit-item group relative px-4 py-3 cursor-pointer transition-all duration-300 ease-out-custom"
                                         :class="[
@@ -405,18 +405,6 @@ const setHoveredUnit = (unit: Unit) => {
     hoveredUnit.value = unit
 }
 
-const onBlur = (event: FocusEvent) => {
-    // Ne pas fermer si le focus va vers le dropdown
-    if (dropdown.value?.contains(event.relatedTarget as Node)) {
-        return
-    }
-    setTimeout(() => {
-        if (!dropdown.value?.contains(document.activeElement)) {
-            closeDropdown()
-        }
-    }, 100)
-}
-
 // Animation d'entrée du dropdown
 const onEnter = (el: Element, done: () => void) => {
     const element = el as HTMLElement
@@ -478,6 +466,11 @@ watch(() => props.modelValue, (newValue) => {
     --forest-dark: #2c5530;
     --terracotta: #d2691e;
     --cream-light: #f8f4e9;
+    position: relative;
+}
+
+.unit-selector-wrapper.is-open {
+    z-index: 80;
 }
 
 /* Classe de transition personnalisée */
@@ -725,3 +718,4 @@ watch(() => props.modelValue, (newValue) => {
     transform: translateY(-10px) scale(0.95);
 }
 </style>
+

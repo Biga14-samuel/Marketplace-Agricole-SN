@@ -119,56 +119,17 @@ export type OrderStatus = typeof ORDER_STATUS[keyof typeof ORDER_STATUS];
 
 // ==================== DEVISES ====================
 export const CURRENCIES = {
-    XAF: 'XAF',
-    XOF: 'XOF',
-    EUR: 'EUR',
-    USD: 'USD',
-    GBP: 'GBP',
-    JPY: 'JPY',
-    CNY: 'CNY',
-    CAD: 'CAD',
-    AUD: 'AUD',
-    CHF: 'CHF',
-    GHS: 'GHS',
-    NGN: 'NGN',
-    KES: 'KES',
-    ZAR: 'ZAR'
+    XAF: 'XAF'
 } as const;
 
 export type Currency = typeof CURRENCIES[keyof typeof CURRENCIES];
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
-    XAF: 'FCFA',
-    XOF: 'CFA',
-    EUR: '€',
-    USD: '$',
-    GBP: '£',
-    JPY: '¥',
-    CNY: '¥',
-    CAD: 'CA$',
-    AUD: 'A$',
-    CHF: 'CHF',
-    GHS: 'GH₵',
-    NGN: '₦',
-    KES: 'KSh',
-    ZAR: 'R'
+    XAF: 'FCFA'
 };
 
 export const CURRENCY_NAMES: Record<Currency, string> = {
-    XAF: 'Franc CFA d\'Afrique centrale',
-    XOF: 'Franc CFA d\'Afrique de l\'Ouest',
-    EUR: 'Euro',
-    USD: 'Dollar américain',
-    GBP: 'Livre sterling',
-    JPY: 'Yen japonais',
-    CNY: 'Yuan chinois',
-    CAD: 'Dollar canadien',
-    AUD: 'Dollar australien',
-    CHF: 'Franc suisse',
-    GHS: 'Cedi ghanéen',
-    NGN: 'Naira nigérian',
-    KES: 'Shilling kényan',
-    ZAR: 'Rand sud-africain'
+    XAF: 'Franc CFA d\'Afrique centrale'
 };
 
 // ==================== OPÉRATEURS CAMEROUNAIS ====================
@@ -590,20 +551,7 @@ export const POSTAL_CODES = {
 
 // ==================== TAUX DE CHANGE FIXES (approximatifs) ====================
 export const EXCHANGE_RATES: Record<Currency, number> = {
-    [CURRENCIES.XAF]: 1,
-    [CURRENCIES.XOF]: 0.0165, // 1 XAF ≈ 0.0165 XOF
-    [CURRENCIES.EUR]: 0.00152, // 1 XAF ≈ 0.00152 EUR
-    [CURRENCIES.USD]: 0.00166, // 1 XAF ≈ 0.00166 USD
-    [CURRENCIES.GBP]: 0.00131, // 1 XAF ≈ 0.00131 GBP
-    [CURRENCIES.JPY]: 0.184,   // 1 XAF ≈ 0.184 JPY
-    [CURRENCIES.CNY]: 0.0119,  // 1 XAF ≈ 0.0119 CNY
-    [CURRENCIES.CAD]: 0.00224, // 1 XAF ≈ 0.00224 CAD
-    [CURRENCIES.AUD]: 0.00252, // 1 XAF ≈ 0.00252 AUD
-    [CURRENCIES.CHF]: 0.00143, // 1 XAF ≈ 0.00143 CHF
-    [CURRENCIES.GHS]: 0.0201,  // 1 XAF ≈ 0.0201 GHS
-    [CURRENCIES.NGN]: 2.52,    // 1 XAF ≈ 2.52 NGN
-    [CURRENCIES.KES]: 0.265,   // 1 XAF ≈ 0.265 KES
-    [CURRENCIES.ZAR]: 0.0314   // 1 XAF ≈ 0.0314 ZAR
+    [CURRENCIES.XAF]: 1
 };
 
 // ==================== TYPES DE LIVRAISON ====================
@@ -750,19 +698,8 @@ export function getOperatorFromPhone(phone: string): CameroonOperator | null {
  */
 export function formatAmount(amount: number, currency: Currency = CURRENCIES.XAF): string {
     const symbol = CURRENCY_SYMBOLS[currency];
-
-    if (currency === CURRENCIES.XAF || currency === CURRENCIES.XOF) {
-        // Pas de décimales pour XAF/XOF
-        const formatted = Math.round(amount).toLocaleString('fr-FR');
-        return `${formatted} ${symbol}`;
-    } else {
-        // Avec décimales pour les autres devises
-        const formatted = amount.toLocaleString('fr-FR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
-        return `${formatted} ${symbol}`;
-    }
+    const formatted = Math.round(amount).toLocaleString('fr-FR');
+    return `${formatted} ${symbol}`;
 }
 
 /**

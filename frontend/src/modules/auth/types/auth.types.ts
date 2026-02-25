@@ -123,6 +123,13 @@ export interface VerifyEmailRequest {
 }
 
 /**
+ * Données pour renvoyer l'email de vérification.
+ */
+export interface ResendVerificationRequest {
+    email: string
+}
+
+/**
  * Données pour demander une réinitialisation de mot de passe (aligné avec le backend)
  */
 export interface PasswordResetRequest {

@@ -25,3 +25,4 @@
 const props = defineProps<{ product: any; quantity: number }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'view-cart'): void }>()
 </script>
+

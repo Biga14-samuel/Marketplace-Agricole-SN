@@ -371,19 +371,21 @@ def get_payment_statistics(
 @router.post("/methods", response_model=PaymentMethodResponse, status_code=status.HTTP_201_CREATED)
 def create_payment_method(
     payment_method_data: PaymentMethodCreate,
+    current_user: User = Depends(get_current_user),  # ✅ FIX SÉCURITÉ: user_id depuis JWT
     db: Session = Depends(get_db)
 ):
     """
-    Sauvegarde un nouveau moyen de paiement pour un utilisateur.
+    Sauvegarde un nouveau moyen de paiement pour l'utilisateur connecté.
     
-    Permet aux clients de sauvegarder leurs cartes bancaires ou autres
-    moyens de paiement pour faciliter leurs achats futurs.
+    ⚠️ SÉCURITÉ: Le user_id est automatiquement récupéré depuis le JWT,
+    pas depuis le body de la requête (prévient l'usurpation d'identité).
     
     Si is_default=True, tous les autres moyens de cet utilisateur
     seront automatiquement marqués comme non-défaut.
     """
     service = PaymentService(db)
-    return service.create_payment_method(payment_method_data)
+    # ✅ Injecter le user_id depuis le JWT
+    return service.create_payment_method_for_user(payment_method_data, current_user.id)
 
 
 @router.post("/methods/me", response_model=PaymentMethodResponse, status_code=status.HTTP_201_CREATED)

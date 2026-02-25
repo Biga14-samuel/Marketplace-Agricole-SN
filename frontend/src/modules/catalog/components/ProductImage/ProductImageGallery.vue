@@ -452,14 +452,14 @@ const thumbnailMaxScroll = computed(() => {
 
 // Méthodes
 const getImageUrl = (image: any) => {
-    if (!image) return '/placeholder-gallery.jpg'
+    if (!image) return ''
     if (image.url?.startsWith('http') || image.url?.startsWith('/')) {
         return image.url
     }
     if (image.file instanceof File) {
         return URL.createObjectURL(image.file)
     }
-    return '/placeholder-gallery.jpg'
+    return ''
 }
 
 const selectImage = (index: number) => {
@@ -873,3 +873,4 @@ watch(() => props.images, () => {
     background: linear-gradient(to right, #0da271, #e38c09);
 }
 </style>
+

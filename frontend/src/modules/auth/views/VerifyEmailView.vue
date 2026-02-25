@@ -146,7 +146,7 @@
                                 </h2>
                                 <div class="text-lg text-nature-600 max-w-md mx-auto space-y-3">
                                     <p>
-                                        Votre adresse email <span class="font-semibold text-fresh-600">{{ userEmail
+                                        Votre adresse email <span class="font-semibold text-fresh-600">{{ displayEmail
                                             }}</span>
                                         a été vérifiée avec succès.
                                     </p>
@@ -242,7 +242,7 @@
                                 </h2>
                                 <div class="text-lg text-nature-600 max-w-md mx-auto space-y-3">
                                     <p>
-                                        Votre adresse email <span class="font-semibold text-blue-600">{{ userEmail
+                                        Votre adresse email <span class="font-semibold text-blue-600">{{ displayEmail
                                             }}</span>
                                         a déjà été vérifiée précédemment.
                                     </p>
@@ -343,7 +343,21 @@
 
                             <!-- Boutons d'action pour les erreurs -->
                             <div class="pt-8 space-y-4">
-                                <button @click="resendVerificationEmail" :disabled="resendLoading" class="btn-primary inline-flex items-center justify-center space-x-3 w-full max-w-xs mx-auto
+                                <div class="w-full max-w-xs mx-auto text-left space-y-2">
+                                    <label for="resend-email" class="text-sm font-medium text-nature-700">
+                                        Adresse email pour renvoyer le lien
+                                    </label>
+                                    <input id="resend-email" v-model.trim="resendEmail" type="email"
+                                        placeholder="vous@exemple.com" class="w-full px-4 py-2.5 rounded-lg border border-nature-200 focus:outline-none
+                                 focus:ring-2 focus:ring-fresh-300 focus:border-fresh-400 bg-white/90 text-nature-800" />
+                                    <p v-if="resendEmail && !isValidResendEmail" class="text-xs text-red-600">
+                                        Entrez une adresse email valide.
+                                    </p>
+                                </div>
+
+                                <button @click="resendVerificationEmail"
+                                    :disabled="resendLoading || !isValidResendEmail"
+                                    class="btn-primary inline-flex items-center justify-center space-x-3 w-full max-w-xs mx-auto
                                disabled:opacity-50 disabled:cursor-not-allowed">
                                     <svg v-if="resendLoading" class="w-5 h-5 animate-spin" fill="none"
                                         stroke="currentColor" viewBox="0 0 24 24">
@@ -535,36 +549,54 @@ const isError = ref(false)
 const isAlreadyVerified = ref(false)
 const errorMessage = ref('')
 const userEmail = ref('')
+const resendEmail = ref('')
 const resendLoading = ref(false)
 const resendSuccess = ref(false)
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const isValidResendEmail = computed(() => emailRegex.test(resendEmail.value.trim()))
+const displayEmail = computed(() => userEmail.value || resendEmail.value || 'non renseignée')
 
-// 🔧 Fonction robuste pour récupérer le token depuis toutes les sources possibles
+const normalizeToken = (raw: unknown): string | null => {
+    if (!raw) return null
+
+    const firstValue = Array.isArray(raw) ? raw[0] : raw
+    if (!firstValue) return null
+
+    let normalized = String(firstValue)
+    try {
+        normalized = decodeURIComponent(normalized)
+    } catch {
+        // Si la valeur n'est pas encodée URL, on garde telle quelle.
+    }
+
+    normalized = normalized.trim()
+    normalized = normalized.replace(/^['"<]+|[>'"]+$/g, '')
+    normalized = normalized.replace(/\s+/g, '')
+
+    if (normalized.toLowerCase().startsWith('token=')) {
+        normalized = normalized.slice(6).trim()
+    }
+
+    return normalized || null
+}
+
+// Fonction robuste pour récupérer le token depuis toutes les sources possibles.
 const getTokenFromAllSources = (): string | null => {
-    console.log('🔍 === RECHERCHE DU TOKEN ===')
-    console.log('📍 URL complète:', window.location.href)
-    console.log('📍 window.location.search:', window.location.search)
-    console.log('📍 window.location.hash:', window.location.hash)
-    console.log('📍 route.query:', route.query)
-    console.log('📍 route.params:', route.params)
-    
     // 1. Vue Router query (history mode)
     if (route.query.token) {
-        console.log('✅ Token trouvé dans route.query.token:', route.query.token)
-        return route.query.token as string
+        return normalizeToken(route.query.token)
     }
     
     // 2. Vue Router params (route dynamique /verify/:token)
     if (route.params.token) {
-        console.log('✅ Token trouvé dans route.params.token:', route.params.token)
-        return route.params.token as string
+        return normalizeToken(route.params.token)
     }
     
-    // 3. 🎯 FIX CLÉ: window.location.search (pour hash mode où ?token= est avant le #)
+    // 3. window.location.search (hash mode où ?token= peut être avant le #)
     const urlParams = new URLSearchParams(window.location.search)
     const tokenFromSearch = urlParams.get('token')
     if (tokenFromSearch) {
-        console.log('✅ Token trouvé dans window.location.search:', tokenFromSearch)
-        return tokenFromSearch
+        return normalizeToken(tokenFromSearch)
     }
     
     // 4. Query dans le hash lui-même (cas rare)
@@ -573,23 +605,19 @@ const getTokenFromAllSources = (): string | null => {
         const hashQuery = new URLSearchParams(hash.split('?')[1])
         const tokenFromHash = hashQuery.get('token')
         if (tokenFromHash) {
-            console.log('✅ Token trouvé dans le hash query:', tokenFromHash)
-            return tokenFromHash
+            return normalizeToken(tokenFromHash)
         }
     }
     
     // 5. Autres noms de paramètres possibles
     const altNames = ['verificationToken', 'verification_token', 'emailToken']
     for (const name of altNames) {
-        const altToken = route.query[name] as string || urlParams.get(name)
+        const altToken = route.query[name] || urlParams.get(name)
         if (altToken) {
-            console.log(`✅ Token trouvé avec le nom alternatif ${name}:`, altToken)
-            return altToken
+            return normalizeToken(altToken)
         }
     }
-    
-    console.log('❌ Aucun token trouvé dans aucune source')
-    console.log('🔍 === FIN RECHERCHE DU TOKEN ===')
+
     return null
 }
 
@@ -625,131 +653,101 @@ const particleType = (index: number) => {
 
 // Vérifier l'email
 const verifyEmail = async () => {
-    console.log('=== DÉBUT VÉRIFICATION EMAIL ===')
-    console.log('🌐 URL complète:', window.location.href)
-    console.log('🔍 window.location.search:', window.location.search)
-    console.log('🔍 window.location.hash:', window.location.hash)
-    console.log('📋 Route query complète:', route.query)
-    console.log('📋 Route params complets:', route.params)
-    console.log('🎯 Token récupéré:', token.value)
-
     if (!token.value) {
-        console.error('❌ Aucun token trouvé dans l\'URL')
-        console.error('🔧 Vérifiez que le lien email contient bien ?token=... ou que le router est en bon mode')
         isLoading.value = false
         isError.value = true
-        errorMessage.value = 'Aucun token de vérification trouvé dans le lien'
+        errorMessage.value = 'Lien de vérification incomplet. Ouvrez le lien complet reçu par email.'
         return
     }
 
     try {
-        console.log('📤 Appel API avec token:', token.value)
-
         // Appeler l'API de vérification d'email
-        const response = await authStore.verifyEmail(token.value)
-
-        console.log('✅ Réponse API:', response)
+        await authStore.verifyEmail(token.value)
 
         // Récupérer l'email de l'utilisateur si disponible
         if (authStore.user?.email) {
             userEmail.value = authStore.user.email
+            if (!resendEmail.value) resendEmail.value = authStore.user.email
         } else {
-            userEmail.value = 'votre adresse email'
+            userEmail.value = ''
         }
 
         isSuccess.value = true
         isError.value = false
         isAlreadyVerified.value = false
 
-        console.log('✅ Vérification réussie!')
-
         // Redirection automatique après succès
         setTimeout(() => {
-            console.log('🔄 Redirection vers la page d\'accueil...')
             router.push('/')
         }, 5000)
 
     } catch (error: unknown) {
         const err = error as any
-        console.error('❌ Erreur lors de la vérification:', err)
-        console.error('Détails de l\'erreur:', {
-            status: err?.response?.status,
-            data: err?.response?.data,
-            message: err?.message
-        })
+        console.error('Erreur lors de la vérification:', err)
 
         isLoading.value = false
 
         // Déterminer le type d'erreur
         if (err?.response?.status === 400) {
             const errorData = err.response.data
-            console.log('Données d\'erreur 400:', errorData)
+            const detailMessage = String(errorData?.detail || errorData?.message || '').toLowerCase()
+            const normalizedDetail = detailMessage.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
-            if (errorData.detail?.includes('déjà été vérifiée') || errorData.detail?.includes('already verified')) {
+            if (
+                (normalizedDetail.includes('deja') && normalizedDetail.includes('verifi')) ||
+                normalizedDetail.includes('already verified')
+            ) {
                 isAlreadyVerified.value = true
-                userEmail.value = authStore.user?.email || 'votre adresse email'
-                console.log('ℹ️ Email déjà vérifié')
+                isError.value = false
+                userEmail.value = authStore.user?.email || ''
+                if (!resendEmail.value && authStore.user?.email) {
+                    resendEmail.value = authStore.user.email
+                }
             } else if (errorData.detail?.includes('expiré') || errorData.detail?.includes('expired')) {
                 isError.value = true
-                errorMessage.value = 'Le lien de vérification a expiré (valable 24h)'
-                console.log('⏰ Token expiré')
+                errorMessage.value = 'Le lien de vérification a expiré (valable 48h)'
             } else if (errorData.detail?.includes('invalide') || errorData.detail?.includes('invalid')) {
                 isError.value = true
                 errorMessage.value = 'Le lien de vérification est invalide'
-                console.log('❌ Token invalide')
             } else {
                 isError.value = true
                 errorMessage.value = errorData.detail || errorData.message || 'Une erreur est survenue lors de la vérification'
-                console.log('❌ Autre erreur 400:', errorMessage.value)
             }
         } else if (err?.response?.status === 404) {
             isError.value = true
             errorMessage.value = 'Token de vérification non trouvé'
-            console.log('❌ Token non trouvé (404)')
         } else if (err?.response?.status === 500) {
             isError.value = true
             errorMessage.value = 'Erreur serveur. Veuillez réessayer plus tard.'
-            console.log('❌ Erreur serveur (500)')
         } else if (err?.message?.includes('Network Error') || err?.code === 'ERR_NETWORK') {
             isError.value = true
             errorMessage.value = 'Impossible de contacter le serveur. Vérifiez votre connexion.'
-            console.log('❌ Erreur réseau')
         } else {
             isError.value = true
             errorMessage.value = err?.response?.data?.detail || err?.message || 'Une erreur inattendue est survenue'
-            console.log('❌ Erreur inattendue:', errorMessage.value)
         }
     } finally {
         isLoading.value = false
-        console.log('=== FIN VÉRIFICATION EMAIL ===')
     }
 }
 
 // Renvoyer l'email de vérification
 const resendVerificationEmail = async () => {
-    console.log('📧 Tentative de renvoi d\'email de vérification')
     resendLoading.value = true
     resendSuccess.value = false
 
     try {
-        // Demander à l'utilisateur son email via un prompt
-        const email = prompt('Veuillez entrer votre adresse email pour recevoir un nouveau lien de vérification:')
+        const email = (authStore.user?.email || resendEmail.value || userEmail.value || '').trim()
 
-        if (!email) {
-            console.log('❌ Aucun email fourni')
+        if (!emailRegex.test(email)) {
+            errorMessage.value = 'Veuillez renseigner une adresse email valide.'
             resendLoading.value = false
             return
         }
 
-        console.log('📤 Envoi de la demande pour:', email)
-
-        // Appeler l'API pour renvoyer l'email
-        // Note: Il faudrait créer un endpoint backend pour cela
-        // Pour l'instant, on simule
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        await authStore.resendVerificationEmail(email)
 
         resendSuccess.value = true
-        console.log('✅ Email de vérification renvoyé')
 
         // Masquer le message de succès après 5 secondes
         setTimeout(() => {
@@ -757,7 +755,7 @@ const resendVerificationEmail = async () => {
         }, 5000)
 
     } catch (error) {
-        console.error('❌ Erreur lors du renvoi:', error)
+        console.error('Erreur lors du renvoi:', error)
         errorMessage.value = 'Impossible d\'envoyer l\'email de vérification. Veuillez réessayer.'
     } finally {
         resendLoading.value = false
@@ -779,10 +777,10 @@ const formatEmail = (email: string) => {
 
 // Initialisation
 onMounted(() => {
-    // Simuler un léger délai pour l'animation de chargement
-    setTimeout(() => {
-        verifyEmail()
-    }, 1000)
+    if (authStore.user?.email) {
+        resendEmail.value = authStore.user.email
+    }
+    verifyEmail()
 })
 </script>
 

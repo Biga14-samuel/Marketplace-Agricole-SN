@@ -130,7 +130,7 @@
                                     </div>
                                     <div
                                         class="text-center p-4 rounded-xl bg-gradient-to-br from-white/80 to-nature-50/50 border border-nature-200/30">
-                                        <LeafIcon class="w-8 h-8 text-nature-600 mx-auto mb-2" />
+                                        <CheckCircleIcon class="w-8 h-8 text-nature-600 mx-auto mb-2" />
                                         <p class="text-sm font-medium text-nature-800">Produits frais</p>
                                     </div>
                                     <div
@@ -310,8 +310,10 @@
                                                                         : 'border-nature-200/50'
                                                                 ]">
                                                                 <div class="flex flex-col items-center">
-                                                                    <img :src="operator.logo" :alt="operator.name"
-                                                                        class="w-12 h-12 mb-2" />
+                                                                    <div
+                                                                        class="w-12 h-12 mb-2 rounded-full bg-gradient-to-br from-white to-cream/60 border border-soft-green/20 flex items-center justify-center">
+                                                                        <span class="text-xl">{{ operator.icon }}</span>
+                                                                    </div>
                                                                     <span class="font-medium text-nature-900">{{
                                                                         operator.name }}</span>
                                                                 </div>
@@ -490,14 +492,14 @@
                                             <span>Paiement sécurisé SSL</span>
                                         </div>
                                         <div class="flex items-center space-x-4">
-                                            <img src="@/assets/images/payment-providers/visa.png" alt="Visa"
-                                                class="h-6" />
-                                            <img src="@/assets/images/payment-providers/mastercard.png" alt="Mastercard"
-                                                class="h-6" />
-                                            <img src="@/assets/images/mobile-money/mtn-money.png" alt="MTN Money"
-                                                class="h-6" />
-                                            <img src="@/assets/images/mobile-money/orange-money.png" alt="Orange Money"
-                                                class="h-6" />
+                                            <span
+                                                class="px-2 py-1 rounded-md border border-nature-300/40 bg-white/70 text-xs font-semibold text-nature-700">Visa</span>
+                                            <span
+                                                class="px-2 py-1 rounded-md border border-nature-300/40 bg-white/70 text-xs font-semibold text-nature-700">Mastercard</span>
+                                            <span
+                                                class="px-2 py-1 rounded-md border border-nature-300/40 bg-white/70 text-xs font-semibold text-nature-700">MTN</span>
+                                            <span
+                                                class="px-2 py-1 rounded-md border border-nature-300/40 bg-white/70 text-xs font-semibold text-nature-700">Orange</span>
                                         </div>
                                     </div>
                                 </div>
@@ -532,7 +534,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useCartStore } from '@/modules/orders/stores/cart.store'
 import {
     MapPinIcon,
     CreditCardIcon,
@@ -543,13 +546,14 @@ import {
     CheckCircleIcon,
     ShieldCheckIcon,
     TruckIcon,
-    LeafIcon,
     PhoneIcon,
     DevicePhoneMobileIcon,
     BanknotesIcon
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const route = useRoute()
+const cartStore = useCartStore()
 
 // État du formulaire
 const currentStep = ref(1)
@@ -604,12 +608,12 @@ const mobileOperators = [
     {
         id: 'mtn',
         name: 'MTN Money',
-        logo: '@/assets/images/mobile-money/mtn-money.png'
+        icon: '📱'
     },
     {
         id: 'orange',
         name: 'Orange Money',
-        logo: '@/assets/images/mobile-money/orange-money.png'
+        icon: '🟧'
     }
 ]
 
@@ -624,52 +628,23 @@ const cardForm = ref({
     name: ''
 })
 
-// Panier (données mockées)
-const cartItems = ref([
-    {
-        id: 1,
-        name: 'Tomates fraîches',
-        price: 1500,
-        quantity: 2,
-        total: 3000,
-        weight: '1kg',
-        image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=400&h=400&fit=crop'
-    },
-    {
-        id: 2,
-        name: 'Avocats mûrs',
-        price: 1200,
-        quantity: 3,
-        total: 3600,
-        weight: '1.5kg',
-        image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w-400&h=400&fit=crop'
-    },
-    {
-        id: 3,
-        name: 'Carottes bio',
-        price: 800,
-        quantity: 1,
-        total: 800,
-        weight: '500g',
-        image: 'https://images.unsplash.com/photo-1582515073490-39981397c445?w=400&h=400&fit=crop'
-    }
-])
+const cartItems = computed(() => {
+    const items = Array.isArray(cartStore.items) ? cartStore.items : []
+    return items.map((item: any) => ({
+        id: item?.id,
+        name: item?.product?.name || 'Produit',
+        price: Number(item?.unitPrice || 0),
+        quantity: Number(item?.quantity || 0),
+        total: Number(item?.subtotal || 0),
+        weight: item?.product?.unit || '',
+        image: item?.product?.images?.[0] || ''
+    }))
+})
 
-const subtotal = computed(() =>
-    cartItems.value.reduce((sum, item) => sum + item.total, 0)
-)
-
-const deliveryFee = computed(() =>
-    subtotal.value > 15000 ? 0 : 1500
-)
-
-const discount = computed(() =>
-    subtotal.value > 20000 ? 2000 : 0
-)
-
-const total = computed(() =>
-    subtotal.value + deliveryFee.value - discount.value
-)
+const subtotal = computed(() => Number(cartStore.subtotal || 0))
+const deliveryFee = computed(() => Number(cartStore.cart?.deliveryFee || 0))
+const discount = computed(() => Number(cartStore.cart?.discountAmount || 0))
+const total = computed(() => Number(cartStore.totalAmount || 0))
 
 const canProceedToPayment = computed(() => {
     if (selectedPaymentMethod.value === 'mobile_money') {
@@ -685,7 +660,7 @@ const canProceedToPayment = computed(() => {
 })
 
 const showCVVInfo = ref(false)
-const orderId = ref(Math.floor(100000 + Math.random() * 900000))
+const orderId = ref<string | number>(String(route.query.orderId || ''))
 const deliveryDate = ref(getDeliveryDate())
 
 // Méthodes
@@ -727,7 +702,7 @@ function getPaymentMethodName(methodId: string) {
 function getDeliveryDate() {
     const date = new Date()
     date.setDate(date.getDate() + 2)
-    return date.toLocaleDateString('fr-FR', {
+    return date.toLocaleDateString('fr-CM', {
         weekday: 'long',
         day: 'numeric',
         month: 'long'
@@ -735,7 +710,11 @@ function getDeliveryDate() {
 }
 
 function goToOrderTracking() {
-    router.push(`/orders/${orderId.value}`)
+    if (orderId.value) {
+        router.push(`/orders/${orderId.value}`)
+        return
+    }
+    router.push('/orders')
 }
 
 function goToHome() {
@@ -744,6 +723,11 @@ function goToHome() {
 
 // Animation d'entrée des éléments du panier
 onMounted(() => {
+    cartStore.fetchCart()
+    if (!orderId.value && cartStore.cart?.id) {
+        orderId.value = String(cartStore.cart.id)
+    }
+
     // Simulation de chargement
     setTimeout(() => {
         // Animation des éléments du panier

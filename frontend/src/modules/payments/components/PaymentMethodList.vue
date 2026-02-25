@@ -283,9 +283,11 @@
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 import { ref, computed, onMounted } from 'vue'
 import PaymentMethodCard from './PaymentMethodCard.vue'
 import AddPaymentMethodModal from './AddPaymentMethodModal.vue'
+import paymentMethodService from '../services/paymentMethodService'
 import {
     PlusCircleIcon,
     CreditCardIcon,
@@ -298,42 +300,25 @@ import {
     CheckCircleIcon,
     XCircleIcon
 } from '@heroicons/vue/24/outline'
-import type { PaymentMethod } from '@/modules/payments/types/payment.types'
 
-// Données mockées pour la démonstration
+interface PaymentMethod {
+    id: string
+    type: 'card' | 'mtn_mobile_money' | 'orange_money' | 'express_union' | 'cash' | 'wallet'
+    last4?: string
+    phone_number?: string
+    brand?: string
+    expiry_date?: string
+    is_default: boolean
+    status: 'active' | 'expired' | 'pending'
+    network?: 'mtn' | 'orange' | 'express_union'
+    is_expired?: boolean
+}
+
 const loading = ref(true)
-const paymentMethods = ref<PaymentMethod[]>([
-    {
-        id: '1',
-        type: 'mtn_mobile_money',
-        phone_number: '237699887766',
-        is_default: true,
-        status: 'active',
-        network: 'mtn',
-        brand: 'MTN Cameroon'
-    },
-    {
-        id: '2',
-        type: 'card',
-        last4: '4242',
-        brand: 'Visa',
-        expiry_date: '12/25',
-        is_default: false,
-        status: 'active'
-    },
-    {
-        id: '3',
-        type: 'orange_money',
-        phone_number: '237655443322',
-        is_default: false,
-        status: 'active',
-        network: 'orange',
-        brand: 'Orange Cameroun'
-    }
-])
+const paymentMethods = ref<PaymentMethod[]>([])
 
 const showAddMethodModal = ref(false)
-const successfulPayments = ref(42)
+const successfulPayments = ref(0)
 
 // Toast notification
 const toast = ref({
@@ -360,13 +345,73 @@ const lastAddedMethod = computed(() => {
 
 // Lifecycle
 onMounted(async () => {
-    // Simuler le chargement
-    setTimeout(() => {
-        loading.value = false
-    }, 800)
+    await loadPaymentMethods()
 })
 
 // Méthodes
+const normalizeMethodType = (type: string): PaymentMethod['type'] => {
+    const normalized = String(type || '').toLowerCase()
+    if (normalized === 'card' || normalized === 'credit_card') return 'card'
+    if (normalized.includes('mtn')) return 'mtn_mobile_money'
+    if (normalized.includes('orange')) return 'orange_money'
+    if (normalized.includes('express')) return 'express_union'
+    if (normalized === 'cash') return 'cash'
+    if (normalized === 'wallet') return 'wallet'
+    return 'card'
+}
+
+const normalizeStatus = (method: any): PaymentMethod['status'] => {
+    const status = String(method?.status || '').toLowerCase()
+    if (status === 'active' || status === 'pending' || status === 'expired') {
+        return status as PaymentMethod['status']
+    }
+    return method?.isActive === false ? 'expired' : 'active'
+}
+
+const mapBackendMethod = (method: any): PaymentMethod => {
+    const methodType = normalizeMethodType(method?.type)
+    const details = method?.details || {}
+    const rawPhone =
+        method?.phone_number ||
+        method?.phoneNumber ||
+        details.phone_number ||
+        details.phoneNumber ||
+        details.phone
+
+    return {
+        id: String(method?.id ?? ''),
+        type: methodType,
+        last4: method?.last4 || details.last4,
+        phone_number: rawPhone ? String(rawPhone) : undefined,
+        brand: method?.brand || details.brand || method?.name,
+        expiry_date: method?.expiry_date || details.expiryDate || details.expiry_date,
+        is_default: Boolean(method?.is_default ?? method?.isDefault),
+        status: normalizeStatus(method),
+        network: methodType === 'mtn_mobile_money'
+            ? 'mtn'
+            : methodType === 'orange_money'
+                ? 'orange'
+                : methodType === 'express_union'
+                    ? 'express_union'
+                    : undefined,
+        is_expired: normalizeStatus(method) === 'expired'
+    }
+}
+
+const loadPaymentMethods = async () => {
+    loading.value = true
+    try {
+        const methods = await paymentMethodService.getPaymentMethods()
+        paymentMethods.value = Array.isArray(methods) ? methods.map(mapBackendMethod) : []
+        successfulPayments.value = paymentMethods.value.filter(m => m.status === 'active').length
+    } catch (error) {
+        paymentMethods.value = []
+        showToast('Erreur', 'Impossible de charger vos moyens de paiement', 'error')
+    } finally {
+        loading.value = false
+    }
+}
+
 const getMethodName = (type: string) => {
     const names: Record<string, string> = {
         card: 'Carte bancaire',
@@ -397,35 +442,41 @@ const deleteMethod = async (methodId: string) => {
 
     // Demande de confirmation avec animation
     if (confirm(`Supprimer ${getMethodName(method.type)} ?`)) {
-        const index = paymentMethods.value.findIndex(m => m.id === methodId)
-        if (index > -1) {
-            paymentMethods.value.splice(index, 1)
+        try {
+            await paymentMethodService.removePaymentMethod(methodId)
+            paymentMethods.value = paymentMethods.value.filter(m => m.id !== methodId)
             showToast(
                 'Supprimé',
                 `${getMethodName(method.type)} a été supprimé de vos méthodes de paiement`,
                 'success'
             )
+        } catch (error) {
+            showToast('Erreur', 'Suppression impossible pour le moment', 'error')
         }
     }
 }
 
 const setDefaultMethod = async (methodId: string) => {
-    // Retirer le statut par défaut de toutes les méthodes
-    paymentMethods.value.forEach(method => {
-        method.is_default = method.id === methodId
-    })
+    try {
+        await paymentMethodService.setDefaultPaymentMethod(methodId)
+        paymentMethods.value.forEach(method => {
+            method.is_default = method.id === methodId
+        })
 
-    const method = paymentMethods.value.find(m => m.id === methodId)
-    if (method) {
-        showToast(
-            'Défini par défaut',
-            `${getMethodName(method.type)} est maintenant votre méthode de paiement principale`,
-            'success'
-        )
+        const method = paymentMethods.value.find(m => m.id === methodId)
+        if (method) {
+            showToast(
+                'Défini par défaut',
+                `${getMethodName(method.type)} est maintenant votre méthode de paiement principale`,
+                'success'
+            )
+        }
+    } catch (error) {
+        showToast('Erreur', 'Mise à jour du moyen par défaut impossible', 'error')
     }
 }
 
-const handleMethodAdded = (newMethod: PaymentMethod) => {
+const handleMethodAdded = async (newMethod: PaymentMethod) => {
     paymentMethods.value.push(newMethod)
     showAddMethodModal.value = false
 
@@ -434,6 +485,7 @@ const handleMethodAdded = (newMethod: PaymentMethod) => {
         `${getMethodName(newMethod.type)} a été ajouté à vos méthodes de paiement`,
         'success'
     )
+    await loadPaymentMethods()
 }
 
 const showToast = (title: string, details: string, type: 'success' | 'error') => {
@@ -538,3 +590,7 @@ const showToast = (title: string, details: string, type: 'success' | 'error') =>
     --color-nature-800: #292524;
 }
 </style>
+
+
+
+

@@ -1,4 +1,3 @@
-import { getErrorMessage } from '@/shared/utils/error-handler';
 <template>
     <div class="product-image-uploader">
         <!-- Background organique avec texture -->
@@ -396,6 +395,7 @@ import { getErrorMessage } from '@/shared/utils/error-handler';
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { createEmojiIcon } from '@/shared/components/icons/emoji'
+import { getErrorMessage } from '@/shared/utils/error-handler'
 
 const ImageIcon = createEmojiIcon('🖼️', 'Image')
 const UploadIcon = createEmojiIcon('⬆️', 'Upload')
@@ -435,7 +435,7 @@ const dropZone = ref<HTMLDivElement>()
 // États réactifs
 const images = ref<any[]>([])
 const isDragging = ref(false)
-const showTips = ref(true)
+const showTips = ref(false)
 const uploadingCount = ref(0)
 const uploadErrors = ref<Array<{ fileName: string; message: string }>>([])
 const showUploadErrors = ref(false)
@@ -478,7 +478,7 @@ const getImageUrl = (image: any) => {
     if (image.file instanceof File) {
         return URL.createObjectURL(image.file)
     }
-    return '/placeholder-product.jpg'
+    return ''
 }
 
 const triggerFileInput = () => {
@@ -638,12 +638,12 @@ const handleDrop = (event: DragEvent) => {
     const files = event.dataTransfer?.files
     if (!files) return
 
-    // Créer un faux event pour réutiliser handleFileSelect
-    const fakeEvent = {
+    // Créer un event synthétique pour réutiliser handleFileSelect
+    const syntheticEvent = {
         target: { files }
     } as unknown as Event
 
-    handleFileSelect(fakeEvent)
+    handleFileSelect(syntheticEvent)
 }
 
 const setAsPrimary = (index: number) => {

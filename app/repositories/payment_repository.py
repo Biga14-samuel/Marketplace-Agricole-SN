@@ -110,27 +110,41 @@ class PaymentRepository:
     # OPÉRATIONS CRUD - PAYMENTMETHOD
     # ========================================================================
     
-    def create_payment_method(
+    def create_payment_method_dict(
         self, 
-        payment_method_data: PaymentMethodCreate
+        payment_method_dict: dict
     ) -> PaymentMethod:
         """
-        Crée un nouveau moyen de paiement sauvegardé.
+        Crée un nouveau moyen de paiement à partir d'un dictionnaire.
+        
+        ✅ FIX SÉCURITÉ: Accepte un dict au lieu de PaymentMethodCreate
+        pour permettre l'injection sécurisée du user_id depuis le JWT.
         
         Si is_default=True, tous les autres moyens de l'utilisateur
         sont marqués comme non-défaut.
         """
         # Si ce moyen est défini comme défaut, retirer le défaut des autres
-        if payment_method_data.is_default:
+        if payment_method_dict.get('is_default', False):
             self.db.query(PaymentMethod).filter(
-                PaymentMethod.user_id == payment_method_data.user_id
+                PaymentMethod.user_id == payment_method_dict['user_id']
             ).update({"is_default": False})
         
-        payment_method = PaymentMethod(**payment_method_data.model_dump())
+        payment_method = PaymentMethod(**payment_method_dict)
         self.db.add(payment_method)
         self.db.flush()
         self.db.refresh(payment_method)
         return payment_method
+    
+    # ⚠️ DEPRECATED: Utiliser create_payment_method_dict à la place
+    def create_payment_method(
+        self, 
+        payment_method_data: PaymentMethodCreate
+    ) -> PaymentMethod:
+        """
+        DEPRECATED: Conservé pour compatibilité.
+        Utiliser create_payment_method_dict à la place.
+        """
+        return self.create_payment_method_dict(payment_method_data.model_dump())
     
     def get_payment_method_by_id(self, method_id: int) -> Optional[PaymentMethod]:
         """Récupère un moyen de paiement par son ID"""

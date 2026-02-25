@@ -510,10 +510,9 @@ const addressTypes = [
 // Données de localisation
 const countries = [
     { code: 'CM', name: 'Cameroun', flag: '🇨🇲' },
-    { code: 'FR', name: 'France', flag: '🇫🇷' },
-    { code: 'BE', name: 'Belgique', flag: '🇧🇪' },
-    { code: 'CH', name: 'Suisse', flag: '🇨🇭' },
-    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+    { code: 'TD', name: 'Tchad', flag: '🇹🇩' },
+    { code: 'GA', name: 'Gabon', flag: '🇬🇦' },
+    { code: 'CG', name: 'Congo', flag: '🇨🇬' },
     { code: 'SN', name: 'Sénégal', flag: '🇸🇳' },
     { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮' },
 ]
@@ -527,7 +526,7 @@ const locationEmojis = ['📍', '🏠', '🏢', '🏡', '🏘️', '🌳', '🚚
 
 // Computed
 const showRegionField = computed(() => {
-    return ['CM', 'FR', 'CA'].includes(formData.country)
+    return formData.country === 'CM'
 })
 
 // Styles pour les feuilles flottantes

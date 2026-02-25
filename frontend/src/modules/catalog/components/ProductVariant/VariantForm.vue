@@ -365,7 +365,8 @@
                                     <span class="text-lg font-bold text-emerald-700">
                                         {{ formatPrice(calculateVariantPrice(variant)) }} FCFA
                                     </span>
-                                    <span class="text-sm ml-2" :class="priceModifierClass(variant)">
+                                    <span class="text-sm ml-2"
+                                        :class="(variant.price_modifier || 0) > 0 ? 'text-emerald-600' : (variant.price_modifier || 0) < 0 ? 'text-red-600' : 'text-amber-600'">
                                         {{ formatPriceModifier(variant.price_modifier || 0) }}
                                     </span>
                                 </div>
@@ -1037,3 +1038,7 @@ watch(() => props.basePrice, () => {
     z-index: 1;
 }
 </style>
+
+
+
+

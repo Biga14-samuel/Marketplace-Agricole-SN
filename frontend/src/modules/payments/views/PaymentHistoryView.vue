@@ -461,7 +461,8 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { formatCurrency } from '../utils/currencyFormatter'
-import TransactionDetailsModal from './components/TransactionDetailsModal.vue'
+import TransactionDetailsModal from '../components/TransactionDetailsModal.vue'
+import paymentService from '../services/paymentService'
 
 // Composants décoratifs
 const LeafDecoration = {
@@ -539,92 +540,45 @@ export default {
         const currentPage = ref(1)
         const itemsPerPage = 10
 
-        // Données de test
-        const transactions = ref([
-            {
-                id: 1,
-                reference: 'CMD-2024-00123',
-                date: '2024-03-15T10:30:00',
-                amount: 15750,
-                method: 'mobile-money',
-                status: 'completed',
-                products: ['Tomates cerises bio', 'Avocats hass', 'Piments frais'],
-                details: {
-                    operator: 'MTN Mobile Money',
-                    phone: '699 00 00 00',
-                    deliveryAddress: 'Rue 1234, Quartier Bastos, Yaoundé'
-                }
-            },
-            {
-                id: 2,
-                reference: 'CMD-2024-00124',
-                date: '2024-03-14T14:20:00',
-                amount: 8900,
-                method: 'credit-card',
-                status: 'completed',
-                products: ['Salade fraîche', 'Oignons nouveaux'],
-                details: {
-                    cardType: 'Visa',
-                    lastDigits: '4242',
-                    deliveryAddress: 'Avenue Kennedy, Douala'
-                }
-            },
-            {
-                id: 3,
-                reference: 'CMD-2024-00125',
-                date: '2024-03-13T09:15:00',
-                amount: 12400,
-                method: 'cash',
-                status: 'pending',
-                products: ['Mangues', 'Ananas', 'Papayes'],
-                details: {
-                    deliveryType: 'À la livraison',
-                    deliveryAddress: 'Boulevard du 20 Mai, Yaoundé'
-                }
-            },
-            {
-                id: 4,
-                reference: 'CMD-2024-00126',
-                date: '2024-03-12T16:45:00',
-                amount: 6500,
-                method: 'mobile-money',
-                status: 'failed',
-                products: ['Carottes', 'Céléri'],
-                details: {
-                    operator: 'Orange Money',
-                    phone: '655 00 00 00',
-                    reason: 'Fonds insuffisants'
-                }
-            },
-            {
-                id: 5,
-                reference: 'CMD-2024-00127',
-                date: '2024-03-10T11:10:00',
-                amount: 21300,
-                method: 'credit-card',
-                status: 'completed',
-                products: ['Poulet fermier', 'Œufs bio', 'Fromage local'],
-                details: {
-                    cardType: 'Mastercard',
-                    lastDigits: '8888',
-                    deliveryAddress: 'Rue des Banques, Bafoussam'
-                }
-            },
-            {
-                id: 6,
-                reference: 'CMD-2024-00128',
-                date: '2024-03-08T13:30:00',
-                amount: 7400,
-                method: 'mobile-money',
-                status: 'refunded',
-                products: ['Courgettes', 'Aubergines'],
-                details: {
-                    operator: 'MTN Mobile Money',
-                    phone: '699 00 00 00',
-                    refundReason: 'Produit non disponible'
-                }
+        const transactions = ref([])
+
+        const normalizePaymentMethod = (method) => {
+            const value = String(method || '').toLowerCase()
+            if (value.includes('mobile') || value.includes('mtn') || value.includes('orange')) return 'mobile-money'
+            if (value.includes('card') || value.includes('credit')) return 'credit-card'
+            if (value.includes('cash')) return 'cash'
+            return 'mobile-money'
+        }
+
+        const normalizePaymentStatus = (status) => {
+            const value = String(status || '').toLowerCase()
+            if (value === 'completed' || value === 'paid' || value === 'success') return 'completed'
+            if (value === 'failed') return 'failed'
+            if (value === 'refunded') return 'refunded'
+            return 'pending'
+        }
+
+        const mapPaymentToTransaction = (payment) => ({
+            id: payment?.id,
+            reference: payment?.orderId ? `CMD-${payment.orderId}` : (payment?.transactionId || `PAY-${payment?.id}`),
+            date: payment?.createdAt || new Date().toISOString(),
+            amount: Number(payment?.amount || 0),
+            method: normalizePaymentMethod(payment?.method),
+            status: normalizePaymentStatus(payment?.status),
+            products: Array.isArray(payment?.metadata?.items)
+                ? payment.metadata.items.map(item => item?.name).filter(Boolean)
+                : [],
+            details: {
+                operator: payment?.metadata?.provider || payment?.provider,
+                phone: payment?.metadata?.phoneNumber || payment?.metadata?.phone,
+                deliveryAddress: payment?.metadata?.deliveryAddress,
+                cardType: payment?.metadata?.cardBrand,
+                lastDigits: payment?.metadata?.last4,
+                reason: payment?.metadata?.reason,
+                refundReason: payment?.metadata?.refundReason,
+                producerName: payment?.metadata?.producerName
             }
-        ])
+        })
 
         // Computed properties
         const filteredTransactions = computed(() => {
@@ -706,8 +660,10 @@ export default {
         })
 
         const supportedProducers = computed(() => {
-            // Simuler des producteurs uniques basés sur les transactions
-            return new Set(transactions.value.flatMap(t => t.products)).size
+            const names = transactions.value
+                .map(t => t?.details?.producerName)
+                .filter(Boolean)
+            return new Set(names).size
         })
 
         const filtersApplied = computed(() => {
@@ -715,10 +671,11 @@ export default {
                 filters.value.period !== 'all' || filters.value.search
         })
 
-        const currentBalance = computed(() => {
-            // Simuler un solde (dans un cas réel, cela viendrait d'une API)
-            return 25000
-        })
+        const currentBalance = computed(() =>
+            transactions.value
+                .filter(t => t.status === 'pending')
+                .reduce((sum, t) => sum + Number(t.amount || 0), 0)
+        )
 
         // Methods
         const formatDate = (dateString) => {
@@ -817,9 +774,19 @@ export default {
             window.scrollTo({ top: 0, behavior: 'smooth' })
         }
 
+        const fetchTransactions = async () => {
+            try {
+                const payments = await paymentService.getUserPayments()
+                transactions.value = Array.isArray(payments)
+                    ? payments.map(mapPaymentToTransaction)
+                    : []
+            } catch (error) {
+                transactions.value = []
+            }
+        }
+
         onMounted(() => {
-            // Charger les transactions depuis l'API
-            // fetchTransactions()
+            fetchTransactions()
         })
 
         return {
@@ -995,3 +962,4 @@ export default {
     outline-offset: 2px;
 }
 </style>
+

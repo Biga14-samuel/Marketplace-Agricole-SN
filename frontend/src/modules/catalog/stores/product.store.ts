@@ -2,16 +2,27 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Product, ProductFilter, ProductsSearchResponse } from '../services/models/product.model'
+import type {
+  Product as ProductModel,
+  ProductFilter,
+  ProductsSearchResponse,
+  CreateProductRequest,
+  UpdateProductRequest
+} from '../services/models/product.model'
+import { Product } from '../services/models/product.model'
 import catalogService from '../services/catalog.service'
+
+type StoreSearchProductsResponse = Omit<ProductsSearchResponse, 'products'> & {
+  products: ProductModel[]
+}
 
 export const useProductStore = defineStore('product', () => {
   // State
-  const products = ref<Product[]>([])
-  const currentProduct = ref<Product | null>(null)
+  const products = ref<ProductModel[]>([])
+  const currentProduct = ref<ProductModel | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const searchResults = ref<ProductsSearchResponse | null>(null)
+  const searchResults = ref<StoreSearchProductsResponse | null>(null)
   const filters = ref<ProductFilter>({})
 
   // Getters
@@ -32,16 +43,23 @@ export const useProductStore = defineStore('product', () => {
   )
 
   // Actions
-  const searchProducts = async (params: any = {}) => {
+  const searchProducts = async (params: Record<string, unknown> = {}) => {
     loading.value = true
     error.value = null
     
     try {
       const result = await catalogService.searchProducts(params)
-      searchResults.value = result
-      products.value = result.products
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la recherche de produits'
+      const mappedProducts = result.products.map(item => Product.fromApiData(item))
+      searchResults.value = {
+        products: mappedProducts,
+        total: result.total,
+        page: 1,
+        limit: mappedProducts.length || 20,
+        total_pages: 1
+      }
+      products.value = mappedProducts
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la recherche de produits'
       console.error('Erreur recherche produits:', err)
     } finally {
       loading.value = false
@@ -53,11 +71,12 @@ export const useProductStore = defineStore('product', () => {
     error.value = null
     
     try {
-      const product = await catalogService.getProduct(productId)
+      const productData = await catalogService.getProduct(productId)
+      const product = Product.fromApiData(productData)
       currentProduct.value = product
       return product
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la récupération du produit'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la récupération du produit'
       console.error('Erreur récupération produit:', err)
       throw err
     } finally {
@@ -65,16 +84,17 @@ export const useProductStore = defineStore('product', () => {
     }
   }
 
-  const createProduct = async (productData: any) => {
+  const createProduct = async (productData: CreateProductRequest) => {
     loading.value = true
     error.value = null
     
     try {
-      const product = await catalogService.createProduct(productData)
+      const created = await catalogService.createProduct(productData)
+      const product = Product.fromApiData(created)
       products.value.push(product)
       return product
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la création du produit'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la création du produit'
       console.error('Erreur création produit:', err)
       throw err
     } finally {
@@ -82,22 +102,23 @@ export const useProductStore = defineStore('product', () => {
     }
   }
 
-  const updateProduct = async (productId: string | number, productData: any) => {
+  const updateProduct = async (productId: string | number, productData: UpdateProductRequest) => {
     loading.value = true
     error.value = null
     
     try {
-      const updatedProduct = await catalogService.updateProduct(productId, productData)
-      const index = products.value.findIndex(p => p.id === productId)
+      const updated = await catalogService.updateProduct(productId, productData)
+      const updatedProduct = Product.fromApiData(updated)
+      const index = products.value.findIndex(p => String(p.id) === String(productId))
       if (index !== -1) {
         products.value[index] = updatedProduct
       }
-      if (currentProduct.value?.id === productId) {
+      if (currentProduct.value && String(currentProduct.value.id) === String(productId)) {
         currentProduct.value = updatedProduct
       }
       return updatedProduct
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la mise à jour du produit'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la mise à jour du produit'
       console.error('Erreur mise à jour produit:', err)
       throw err
     } finally {
@@ -111,12 +132,12 @@ export const useProductStore = defineStore('product', () => {
     
     try {
       await catalogService.deleteProduct(productId)
-      products.value = products.value.filter(p => p.id !== productId)
-      if (currentProduct.value?.id === productId) {
+      products.value = products.value.filter(p => String(p.id) !== String(productId))
+      if (currentProduct.value && String(currentProduct.value.id) === String(productId)) {
         currentProduct.value = null
       }
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la suppression du produit'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la suppression du produit'
       console.error('Erreur suppression produit:', err)
       throw err
     } finally {

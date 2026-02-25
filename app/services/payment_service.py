@@ -198,13 +198,23 @@ class PaymentService:
     # LOGIQUE MÉTIER - PAYMENTMETHOD
     # ========================================================================
     
-    def create_payment_method(
+    def create_payment_method_for_user(
         self, 
-        payment_method_data: PaymentMethodCreate
+        payment_method_data: PaymentMethodCreate,
+        user_id: int  # ✅ FIX SÉCURITÉ: user_id passé explicitement depuis le JWT
     ) -> PaymentMethodResponse:
-        """Crée un nouveau moyen de paiement sauvegardé"""
+        """
+        Crée un nouveau moyen de paiement sauvegardé pour un utilisateur spécifique.
+        
+        ⚠️ SÉCURITÉ: user_id doit toujours venir du JWT (current_user), 
+        jamais du body de la requête.
+        """
         try:
-            payment_method = self.repository.create_payment_method(payment_method_data)
+            # Créer un dict avec toutes les données + user_id
+            method_dict = payment_method_data.model_dump()
+            method_dict['user_id'] = user_id
+            
+            payment_method = self.repository.create_payment_method_dict(method_dict)
             self.db.commit()
             self.db.refresh(payment_method)
             return PaymentMethodResponse.model_validate(payment_method)
@@ -215,6 +225,23 @@ class PaymentService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Erreur lors de la création du moyen de paiement : {str(e)}"
             )
+    
+    # ⚠️ DEPRECATED: Utiliser create_payment_method_for_user à la place
+    def create_payment_method(
+        self, 
+        payment_method_data: PaymentMethodCreate
+    ) -> PaymentMethodResponse:
+        """
+        DEPRECATED: Cette méthode est conservée pour compatibilité mais ne devrait plus être utilisée.
+        Utiliser create_payment_method_for_user à la place.
+        """
+        # Si payment_method_data contient user_id (ancien code), l'utiliser
+        if hasattr(payment_method_data, 'user_id'):
+            return self.create_payment_method_for_user(payment_method_data, payment_method_data.user_id)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="user_id manquant - utiliser create_payment_method_for_user"
+        )
     
     def get_payment_method(self, method_id: int) -> PaymentMethodResponse:
         """Récupère un moyen de paiement par son ID"""

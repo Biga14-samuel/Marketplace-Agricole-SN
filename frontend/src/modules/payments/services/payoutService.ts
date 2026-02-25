@@ -1,6 +1,7 @@
 // @ts-nocheck
 // frontend/src/modules/payments/services/payoutService.ts
-import axios, { AxiosResponse } from 'axios'
+import axios from 'axios'
+import type { AxiosResponse } from 'axios'
 import type {
     Payout,
     PayoutRequest,

@@ -273,7 +273,7 @@ export const DEFAULT_COMPANY_INFO = {
     SWIFT_CODE: 'UNAFCMCX',
 
     // Informations légales supplémentaires
-    LEGAL_REPRESENTATIVE: 'Jean Dupont',
+    LEGAL_REPRESENTATIVE: 'Representant legal',
     COMMERCIAL_REGISTER: 'N° 2023/12345',
     INSURANCE_POLICY: 'POLICE123456'
 } as const;
@@ -422,11 +422,7 @@ export const LANGUAGE_LABELS: Record<SupportedLanguage, string> = {
 
 // ==================== DEVISES SUPPORTÉES ====================
 export const SUPPORTED_CURRENCIES = {
-    XAF: 'XAF',
-    XOF: 'XOF',
-    EUR: 'EUR',
-    USD: 'USD',
-    GBP: 'GBP'
+    XAF: 'XAF'
 } as const;
 
 export type SupportedCurrency = typeof SUPPORTED_CURRENCIES[keyof typeof SUPPORTED_CURRENCIES];
@@ -646,23 +642,14 @@ export function formatCurrency(
     };
 
     const currencySymbols = {
-        [SUPPORTED_CURRENCIES.XAF]: 'FCFA',
-        [SUPPORTED_CURRENCIES.XOF]: 'CFA',
-        [SUPPORTED_CURRENCIES.EUR]: '€',
-        [SUPPORTED_CURRENCIES.USD]: '$',
-        [SUPPORTED_CURRENCIES.GBP]: '£'
+        [SUPPORTED_CURRENCIES.XAF]: 'FCFA'
     };
 
     const localeString = localeMap[locale] || 'fr-FR';
     const symbol = currencySymbols[currency];
 
-    // Pour XAF/XOF, pas de décimales
-    if (currency === SUPPORTED_CURRENCIES.XAF || currency === SUPPORTED_CURRENCIES.XOF) {
-        return `${Math.round(amount).toLocaleString(localeString)} ${symbol}`;
-    }
-
-    // Pour les autres devises, avec 2 décimales
-    return `${amount.toLocaleString(localeString, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${symbol}`;
+    // XAF: pas de décimales
+    return `${Math.round(amount).toLocaleString(localeString)} ${symbol}`;
 }
 
 /**

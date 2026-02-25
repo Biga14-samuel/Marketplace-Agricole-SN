@@ -380,12 +380,8 @@ export class PaymentValidators {
         if (allowDecimals) {
             const decimalPlaces = (numericAmount.toString().split('.')[1] || '').length;
 
-            if (currency === 'EUR' && decimalPlaces > 2) {
-                errors.push('Le montant en EUR ne peut avoir que 2 décimales');
-            }
-
-            if (currency === 'XOF' && decimalPlaces > 0) {
-                errors.push('Le montant en XOF ne doit pas contenir de décimales');
+            if (currency === 'XAF' && decimalPlaces > 0) {
+                errors.push('Le montant en XAF ne doit pas contenir de décimales');
             }
         }
 
@@ -920,6 +916,7 @@ export class PaymentValidators {
 
 // Exports de fonctions utilitaires simplifiées
 export const validatePhone = (phone: string) => PaymentValidators.validatePhoneNumber(phone);
+export const validatePhoneNumber = (phone: string) => PaymentValidators.validatePhoneNumber(phone);
 export const validateAmount = (amount: number | string, options?: Record<string, unknown>) =>
     PaymentValidators.validateAmount(amount, options);
 export const validateEmail = (email: string) => PaymentValidators.validateEmail(email);
@@ -927,49 +924,5 @@ export const validateReference = (reference: string) =>
     PaymentValidators.validatePaymentReference(reference);
 export const validateTransactionCode = (code: string, operator?: string) =>
     PaymentValidators.validateTransactionCode(code, operator as any);
-
-// Exemple d'utilisation
-export function demonstrateValidators(): void {
-    console.log('=== Démonstration des validateurs ===\n');
-
-    // Test téléphone
-    const phones = ['677123456', '237677123456', '771234567', '123456789', 'abc'];
-
-    phones.forEach(phone => {
-        const result = PaymentValidators.validatePhoneNumber(phone);
-        console.log(`Téléphone ${phone}: ${result.isValid ? '✓' : '✗'}`);
-        if (!result.isValid) console.log(`  Erreurs: ${result.errors.join(', ')}`);
-    });
-
-    console.log('\n---\n');
-
-    // Test montant
-    const amounts = [
-        { value: '500', desc: '500 XAF' },
-        { value: '500.50', desc: '500.50 XAF' },
-        { value: '0', desc: '0 XAF' },
-        { value: '100000000', desc: '100M XAF' }
-    ];
-
-    amounts.forEach(({ value, desc }) => {
-        const result = PaymentValidators.validateAmount(value, { min: 100, max: 10000000 });
-        console.log(`Montant ${desc}: ${result.isValid ? '✓' : '✗'}`);
-        if (!result.isValid) console.log(`  Erreurs: ${result.errors.join(', ')}`);
-    });
-
-    console.log('\n---\n');
-
-    // Test carte bancaire
-    const cards = ['4111111111111111', '5500000000000004', '1234567890123456', 'abc'];
-
-    cards.forEach(card => {
-        const result = PaymentValidators.validateCreditCard(card);
-        console.log(`Carte ${card.substring(0, 6)}...: ${result.isValid ? '✓' : '✗'}`);
-        if (result.isValid) console.log(`  Type: ${result.cardType}, Émetteur: ${result.issuer}`);
-    });
-}
-
-// Exécuter la démonstration si le fichier est exécuté directement
-if (require.main === module) {
-    demonstrateValidators();
-}
+export const validateBankAccount = (accountNumber: string, bankCode?: string) =>
+    PaymentValidators.validateBankAccount(accountNumber, bankCode);

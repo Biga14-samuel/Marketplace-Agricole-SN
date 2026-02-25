@@ -25,6 +25,11 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <router-link to="/producer/settings"
+                            class="px-4 py-3 bg-white text-forest-700 border border-forest-200 rounded-xl shadow-sm hover:shadow-md hover:bg-forest-50 transition-all duration-300 ease-organic flex items-center space-x-2">
+                            <span>⚙️</span>
+                            <span class="hidden sm:inline">Paramètres</span>
+                        </router-link>
                         <!-- Sélecteur de période -->
                         <div class="flex bg-forest-50 rounded-lg p-1">
                             <button @click="selectedPeriod = 'week'"
@@ -1035,8 +1040,12 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useProducerStore } from '../stores/useProducerStore'
+import { ProducerProfileService } from '../services'
+import { getErrorMessage } from '@/shared/utils/error-handler'
 
 const router = useRouter()
+const store = useProducerStore()
 
 // État de l'interface
 const activeTab = ref('farm')
@@ -1055,72 +1064,33 @@ const currentWeek = ref(new Date())
 const currentMonth = ref(new Date())
 
 // Données
-const tabs = [
+const tabs = computed(() => [
     { id: 'farm', label: 'Horaires ferme', icon: '🏡', badge: null },
-    { id: 'slots', label: 'Créneaux', icon: '🕒', badge: '24' },
+    { id: 'slots', label: 'Créneaux', icon: '🕒', badge: totalSlots.value > 0 ? String(totalSlots.value) : null },
     { id: 'calendar', label: 'Calendrier', icon: '🗓️', badge: null }
-]
+])
+
+const createDefaultFarmSchedule = () => ([
+    { id: 1, name: 'Lundi', isOpen: false, openTime: '08:00', closeTime: '17:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' },
+    { id: 2, name: 'Mardi', isOpen: false, openTime: '08:00', closeTime: '17:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' },
+    { id: 3, name: 'Mercredi', isOpen: false, openTime: '08:00', closeTime: '17:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' },
+    { id: 4, name: 'Jeudi', isOpen: false, openTime: '08:00', closeTime: '17:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' },
+    { id: 5, name: 'Vendredi', isOpen: false, openTime: '08:00', closeTime: '17:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' },
+    { id: 6, name: 'Samedi', isOpen: false, openTime: '08:00', closeTime: '14:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' },
+    { id: 7, name: 'Dimanche', isOpen: false, openTime: '08:00', closeTime: '12:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' }
+])
 
 // Horaires de la ferme
-const farmSchedule = ref([
-    { id: 1, name: 'Lundi', isOpen: true, openTime: '09:00', closeTime: '18:00', hasLunchBreak: true, lunchStart: '12:30', lunchEnd: '14:00' },
-    { id: 2, name: 'Mardi', isOpen: true, openTime: '09:00', closeTime: '18:00', hasLunchBreak: true, lunchStart: '12:30', lunchEnd: '14:00' },
-    { id: 3, name: 'Mercredi', isOpen: true, openTime: '09:00', closeTime: '18:00', hasLunchBreak: true, lunchStart: '12:30', lunchEnd: '14:00' },
-    { id: 4, name: 'Jeudi', isOpen: true, openTime: '09:00', closeTime: '18:00', hasLunchBreak: true, lunchStart: '12:30', lunchEnd: '14:00' },
-    { id: 5, name: 'Vendredi', isOpen: true, openTime: '09:00', closeTime: '18:00', hasLunchBreak: true, lunchStart: '12:30', lunchEnd: '14:00' },
-    { id: 6, name: 'Samedi', isOpen: true, openTime: '09:00', closeTime: '17:00', hasLunchBreak: false, lunchStart: '', lunchEnd: '' },
-    { id: 7, name: 'Dimanche', isOpen: false, openTime: '', closeTime: '', hasLunchBreak: false, lunchStart: '', lunchEnd: '' }
-])
+const farmSchedule = ref(createDefaultFarmSchedule())
 
 // Horaires spéciaux
-const specialSchedules = ref([
-    {
-        id: 1,
-        title: 'Fête du Printemps',
-        icon: '🌸',
-        dateRange: '25 mars 2024',
-        description: 'Journée portes ouvertes avec dégustations',
-        hours: '10h-20h',
-        affectedPoints: 3,
-        status: 'active'
-    },
-    {
-        id: 2,
-        title: 'Jour férié',
-        icon: '🎉',
-        dateRange: '1er mai 2024',
-        description: 'Fermeture exceptionnelle',
-        hours: 'Fermé',
-        affectedPoints: 2,
-        status: 'upcoming'
-    }
-])
+const specialSchedules = ref<any[]>([])
 
 // Points de retrait
-const pickupPoints = ref([
-    { id: 1, name: 'Ferme principale', icon: '🏡', address: '123 Route des Vergers', slotsCount: 12, status: 'active' },
-    { id: 2, name: 'Marché central', icon: '🏪', address: 'Place du Marché', slotsCount: 6, status: 'active' },
-    { id: 3, name: 'Boutique urbaine', icon: '🛒', address: '15 Rue des Artisans', slotsCount: 8, status: 'inactive' }
-])
+const pickupPoints = ref<any[]>([])
 
 // Créneaux
-const slots = ref([
-    { id: 1, pickupPointId: 1, dayOfWeek: 1, startTime: '09:00', endTime: '12:00', maxOrders: 15, currentOrders: 8, duration: '3h', capacity: 53 },
-    { id: 2, pickupPointId: 1, dayOfWeek: 1, startTime: '14:00', endTime: '18:00', maxOrders: 20, currentOrders: 12, duration: '4h', capacity: 60 },
-    { id: 3, pickupPointId: 1, dayOfWeek: 2, startTime: '09:00', endTime: '12:00', maxOrders: 15, currentOrders: 5, duration: '3h', capacity: 33 },
-    { id: 4, pickupPointId: 2, dayOfWeek: 3, startTime: '16:00', endTime: '19:00', maxOrders: 10, currentOrders: 7, duration: '3h', capacity: 70 }
-])
-
-// Données d'occupation
-const occupancyData = ref([
-    { name: 'Lundi', shortName: 'Lun', date: '18 déc', occupancy: 75, reservations: 12 },
-    { name: 'Mardi', shortName: 'Mar', date: '19 déc', occupancy: 68, reservations: 10 },
-    { name: 'Mercredi', shortName: 'Mer', date: '20 déc', occupancy: 82, reservations: 15 },
-    { name: 'Jeudi', shortName: 'Jeu', date: '21 déc', occupancy: 90, reservations: 18 },
-    { name: 'Vendredi', shortName: 'Ven', date: '22 déc', occupancy: 95, reservations: 20 },
-    { name: 'Samedi', shortName: 'Sam', date: '23 déc', occupancy: 45, reservations: 7 },
-    { name: 'Dimanche', shortName: 'Dim', date: '24 déc', occupancy: 20, reservations: 3 }
-])
+const slots = ref<any[]>([])
 
 // Formulaire de créneau
 const slotForm = reactive({
@@ -1162,16 +1132,61 @@ const currentSlots = computed(() => {
 const activePickupPoints = computed(() => pickupPoints.value.filter(p => p.status === 'active').length)
 const totalPickupPoints = computed(() => pickupPoints.value.length)
 const totalSlots = computed(() => slots.value.length)
-const upcomingOrders = computed(() => slots.value.reduce((sum, slot) => sum + slot.currentOrders, 0))
-const upcomingOrdersChange = computed(() => 12) // Pourcentage de changement
+const upcomingOrders = computed(() => slots.value.reduce((sum, slot) => sum + Number(slot.currentOrders || 0), 0))
+const upcomingOrdersChange = computed(() => {
+    const now = new Date()
+    const nextWeek = addDays(now, 7)
+    const previousWeek = addDays(now, -7)
+
+    let upcoming = 0
+    let previous = 0
+
+    for (const slot of slots.value) {
+        if (!slot.date) continue
+        const slotDate = new Date(slot.date)
+        if (slotDate >= now && slotDate <= nextWeek) {
+            upcoming += Number(slot.currentOrders || 0)
+        }
+        if (slotDate < now && slotDate >= previousWeek) {
+            previous += Number(slot.currentOrders || 0)
+        }
+    }
+
+    if (previous <= 0) return upcoming > 0 ? 100 : 0
+    const change = Math.round(((upcoming - previous) / previous) * 100)
+    return Math.max(change, 0)
+})
 const averageOccupancy = computed(() => {
+    if (slots.value.length === 0) return 0
     const total = slots.value.reduce((sum, slot) => sum + slot.capacity, 0)
     return Math.round(total / slots.value.length)
 })
 const totalHours = computed(() => {
-    const openDays = farmSchedule.value.filter(day => day.isOpen).length
-    return openDays * 8 // Estimation simplifiée
+    return farmSchedule.value.reduce((sum, day) => {
+        if (!day.isOpen) return sum
+        const open = parseTime(day.openTime)
+        const close = parseTime(day.closeTime)
+        if (!open || !close) return sum
+        const diff = (close.getTime() - open.getTime()) / (1000 * 60 * 60)
+        return diff > 0 ? sum + diff : sum
+    }, 0)
 })
+
+const occupancyData = computed(() =>
+    weekDays.value.map(day => {
+        const daySlots = slots.value.filter(slot => slot.dayOfWeek === day.id)
+        const maxOrders = daySlots.reduce((sum, slot) => sum + Number(slot.maxOrders || 0), 0)
+        const currentOrders = daySlots.reduce((sum, slot) => sum + Number(slot.currentOrders || 0), 0)
+        const occupancy = maxOrders > 0 ? Math.round((currentOrders / maxOrders) * 100) : 0
+        return {
+            name: day.name,
+            shortName: day.name.slice(0, 3),
+            date: day.date,
+            occupancy,
+            reservations: currentOrders
+        }
+    })
+)
 
 // Dates
 const currentWeekRange = computed(() => {
@@ -1183,6 +1198,43 @@ const currentWeekRange = computed(() => {
 
 const currentMonthYear = computed(() => {
     return currentMonth.value.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+})
+
+const calendarEventsByDate = computed(() => {
+    const events = new Map<string, Array<{ id: string; type: string; time: string; title: string; location: string; timeRange: string; icon: string }>>()
+
+    for (const slot of slots.value) {
+        if (!slot.date) continue
+        const point = pickupPoints.value.find(p => String(p.id) === String(slot.pickupPointId))
+        const list = events.get(slot.date) || []
+        list.push({
+            id: `slot-${slot.id}`,
+            type: 'slot',
+            icon: '🕒',
+            time: slot.startTime,
+            title: 'Créneau de retrait',
+            location: point?.name || 'Point de retrait',
+            timeRange: `${slot.startTime} - ${slot.endTime}`
+        })
+        events.set(slot.date, list)
+    }
+
+    for (const special of specialSchedules.value) {
+        if (!special.date) continue
+        const list = events.get(special.date) || []
+        list.push({
+            id: `special-${special.id}`,
+            type: special.hours === 'Fermé' ? 'holiday' : 'special',
+            icon: special.icon || '🎉',
+            time: '00:00',
+            title: special.title,
+            location: 'Ferme',
+            timeRange: special.hours || 'Exception horaire'
+        })
+        events.set(special.date, list)
+    }
+
+    return events
 })
 
 // Jours du calendrier
@@ -1220,28 +1272,7 @@ const calendarDays = computed(() => {
 
 const selectedDateEvents = computed(() => {
     if (!selectedDate.value) return []
-
-    // Simuler des événements pour la démo
-    return [
-        {
-            id: 1,
-            type: 'slot',
-            icon: '🕒',
-            title: 'Créneau de retrait',
-            location: 'Ferme principale',
-            timeRange: '09:00 - 12:00',
-            capacity: '12/15 places'
-        },
-        {
-            id: 2,
-            type: 'special',
-            icon: '🎉',
-            title: 'Portes ouvertes',
-            location: 'Marché central',
-            timeRange: '10:00 - 18:00',
-            capacity: 'Événement spécial'
-        }
-    ]
+    return calendarEventsByDate.value.get(selectedDate.value) || []
 })
 
 const selectedDateFormatted = computed(() => {
@@ -1266,21 +1297,24 @@ function createCalendarDay(date: Date, inMonth: boolean) {
     const isToday = date.getDate() === today.getDate() &&
         date.getMonth() === today.getMonth() &&
         date.getFullYear() === today.getFullYear()
-
-    const hasEvents = [5, 10, 15, 20, 25].includes(date.getDate())
-    const eventCount = hasEvents ? (date.getDate() % 3) + 1 : 0
+    const dateKey = date.toISOString().split('T')[0]
+    const dayEvents = calendarEventsByDate.value.get(dateKey) || []
+    const hasEvents = dayEvents.length > 0
+    const eventCount = dayEvents.length
 
     return {
-        date: date.toISOString().split('T')[0],
+        date: dateKey,
         day: date.getDate(),
         inMonth,
         isToday,
         hasEvents,
         eventCount,
-        events: hasEvents ? [
-            { id: 1, type: 'slot', time: '09:00', title: 'Retrait' },
-            { id: 2, type: 'special', time: '14:00', title: 'Événement' }
-        ].slice(0, eventCount) : []
+        events: dayEvents.map(event => ({
+            id: event.id,
+            type: event.type,
+            time: event.time,
+            title: event.title
+        }))
     }
 }
 
@@ -1347,9 +1381,138 @@ function parseTime(time: string): Date | null {
     return date
 }
 
+function calculateDurationBetween(start: string, end: string): string {
+    const startTime = parseTime(start)
+    const endTime = parseTime(end)
+    if (!startTime || !endTime) return '0h'
+    const diff = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
+    return `${diff > 0 ? diff : 0}h`
+}
+
+function getIsoDateForDay(dayId: number): string {
+    const base = new Date(currentWeek.value)
+    const target = addDays(base, dayId - 1)
+    return target.toISOString().split('T')[0]
+}
+
+function pickupPointIcon(pointType?: string) {
+    if (pointType === 'farm') return '🏡'
+    if (pointType === 'farmers_market') return '🏪'
+    if (pointType === 'delivery_point') return '📦'
+    if (pointType === 'drive_thru') return '🚗'
+    return '📍'
+}
+
+function pickupPointAddress(point: any) {
+    const address = point?.address
+    if (!address) return 'Adresse non renseignée'
+    return [address.street, address.city, address.postal_code].filter(Boolean).join(', ')
+}
+
+function mapSlot(raw: any) {
+    const maxOrders = Number(raw.max_orders ?? raw.maxOrders ?? raw.capacity?.max_orders ?? 0)
+    const currentOrders = Number(raw.current_orders ?? raw.currentOrders ?? raw.bookings?.current_orders ?? 0)
+    const fallbackDay = raw.date ? (() => {
+        const d = new Date(String(raw.date))
+        const js = d.getDay()
+        return js === 0 ? 7 : js
+    })() : 1
+    const dayOfWeek = Number(raw.day_of_week ?? raw.dayOfWeek ?? fallbackDay)
+    const startTime = String(raw.start_time ?? raw.startTime ?? '')
+    const endTime = String(raw.end_time ?? raw.endTime ?? '')
+    const duration = calculateDurationBetween(startTime, endTime)
+    const capacity = maxOrders > 0 ? Math.round((currentOrders / maxOrders) * 100) : 0
+
+    return {
+        id: String(raw.id),
+        pickupPointId: String(raw.pickup_point_id ?? raw.pickupPointId),
+        dayOfWeek,
+        startTime,
+        endTime,
+        maxOrders,
+        currentOrders,
+        duration,
+        capacity,
+        date: String(raw.date ?? getIsoDateForDay(dayOfWeek))
+    }
+}
+
+async function loadProducerScheduleData() {
+    try {
+        await store.fetchPickupPoints()
+        pickupPoints.value = ((store.pickupPoints as any[]) || []).map(point => ({
+            id: String(point.id),
+            name: point.name || 'Point de retrait',
+            icon: pickupPointIcon(point.type),
+            address: pickupPointAddress(point),
+            slotsCount: 0,
+            status: point.is_active ? 'active' : 'inactive'
+        }))
+
+        await store.fetchAllSlots()
+        slots.value = ((store.slots as any[]) || []).map(mapSlot)
+
+        const pointCounters = new Map<string, number>()
+        for (const slot of slots.value) {
+            pointCounters.set(String(slot.pickupPointId), (pointCounters.get(String(slot.pickupPointId)) || 0) + 1)
+        }
+        pickupPoints.value = pickupPoints.value.map(point => ({
+            ...point,
+            slotsCount: pointCounters.get(String(point.id)) || 0
+        }))
+
+        if (!selectedPickupPoint.value && pickupPoints.value.length > 0) {
+            selectedPickupPoint.value = pickupPoints.value[0]
+        } else if (selectedPickupPoint.value) {
+            const refreshed = pickupPoints.value.find(point => String(point.id) === String(selectedPickupPoint.value?.id))
+            selectedPickupPoint.value = refreshed || pickupPoints.value[0] || null
+        }
+
+        try {
+            const schedule = await ProducerProfileService.getSchedule()
+            if (Array.isArray(schedule) && schedule.length > 0) {
+                const nextSchedule = createDefaultFarmSchedule()
+                for (const item of schedule) {
+                    const day = nextSchedule.find(d => d.id === Number((item as any).day_of_week))
+                    if (!day) continue
+                    day.isOpen = Boolean((item as any).is_active)
+                    day.openTime = String((item as any).open_time || day.openTime)
+                    day.closeTime = String((item as any).close_time || day.closeTime)
+                }
+                farmSchedule.value = nextSchedule
+            }
+        } catch {
+            // Aucun horaire configuré côté API: on garde la grille par défaut.
+        }
+
+        try {
+            const exceptions = await ProducerProfileService.getScheduleExceptions()
+            specialSchedules.value = (exceptions || []).map((exception: any) => {
+                const date = String(exception.date || '')
+                const closed = Boolean(exception.is_closed)
+                return {
+                    id: String(exception.id),
+                    title: exception.reason || 'Exception horaire',
+                    icon: closed ? '🚫' : '🎉',
+                    dateRange: date ? new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Date inconnue',
+                    description: closed ? 'Fermeture exceptionnelle' : 'Horaires exceptionnels',
+                    hours: closed ? 'Fermé' : `${exception.special_hours?.open_time || '--:--'} - ${exception.special_hours?.close_time || '--:--'}`,
+                    affectedPoints: pickupPoints.value.length,
+                    status: date && new Date(date) < new Date() ? 'past' : 'active',
+                    date
+                }
+            })
+        } catch {
+            specialSchedules.value = []
+        }
+    } catch (error: unknown) {
+        showToast('Erreur de chargement', getErrorMessage(error))
+    }
+}
+
 // Actions
 function openQuickScheduleModal() {
-    console.log('Ouvrir planification rapide')
+    activeTab.value = 'slots'
 }
 
 function copyScheduleToAll() {
@@ -1368,39 +1531,40 @@ function copyScheduleToAll() {
 }
 
 function resetFarmSchedule() {
-    farmSchedule.value = farmSchedule.value.map(day => ({
-        ...day,
-        isOpen: day.id !== 7,
-        openTime: '09:00',
-        closeTime: '18:00',
-        hasLunchBreak: day.id < 6,
-        lunchStart: '12:30',
-        lunchEnd: '14:00'
-    }))
+    farmSchedule.value = createDefaultFarmSchedule()
 
     showToast('Horaires réinitialisés', 'Les horaires par défaut ont été appliqués')
 }
 
-function saveFarmSchedule() {
-    console.log('Sauvegarder horaires ferme:', farmSchedule.value)
-    showToast('Horaires sauvegardés', 'Les horaires de la ferme ont été mis à jour')
+async function saveFarmSchedule() {
+    try {
+        const payload = farmSchedule.value.map(day => ({
+            day_of_week: day.id,
+            open_time: day.isOpen ? day.openTime : '00:00',
+            close_time: day.isOpen ? day.closeTime : '00:00',
+            is_active: day.isOpen
+        }))
+        await ProducerProfileService.updateSchedule(payload as any)
+        showToast('Horaires sauvegardés', 'Les horaires de la ferme ont été mis à jour')
+    } catch (error: unknown) {
+        showToast('Erreur horaires', getErrorMessage(error))
+    }
 }
 
 function addSpecialSchedule() {
-    console.log('Ajouter horaire spécial')
+    showToast('Exception horaire', 'Ajoutez vos exceptions depuis la configuration horaire API.')
 }
 
-function editSpecialSchedule(schedule: any) {
-    console.log('Modifier horaire spécial:', schedule)
+function editSpecialSchedule(_schedule: any) {
+    showToast('Exception horaire', 'La modification d’exception sera ajoutée dans cette vue.')
 }
 
 function deleteSpecialSchedule(schedule: any) {
     specialSchedules.value = specialSchedules.value.filter(s => s.id !== schedule.id)
-    showToast('Horaire supprimé', 'L\'horaire spécial a été supprimé')
+    showToast('Horaire retiré', 'L’exception a été retirée de l’affichage local.')
 }
 
 function addPickupPoint() {
-    console.log('Ajouter point de retrait')
     router.push('/producer/pickup-points')
 }
 
@@ -1467,44 +1631,55 @@ function editSlot(slot: any) {
     showSlotModal.value = true
 }
 
-function deleteSlot(slot: any) {
+async function deleteSlot(slot: any) {
     if (confirm(`Êtes-vous sûr de vouloir supprimer le créneau du ${getDayName(slot.dayOfWeek)} de ${slot.startTime} à ${slot.endTime} ?`)) {
-        slots.value = slots.value.filter(s => s.id !== slot.id)
-        showToast('Créneau supprimé', 'Le créneau a été supprimé avec succès')
+        try {
+            await store.deleteSlot(String(slot.id))
+            await loadProducerScheduleData()
+            showToast('Créneau supprimé', 'Le créneau a été supprimé avec succès')
+        } catch (error: unknown) {
+            showToast('Erreur suppression', getErrorMessage(error))
+        }
     }
 }
 
-function saveSlot() {
-    if (editingSlot.value) {
-        // Mettre à jour le créneau existant
-        const index = slots.value.findIndex(s => s.id === editingSlot.value.id)
-        if (index !== -1) {
-            slots.value[index] = {
-                ...slots.value[index],
-                ...slotForm,
-                duration: calculateDuration(),
-                capacity: Math.round((slots.value[index].currentOrders / slotForm.maxOrders) * 100)
-            }
-        }
-        showToast('Créneau mis à jour', 'Les modifications ont été enregistrées')
-    } else {
-        // Ajouter un nouveau créneau
-        const newSlot = {
-            id: Math.max(...slots.value.map(s => s.id)) + 1,
-            pickupPointId: selectedPickupPoint.value?.id || 1,
-            ...slotForm,
-            currentOrders: 0,
-            duration: calculateDuration(),
-            capacity: 0
-        }
-        slots.value.push(newSlot)
-        showToast('Créneau créé', 'Le nouveau créneau a été ajouté')
+async function saveSlot() {
+    if (!selectedPickupPoint.value) {
+        showToast('Point manquant', 'Sélectionnez un point de retrait avant de continuer.')
+        return
+    }
+    if (!slotForm.startTime || !slotForm.endTime || slotForm.endTime <= slotForm.startTime) {
+        showToast('Horaire invalide', 'L’heure de fin doit être supérieure à l’heure de début.')
+        return
     }
 
-    closeSlotModal()
+    const payload = {
+        pickup_point_id: String(selectedPickupPoint.value.id),
+        date: getIsoDateForDay(slotForm.dayOfWeek),
+        day_of_week: slotForm.dayOfWeek,
+        start_time: slotForm.startTime,
+        end_time: slotForm.endTime,
+        max_orders: slotForm.maxOrders,
+        is_active: true
+    }
+
+    try {
+        if (editingSlot.value?.id) {
+            await store.updateSlot(String(editingSlot.value.id), payload as any)
+            showToast('Créneau mis à jour', 'Les modifications ont été enregistrées')
+        } else {
+            await store.createSlot(String(selectedPickupPoint.value.id), payload as any)
+            showToast('Créneau créé', 'Le nouveau créneau a été ajouté')
+        }
+        closeSlotModal()
+        await loadProducerScheduleData()
+    } catch (error: unknown) {
+        showToast('Erreur créneau', getErrorMessage(error))
+    }
 }
 
 function applyTemplate(template: string) {
+    openSlotModal()
     const templates = {
         morning: { startTime: '09:00', endTime: '12:00', maxOrders: 15 },
         afternoon: { startTime: '14:00', endTime: '18:00', maxOrders: 20 },
@@ -1512,7 +1687,6 @@ function applyTemplate(template: string) {
     }
 
     Object.assign(slotForm, templates[template as keyof typeof templates])
-    openSlotModal()
 }
 
 function previousMonth() {
@@ -1528,12 +1702,20 @@ function selectDate(day: any) {
 }
 
 function editCalendarEvent(event: any) {
-    console.log('Modifier événement:', event)
+    if (String(event.type) === 'slot') {
+        const slotId = String(event.id).replace('slot-', '')
+        const found = slots.value.find(slot => String(slot.id) === slotId)
+        if (found) {
+            editSlot(found)
+            return
+        }
+    }
+    showToast('Événement', 'La modification est disponible pour les créneaux.')
 }
 
 function generateOptimalSchedule() {
-    console.log('Générer planning optimisé')
-    showToast('Planning généré', 'Un planning optimisé a été créé basé sur vos données')
+    activeTab.value = 'slots'
+    showToast('Suggestion prête', 'Utilisez les modèles matin/après-midi/soir pour planifier rapidement.')
 }
 
 function showToast(message: string, description: string) {
@@ -1546,16 +1728,10 @@ function showToast(message: string, description: string) {
 }
 
 onMounted(() => {
-    // Sélectionner le premier point de retrait par défaut
-    if (pickupPoints.value.length > 0) {
-        selectedPickupPoint.value = pickupPoints.value[0]
-    }
-
     // Sélectionner la date d'aujourd'hui dans le calendrier
     const today = new Date()
     selectedDate.value = today.toISOString().split('T')[0]
-
-    console.log('ScheduleView monté')
+    void loadProducerScheduleData()
 })
 </script>
 

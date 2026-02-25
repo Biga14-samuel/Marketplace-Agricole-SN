@@ -276,7 +276,7 @@ export class StockMovementModel {
     // Obtenir la valeur totale formatée
     getFormattedTotalValue(): string {
         if (!this.total_value) return 'N/A';
-        return `${this.total_value.toFixed(2)} €`;
+        return `${this.total_value.toFixed(2)} FCFA`;
     }
 
     // Obtenir la description du mouvement

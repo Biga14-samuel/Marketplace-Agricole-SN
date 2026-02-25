@@ -54,78 +54,10 @@ export class CurrencyFormatter {
             name: 'Franc CFA d\'Afrique centrale',
             hasDecimals: false,
             decimalDigits: 0
-        }],
-        ['XOF', {
-            code: 'XOF',
-            symbol: 'FCFA',
-            name: 'Franc CFA d\'Afrique de l\'Ouest',
-            hasDecimals: false,
-            decimalDigits: 0
-        }],
-        ['EUR', {
-            code: 'EUR',
-            symbol: '€',
-            name: 'Euro',
-            hasDecimals: true,
-            decimalDigits: 2
-        }],
-        ['USD', {
-            code: 'USD',
-            symbol: '$',
-            name: 'Dollar américain',
-            hasDecimals: true,
-            decimalDigits: 2
-        }],
-        ['JPY', {
-            code: 'JPY',
-            symbol: '¥',
-            name: 'Yen japonais',
-            hasDecimals: false,
-            decimalDigits: 0
-        }],
-        ['CNY', {
-            code: 'CNY',
-            symbol: '¥',
-            name: 'Yuan chinois',
-            hasDecimals: true,
-            decimalDigits: 2
-        }],
-        ['GBP', {
-            code: 'GBP',
-            symbol: '£',
-            name: 'Livre sterling',
-            hasDecimals: true,
-            decimalDigits: 2
-        }],
-        ['CHF', {
-            code: 'CHF',
-            symbol: 'CHF',
-            name: 'Franc suisse',
-            hasDecimals: true,
-            decimalDigits: 2
-        }],
-        ['CAD', {
-            code: 'CAD',
-            symbol: 'CA$',
-            name: 'Dollar canadien',
-            hasDecimals: true,
-            decimalDigits: 2
-        }],
-        ['MXN', {
-            code: 'MXN',
-            symbol: 'MX$',
-            name: 'Peso mexicain',
-            hasDecimals: true,
-            decimalDigits: 2
         }]
     ]);
 
-    private static readonly XAF_EXCHANGE_RATES: Map<string, number> = new Map([
-        ['EUR', 0.001524], // 1 XAF = 0.001524 EUR
-        ['USD', 0.001667], // 1 XAF = 0.001667 USD
-        ['JPY', 0.184],    // 1 XAF = 0.184 JPY
-        ['XOF', 1],        // 1 XAF = 1 XOF (taux fixe)
-    ]);
+    private static readonly XAF_EXCHANGE_RATES: Map<string, number> = new Map();
 
     private defaultOptions: CurrencyFormatOptions = {
         showSymbol: true,
@@ -355,6 +287,16 @@ export class CurrencyFormatter {
      * Convertit un montant d'une devise vers le XAF
      */
     convertToXAF(amount: number, fromCurrency: string): ConvertedAmount {
+        if (fromCurrency.toUpperCase() === 'XAF') {
+            return {
+                amount: Math.round(amount),
+                fromCurrency,
+                toCurrency: 'XAF',
+                rate: 1,
+                date: new Date()
+            };
+        }
+
         const rate = CurrencyFormatter.XAF_EXCHANGE_RATES.get(fromCurrency.toUpperCase());
 
         if (!rate) {
@@ -376,6 +318,16 @@ export class CurrencyFormatter {
      * Convertit un montant du XAF vers une autre devise
      */
     convertFromXAF(amount: number, toCurrency: string): ConvertedAmount {
+        if (toCurrency.toUpperCase() === 'XAF') {
+            return {
+                amount: Math.round(amount),
+                fromCurrency: 'XAF',
+                toCurrency,
+                rate: 1,
+                date: new Date()
+            };
+        }
+
         const rate = CurrencyFormatter.XAF_EXCHANGE_RATES.get(toCurrency.toUpperCase());
 
         if (!rate) {
@@ -482,64 +434,18 @@ export class CurrencyFormatter {
     }
 }
 
-// Exemple d'utilisation
-export function demonstrateCurrencyFormatter(): void {
-    const formatter = new CurrencyFormatter();
-
-    console.log('=== Formatage XAF ===');
-
-    const amounts = [500, 1500, 12500, 1500000, 2750.50, 999999];
-
-    amounts.forEach(amount => {
-        console.log(`${amount} => ${formatter.formatXAF(amount)}`);
-    });
-
-    console.log('\n=== Formatage avec options ===');
-
-    // Exemples avec différentes options
-    const optionsExamples = [
-        { amount: 1500000, options: { compact: true } },
-        { amount: 500, options: { showSymbol: false } },
-        { amount: 12500, options: { thousandsSeparator: ',' } },
-        { amount: 2750.50, options: { symbolPosition: 'before' } },
-        { amount: 999999, options: { showCode: true } }
-    ];
-
-    optionsExamples.forEach(example => {
-        const result = formatter.formatXAF(example.amount, example.options);
-        console.log(`${example.amount} (${JSON.stringify(example.options)}) => ${result}`);
-    });
-
-    console.log('\n=== Conversion de devises ===');
-
-    // Conversion EUR vers XAF
-    try {
-        const conversion = formatter.convertToXAF(100, 'EUR');
-        console.log(`100 EUR = ${formatter.formatXAF(conversion.amount)} (taux: ${conversion.rate})`);
-    } catch (error) {
-        console.log(getErrorMessage(error));
-    }
-
-    console.log('\n=== Décomposition en billets ===');
-
-    const breakdown = formatter.breakDownAmount(14275);
-    console.log('14275 FCFA se décompose en:');
-    breakdown.forEach((count, denomination) => {
-        if (count > 0) {
-            console.log(`${count} x ${formatter.formatXAF(denomination)}`);
-        }
-    });
-}
-
-// Exécuter la démonstration si le fichier est exécuté directement
-if (require.main === module) {
-    demonstrateCurrencyFormatter();
-}
-
 // Exports additionnels pour une utilisation facile
 export const XAF_FORMATTER = new CurrencyFormatter();
 
 export function formatAsXAF(amount: number, options?: Partial<CurrencyFormatOptions>): string {
+    return XAF_FORMATTER.formatXAF(amount, options);
+}
+
+export function formatCurrencyXAF(amount: number, options?: Partial<CurrencyFormatOptions>): string {
+    return XAF_FORMATTER.formatXAF(amount, options);
+}
+
+export function formatCurrency(amount: number, options?: Partial<CurrencyFormatOptions>): string {
     return XAF_FORMATTER.formatXAF(amount, options);
 }
 

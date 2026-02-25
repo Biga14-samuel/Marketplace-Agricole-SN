@@ -72,23 +72,29 @@ print("[startup] MAIL_FROM=", settings.MAIL_FROM)
 print("[startup] FRONTEND_URL=", settings.FRONTEND_URL)
 
 # --- CONFIGURATION CORS ---
-# Configuration CORS sécurisée avec variables d'environnement
+# ✅ FIX CRITIQUE: Configuration CORS sécurisée
+# JAMAIS allow_origins=["*"] avec allow_credentials=True (interdit par spec CORS)
 allowed_origins = [
-    "http://localhost:5173",  # Frontend dev
-    "http://localhost:5174",  # Frontend dev (alternative port)
+    "http://localhost:5173",  # Frontend dev Vite
+    "http://localhost:5174",  # Frontend dev (port alternatif)
     "http://localhost:3000",  # Alternative frontend port
+    "http://127.0.0.1:5173",  # Localhost IP
 ]
 
-# En production, ajouter les domaines autorisés via une variable d'environnement
+# En production, ajouter les domaines autorisés via variable d'environnement
 if hasattr(settings, 'ALLOWED_ORIGINS') and settings.ALLOWED_ORIGINS:
-    allowed_origins.extend(settings.ALLOWED_ORIGINS.split(','))
+    additional_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(',') if origin.strip()]
+    allowed_origins.extend(additional_origins)
+
+print(f"[CORS] Origines autorisées: {allowed_origins}")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=allowed_origins,  # ✅ Liste explicite au lieu de ["*"]
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],  # Permet au frontend de lire tous les headers de réponse
 )
 
 # --- INCLUSION DES ROUTERS ---

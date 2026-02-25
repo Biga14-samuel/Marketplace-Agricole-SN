@@ -7,9 +7,13 @@
 
     <div class="relative z-10 max-w-6xl mx-auto px-6 py-10">
       <div class="mb-8 animate-enter">
-        <router-link to="/catalog/categories" class="text-forest-green hover:text-terracotta transition-organic">← Retour aux catégories</router-link>
-        <h1 class="text-4xl md:text-5xl font-serif font-bold text-forest-green mt-4">{{ category.name }}</h1>
-        <p class="text-nature-gray mt-2 max-w-2xl">{{ category.description }}</p>
+        <router-link to="/catalog/categories" class="text-forest-green hover:text-terracotta transition-organic">
+          ← Retour aux categories
+        </router-link>
+        <h1 class="text-4xl md:text-5xl font-serif font-bold text-forest-green mt-4">{{ category?.name || 'Categorie' }}</h1>
+        <p class="text-nature-gray mt-2 max-w-2xl">
+          {{ category?.description || 'Decouvrez les produits disponibles dans cette categorie.' }}
+        </p>
       </div>
 
       <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -22,112 +26,126 @@
         </div>
       </section>
 
-      <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div
-          v-for="(item, index) in category.products"
+      <div v-if="loading" class="py-12 text-center text-nature-gray">Chargement...</div>
+
+      <div v-else-if="!category" class="py-12 text-center text-nature-gray">
+        Categorie introuvable.
+      </div>
+
+      <section v-else-if="products.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <article
+          v-for="(item, index) in products"
           :key="item.id"
           class="product-card"
           :style="{ animationDelay: `${index * 0.08}s` }"
         >
-          <img :src="item.image" :alt="item.name" class="product-image" />
+          <img :src="item.image || ''" :alt="item.name" class="product-image" />
           <div class="product-body">
             <h3 class="text-xl font-semibold text-forest-green">{{ item.name }}</h3>
-            <p class="text-sm text-nature-gray">{{ item.origin }}</p>
+            <p class="text-sm text-nature-gray">{{ item.origin || 'Cameroun' }}</p>
             <div class="mt-4 flex items-center justify-between">
-              <span class="price">{{ item.price }} €</span>
-              <button class="btn-outline">Ajouter</button>
+              <span class="price">{{ formatCurrency(item.price) }}</span>
+              <router-link :to="`/catalog/products/${item.id}`" class="btn-outline">Voir</router-link>
             </div>
           </div>
-        </div>
+        </article>
+      </section>
+
+      <section v-else class="py-12 text-center text-nature-gray">
+        Aucun produit actif pour cette categorie.
       </section>
     </div>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'CategoryDetailView',
-  computed: {
-    category() {
-      const slug = this.$route.params.slug
-      const categories = {
-        'fruits-frais': {
-          name: 'Fruits frais',
-          description: 'Des fruits locaux, cueillis à maturité pour un goût incomparable.',
-          products: [
-            {
-              id: 1,
-              name: 'Pommes golden',
-              origin: 'Verger du Matin · 6km',
-              price: 3.2,
-              image: 'https://images.unsplash.com/photo-1567306226416-28f0efdc88ce?auto=format&fit=crop&w=900&q=80'
-            },
-            {
-              id: 2,
-              name: 'Poires williams',
-              origin: 'Verger du Matin · 6km',
-              price: 3.8,
-              image: 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?auto=format&fit=crop&w=900&q=80'
-            }
-          ]
-        },
-        'legumes-gourmands': {
-          name: 'Légumes gourmands',
-          description: 'Une sélection de légumes de saison pour des recettes équilibrées.',
-          products: [
-            {
-              id: 3,
-              name: 'Carottes nouvelles',
-              origin: 'Jardin des Sources · 5km',
-              price: 2.4,
-              image: 'https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=900&q=80'
-            },
-            {
-              id: 4,
-              name: 'Courgettes vertes',
-              origin: 'Jardin des Sources · 5km',
-              price: 2.9,
-              image: 'https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=900&q=80'
-            }
-          ]
-        },
-        'epicerie-artisanale': {
-          name: 'Épicerie artisanale',
-          description: 'Des produits raffinés et faits main pour sublimer vos plats.',
-          products: [
-            {
-              id: 5,
-              name: 'Huile d\'olive premium',
-              origin: 'Maison du Soleil · 30km',
-              price: 9.6,
-              image: 'https://images.unsplash.com/photo-1502741338009-cac2772e18bc?auto=format&fit=crop&w=900&q=80'
-            },
-            {
-              id: 6,
-              name: 'Miel de fleurs',
-              origin: 'Rucher des Collines · 22km',
-              price: 7.1,
-              image: 'https://images.unsplash.com/photo-1471943311424-646960669fbc?auto=format&fit=crop&w=900&q=80'
-            }
-          ]
-        }
-      }
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { useCategoryStore } from '../store/modules/category.store'
+import { useProductStore } from '../store/modules/product.store'
 
-      return categories[slug] || {
-        name: 'Catégorie gourmande',
-        description: 'Découvrez des produits sélectionnés avec soin pour votre table.',
-        products: []
-      }
-    },
-    stats() {
-      return [
-        { label: 'Produits', value: this.category.products.length || 12, icon: '🧺' },
-        { label: 'Producteurs', value: 8, icon: '👩‍🌾' },
-        { label: 'Note moyenne', value: '4.8', icon: '⭐' }
-      ]
+const route = useRoute()
+const categoryStore = useCategoryStore()
+const productStore = useProductStore()
+
+const loading = ref(true)
+const category = ref<any | null>(null)
+const products = ref<any[]>([])
+
+const slugify = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('fr-CM', {
+    style: 'currency',
+    currency: 'XAF',
+    maximumFractionDigits: 0
+  }).format(Number.isFinite(amount) ? amount : 0)
+
+const loadCategoryDetail = async () => {
+  loading.value = true
+  category.value = null
+  products.value = []
+
+  try {
+    await categoryStore.fetchAllCategories(true)
+
+    const slugParam = String(route.params.slug || '').toLowerCase()
+    const foundCategory = categoryStore.allCategories.find((item: any) =>
+      item.id === slugParam || slugify(item.name || '') === slugParam
+    )
+
+    category.value = foundCategory || null
+
+    if (!foundCategory?.id) {
+      return
     }
+
+    const response = await productStore.searchProducts({
+      category_id: foundCategory.id,
+      page: 1,
+      limit: 24,
+      sort_by: 'created_at',
+      sort_order: 'desc'
+    })
+
+    products.value = (response?.products || []).filter((item: any) => item?.is_active !== false)
+  } catch {
+    category.value = null
+    products.value = []
+  } finally {
+    loading.value = false
   }
 }
+
+const stats = computed(() => {
+  const producerCount = new Set(
+    products.value
+      .map((item: any) => item.producer_id || item.producer?.id)
+      .filter(Boolean)
+  ).size
+
+  const averagePrice = products.value.length
+    ? Math.round(
+      products.value.reduce((total: number, item: any) => total + Number(item.price || 0), 0) /
+          products.value.length
+    )
+    : 0
+
+  return [
+    { label: 'Produits', value: products.value.length, icon: '🧺' },
+    { label: 'Producteurs', value: producerCount, icon: '👩‍🌾' },
+    { label: 'Prix moyen', value: formatCurrency(averagePrice), icon: '💰' }
+  ]
+})
+
+watch(() => route.params.slug, loadCategoryDetail)
+onMounted(loadCategoryDetail)
 </script>
 
 <style scoped>
@@ -218,11 +236,6 @@ export default {
 
 .btn-outline:hover {
   transform: scale(1.05);
-  border-color: rgba(226, 114, 91, 0.5);
-  box-shadow: 0 10px 24px rgba(226, 114, 91, 0.2);
 }
-
-.text-forest-green { color: #2d5016; }
-.text-nature-gray { color: #6b6b6b; }
-.transition-organic { transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
 </style>
+

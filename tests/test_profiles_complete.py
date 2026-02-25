@@ -60,8 +60,8 @@ class TestCustomerProfileRepository:
         repo = CustomerProfileRepository(test_db)
         profile = repo.create(
             user_id=registered_user["id"],
-            first_name="Jean",
-            last_name="Dupont"
+            first_name="Aubin",
+            last_name="Biga"
         )
         
         assert profile.id is not None

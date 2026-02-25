@@ -13,6 +13,7 @@ import type {
     RefreshTokenRequest,
     RefreshTokenResponse,
     VerifyEmailRequest,
+    ResendVerificationRequest,
     MessageResponse,
     PasswordResetRequest,
     PasswordResetConfirm,
@@ -146,6 +147,24 @@ class AuthService {
     async verifyEmail(data: VerifyEmailRequest): Promise<MessageResponse> {
         const response = await this.api.post<MessageResponse>('/authentification/auth/verify-email', data)
         return response.data
+    }
+
+    /**
+     * POST /authentification/auth/resend-verification
+     * Renvoyer l'email de vérification.
+     */
+    async resendVerificationEmail(data: ResendVerificationRequest): Promise<MessageResponse> {
+        try {
+            const response = await this.api.post<MessageResponse>('/authentification/auth/resend-verification', data)
+            return response.data
+        } catch (error: any) {
+            // Compatibilité si l'API est exposée sans le segment /auth.
+            if (error?.response?.status === 404) {
+                const fallback = await this.api.post<MessageResponse>('/authentification/resend-verification', data)
+                return fallback.data
+            }
+            throw error
+        }
     }
 
     /**

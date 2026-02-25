@@ -70,6 +70,12 @@
                         <span class="text-xl">✅</span>
                         <span class="hidden lg:block">Vérification</span>
                     </router-link>
+
+                    <router-link to="/producer/settings"
+                        class="flex items-center space-x-3 p-3 rounded-xl transition-all duration-300 ease-organic group hover:bg-forest-25 text-forest-600">
+                        <span class="text-xl">⚙️</span>
+                        <span class="hidden lg:block">Paramètres</span>
+                    </router-link>
                 </nav>
 
                 <!-- Statut producteur -->
@@ -151,7 +157,7 @@
                             <span class="text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full">+12%</span>
                         </div>
                         <div class="mb-2">
-                            <div class="text-2xl font-bold text-forest-800">{{ revenue }}€</div>
+                            <div class="text-2xl font-bold text-forest-800">{{ formatXaf(revenue) }}</div>
                             <div class="text-sm text-terracotta-600">Chiffre d'affaires</div>
                         </div>
                         <div class="text-xs text-forest-600">Ce mois</div>
@@ -267,7 +273,7 @@
                                             </div>
                                         </div>
                                         <div class="text-right">
-                                            <div class="font-bold text-forest-800">{{ order.amount }}€</div>
+                                            <div class="font-bold text-forest-800">{{ formatXaf(order.amount) }}</div>
                                             <div class="text-xs text-forest-600">{{ order.time }}</div>
                                         </div>
                                     </div>
@@ -545,59 +551,53 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useOrdersStore } from '@/modules/orders/stores/orders.store'
+import { CustomerProfileService } from '@/modules/user-profiles/customer/services'
+import { ProducerProfileService } from '@/modules/user-profiles/producer/services'
+import catalogService from '@/modules/catalog/services/catalog.service'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const ordersStore = useOrdersStore()
 
 // État de l'interface
 const showNotificationsPanel = ref(false)
 const showTips = ref(false)
-const unreadNotifications = ref(3)
+const unreadNotifications = ref(0)
 
 // Données du producteur
-const producerName = ref('Jean Dupont')
-const verificationStatus = ref('verified')
-const joinDate = ref('mars 2023')
-const weather = ref('Ensoleillé, 18°C')
-const currentDate = ref(new Date().toLocaleDateString('fr-FR', {
+const producerName = ref('Producteur')
+const verificationStatus = ref('pending')
+const joinDate = ref('récemment')
+const weather = ref('Yaoundé, Cameroun')
+const currentDate = ref(new Date().toLocaleDateString('fr-CM', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric'
 }))
-const currentMonth = ref(new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }))
+const currentMonth = ref(new Date().toLocaleDateString('fr-CM', { month: 'long', year: 'numeric' }))
 
 // Statistiques
-const revenue = ref('2,845')
-const pendingOrders = ref(8)
-const rating = ref(4.7)
-const reviews = ref(142)
-const productsTotal = ref(24)
-const productsAvailable = ref(18)
-const lowStockCount = ref(3)
-const pickupPointsOpen = ref(2)
-const pickupPointsTotal = ref(3)
+const revenue = ref(0)
+const pendingOrders = ref(0)
+const rating = ref(0)
+const reviews = ref(0)
+const productsTotal = ref(0)
+const productsAvailable = ref(0)
+const lowStockCount = ref(0)
+const pickupPointsOpen = ref(0)
+const pickupPointsTotal = ref(0)
 
 // Commandes récentes
-const recentOrders = ref([
-    { id: 4567, customerName: 'Marie Laurent', amount: '42.50', time: '10:30', status: 'pending', statusText: 'En attente', items: 3 },
-    { id: 4566, customerName: 'Thomas Martin', amount: '67.80', time: '09:15', status: 'processing', statusText: 'En préparation', items: 5 },
-    { id: 4565, customerName: 'Sophie Dubois', amount: '28.90', time: 'Hier', status: 'delivered', statusText: 'Livrée', items: 2 },
-    { id: 4564, customerName: 'Pierre Leroy', amount: '95.20', time: 'Hier', status: 'delivered', statusText: 'Livrée', items: 7 }
-])
+const recentOrders = ref<any[]>([])
 
 // Produits populaires
-const popularProducts = ref([
-    { id: 1, name: 'Tomates cerises', icon: '🍅', category: 'Légumes', sales: 156, percentage: 85, trend: 'up' },
-    { id: 2, name: 'Œufs bio', icon: '🥚', category: 'Produits animaux', sales: 128, percentage: 70, trend: 'up' },
-    { id: 3, name: 'Salade verte', icon: '🥬', category: 'Légumes', sales: 94, percentage: 52, trend: 'stable' },
-    { id: 4, name: 'Confiture fraise', icon: '🍓', category: 'Conserves', sales: 72, percentage: 39, trend: 'down' }
-])
+const popularProducts = ref<any[]>([])
 
 // Tâches urgentes
-const urgentTasks = ref([
-    { id: 1, title: 'Préparer commande #4567', icon: '📦', time: 'Avant 14h' },
-    { id: 2, title: 'Réapprovisionner tomates', icon: '🍅', time: 'Aujourd\'hui' }
-])
+const urgentTasks = ref<any[]>([])
 
 // Calendrier
 const calendarDays = computed(() => {
@@ -657,18 +657,89 @@ const calendarDays = computed(() => {
 })
 
 // Événements du jour
-const todaysEvents = ref([
-    { id: 1, title: 'Réunion marché bio', icon: '👥', time: '15h00' },
-    { id: 2, title: 'Livraison fournisseur', icon: '🚚', time: '16h30' }
-])
+const todaysEvents = ref<any[]>([])
 
 // Notifications
-const notifications = ref([
-    { id: 1, title: 'Nouvelle commande', icon: '📦', message: 'Marie Laurent a passé une commande de 42.50€', time: 'Il y a 10 min' },
-    { id: 2, title: 'Stock faible', icon: '⚠️', message: 'Les tomates cerises sont bientôt en rupture', time: 'Il y a 1h' },
-    { id: 3, title: 'Avis reçu', icon: '⭐', message: 'Nouvel avis 5 étoiles de Sophie Dubois', time: 'Il y a 2h' },
-    { id: 4, title: 'Rappel', icon: '📅', message: 'Réunion marché bio aujourd\'hui à 15h', time: 'Il y a 4h' }
-])
+const notifications = ref<any[]>([])
+
+const formatXaf = (amount: number | string) =>
+    new Intl.NumberFormat('fr-CM', {
+        style: 'currency',
+        currency: 'XAF',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+    }).format(Number(amount || 0))
+
+const formatRelativeTime = (value: string | Date) => {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'récemment'
+
+    const now = new Date()
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+    if (diffHours < 1) {
+        const mins = Math.max(1, Math.floor((now.getTime() - date.getTime()) / (1000 * 60)))
+        return `Il y a ${mins} min`
+    }
+    if (diffHours < 24) return `Il y a ${diffHours} h`
+    return date.toLocaleDateString('fr-CM')
+}
+
+const formatJoinDate = (value: string | Date | undefined) => {
+    if (!value) return 'récemment'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return 'récemment'
+    return date.toLocaleDateString('fr-CM', { month: 'long', year: 'numeric' })
+}
+
+const normalizeNamePart = (value: unknown): string => (
+    typeof value === 'string' ? value.trim() : ''
+)
+
+const buildFullName = (first: unknown, last: unknown): string => {
+    const normalizedFirst = normalizeNamePart(first)
+    const normalizedLast = normalizeNamePart(last)
+    return [normalizedFirst, normalizedLast].filter(Boolean).join(' ').trim()
+}
+
+const resolveProducerName = async (): Promise<string> => {
+    const authUser = authStore.currentUser as any
+    const authFullName = buildFullName(
+        authUser?.first_name ?? authUser?.firstName,
+        authUser?.last_name ?? authUser?.lastName
+    )
+    if (authFullName) return authFullName
+
+    try {
+        const customerProfile = await CustomerProfileService.getProfile()
+        const customerName = buildFullName(customerProfile?.firstName, customerProfile?.lastName)
+        if (customerName) return customerName
+    } catch {
+        // Un producteur peut ne pas avoir de profil client.
+    }
+
+    try {
+        const producerProfile: any = await ProducerProfileService.getProfile()
+        const legalName = normalizeNamePart(producerProfile?.legal_name ?? producerProfile?.legalName)
+        if (legalName) return legalName
+
+        const businessName = normalizeNamePart(producerProfile?.business_name ?? producerProfile?.businessName)
+        if (businessName) return businessName
+    } catch {
+        // Profil producteur non encore configuré.
+    }
+
+    return 'Producteur'
+}
+
+const mapOrderStatusText = (status: string) => {
+    if (status === 'pending') return 'En attente'
+    if (status === 'confirmed') return 'Confirmée'
+    if (status === 'preparing') return 'En préparation'
+    if (status === 'ready') return 'Prête'
+    if (status === 'completed') return 'Livrée'
+    if (status === 'cancelled') return 'Annulée'
+    return 'En cours'
+}
 
 // Méthodes
 const toggleNotifications = () => {
@@ -692,7 +763,84 @@ const completeTask = (task: any) => {
 }
 
 onMounted(() => {
-    console.log('ProducerDashboard monté')
+    verificationStatus.value = authStore?.currentUser?.is_verified ? 'verified' : 'pending'
+    joinDate.value = formatJoinDate(authStore?.user?.created_at)
+
+    void (async () => {
+        producerName.value = await resolveProducerName()
+
+        try {
+            await ordersStore.fetchProducerOrders({ limit: 20 })
+            const producerOrders = ordersStore.producerOrders || []
+
+            pendingOrders.value = producerOrders.filter((order: any) =>
+                ['pending', 'confirmed', 'preparing'].includes(order?.status)
+            ).length
+
+            revenue.value = producerOrders
+                .filter((order: any) => order?.status === 'completed')
+                .reduce((sum: number, order: any) => sum + Number(order?.totalAmount || 0), 0)
+
+            recentOrders.value = producerOrders.slice(0, 4).map((order: any) => ({
+                id: order?.orderNumber || order?.id,
+                customerName: order?.customer?.name || 'Client',
+                amount: Number(order?.totalAmount || 0),
+                time: formatRelativeTime(order?.createdAt || new Date()),
+                status: order?.status,
+                statusText: mapOrderStatusText(order?.status),
+                items: Array.isArray(order?.items) ? order.items.length : 0
+            }))
+
+            if (pendingOrders.value > 0) {
+                notifications.value = [{
+                    id: 1,
+                    title: 'Commandes en attente',
+                    icon: '📦',
+                    message: `${pendingOrders.value} commande(s) à traiter`,
+                    time: 'maintenant'
+                }]
+                unreadNotifications.value = 1
+            } else {
+                notifications.value = []
+                unreadNotifications.value = 0
+            }
+        } catch (error) {
+            console.error('Erreur chargement commandes producteur:', error)
+            recentOrders.value = []
+            pendingOrders.value = 0
+            revenue.value = 0
+            notifications.value = []
+            unreadNotifications.value = 0
+        }
+
+        try {
+            const response = await catalogService.getMyProducts({ limit: 200 })
+            const products = Array.isArray(response?.products) ? response.products : []
+            productsTotal.value = products.length
+            productsAvailable.value = products.filter((product: any) => Number(product?.stock_quantity || 0) > 0).length
+            lowStockCount.value = products.filter((product: any) => {
+                const stock = Number(product?.stock_quantity || 0)
+                const threshold = Number(product?.low_stock_threshold || 10)
+                return stock > 0 && stock <= threshold
+            }).length
+
+            popularProducts.value = products.slice(0, 4).map((product: any) => ({
+                id: product?.id,
+                name: product?.name || 'Produit',
+                icon: '🥬',
+                category: product?.category?.name || 'Produits locaux',
+                sales: 0,
+                percentage: 0,
+                trend: 'stable'
+            }))
+        } catch (error) {
+            console.error('Erreur chargement produits producteur:', error)
+            productsTotal.value = 0
+            productsAvailable.value = 0
+            lowStockCount.value = 0
+            popularProducts.value = []
+        }
+    })()
 })
 </script>
 

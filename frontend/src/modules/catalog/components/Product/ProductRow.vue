@@ -89,7 +89,7 @@ const stockClass = computed(() => {
 const formatPrice = (price: number) => {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
-    currency: 'EUR',
+    currency: 'XAF',
     minimumFractionDigits: 2
   }).format(price || 0)
 }
@@ -100,3 +100,4 @@ const formatPrice = (price: number) => {
   @apply px-2 py-1 rounded-full text-xs font-medium;
 }
 </style>
+

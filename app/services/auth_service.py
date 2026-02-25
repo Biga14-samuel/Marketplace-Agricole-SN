@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, Tuple
 from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, status
+from urllib.parse import unquote
 
 from app.models.auth import User, EmailVerification
 from app.repositories.auth_repository import (
@@ -28,6 +29,27 @@ class AuthService:
         self.password_reset_repo = PasswordResetRepository(db)
         self.email_verification_repo = EmailVerificationRepository(db)
         self.login_history_repo = LoginHistoryRepository(db)
+
+    @staticmethod
+    def _normalize_email_token(token: Optional[str]) -> str:
+        """
+        Normalise un token reçu via URL/copie-coller pour éviter les faux négatifs:
+        - trim
+        - URL decode (%xx)
+        - suppression des espaces et retours ligne
+        - retrait de wrappers courants (< > " ')
+        """
+        if not token:
+            return ""
+
+        normalized = unquote(str(token)).strip()
+        normalized = normalized.strip('\'"<>')
+        normalized = "".join(normalized.split())
+
+        if normalized.lower().startswith("token="):
+            normalized = normalized.split("=", 1)[1].strip()
+
+        return normalized
 
     def _resolve_role_name(self, role_name: Optional[str]) -> str:
         """Résout un nom de rôle de manière insensible à la casse."""
@@ -93,15 +115,18 @@ class AuthService:
                 )
             self.role_repo.assign_role_to_user(user, role)
 
-            # Créer un profil client si first_name et last_name sont fournis
-            if effective_role_name.lower() == "customer" and user_data.first_name and user_data.last_name:
+            # Conserver prénom/nom dans le profil client dès l'inscription
+            # (utile aussi pour l'affichage du nom complet côté producteur).
+            if user_data.first_name and user_data.last_name:
                 from app.repositories.profile_repository import CustomerProfileRepository
                 profile_repo = CustomerProfileRepository(self.db)
-                profile_repo.create(
-                    user_id=user.id,
-                    first_name=user_data.first_name,
-                    last_name=user_data.last_name
-                )
+                existing_customer_profile = profile_repo.get_by_user_id(user.id)
+                if not existing_customer_profile:
+                    profile_repo.create(
+                        user_id=user.id,
+                        first_name=user_data.first_name,
+                        last_name=user_data.last_name
+                    )
 
             # Créer un token de vérification d'email (même en mode skip pour les logs)
             verification_token = generate_verification_token()
@@ -243,16 +268,24 @@ class AuthService:
     
     def verify_email(self, token: str) -> User:
         """Vérifie l'email d'un utilisateur"""
-        print(f"DEBUG verify_email - Token reçu: {token}")
+        normalized_token = self._normalize_email_token(token)
+        print(f"DEBUG verify_email - Token brut reçu: {token}")
+        print(f"DEBUG verify_email - Token normalisé: {normalized_token}")
+
+        if not normalized_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token de vérification manquant"
+            )
         
         # Récupérer la vérification
-        verification = self.email_verification_repo.get_by_token(token)
+        verification = self.email_verification_repo.get_by_token(normalized_token)
         
         if not verification:
             print("DEBUG - Token non trouvé ou expiré")
             # Vérifier si le token existe mais est déjà utilisé
             used_verification = self.db.query(EmailVerification).filter(
-                EmailVerification.token == token
+                EmailVerification.token == normalized_token
             ).first()
             
             if used_verification and used_verification.verified_at:
@@ -260,10 +293,8 @@ class AuthService:
                 user = self.user_repo.get_by_id(used_verification.user_id)
                 if user and user.is_verified:
                     print(f"DEBUG - Email déjà vérifié pour l'utilisateur {user.email}")
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Cet email a déjà été vérifié"
-                    )
+                    # Idempotence: considérer la vérification déjà faite comme un succès.
+                    return user
             
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -284,10 +315,8 @@ class AuthService:
         # Vérifier si l'email est déjà vérifié
         if user.is_verified:
             print(f"DEBUG - Email déjà vérifié pour {user.email}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cet email a déjà été vérifié"
-            )
+            # Idempotence: considérer la vérification déjà faite comme un succès.
+            return user
         
         # Marquer comme vérifié
         self.email_verification_repo.mark_as_verified(verification)

@@ -482,179 +482,208 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { ordersService } from '../services/orders.service'
+
+const STATUS_INDEX = {
+  pending: 0,
+  confirmed: 1,
+  preparing: 2,
+  ready: 3,
+  completed: 4
+}
+
+const buildSteps = (status, producerName = 'Producteur') => {
+  const currentIndex = STATUS_INDEX[status] ?? 0
+  const labels = [
+    {
+      id: 1,
+      title: 'Commande confirmee',
+      description: 'Votre commande est enregistree',
+      icon: 'fas fa-check-circle'
+    },
+    {
+      id: 2,
+      title: 'En preparation',
+      description: 'Le producteur prepare vos produits',
+      icon: 'fas fa-utensils',
+      details: {
+        icon: 'fas fa-user',
+        title: `Producteur : ${producerName}`,
+        description: 'Preparation des articles en cours'
+      }
+    },
+    {
+      id: 3,
+      title: 'Prete',
+      description: 'Votre commande est prete',
+      icon: 'fas fa-box'
+    },
+    {
+      id: 4,
+      title: 'En cours de livraison',
+      description: 'Le livreur est en route',
+      icon: 'fas fa-truck',
+      details: {
+        icon: 'fas fa-map-marker-alt',
+        title: 'En route vers votre adresse',
+        description: 'Suivi de livraison en cours',
+        action: 'Voir sur la carte'
+      }
+    },
+    {
+      id: 5,
+      title: 'Livree',
+      description: 'Commande remise',
+      icon: 'fas fa-home'
+    }
+  ]
+
+  const now = new Date()
+  const time = now.toLocaleTimeString('fr-CM', { hour: '2-digit', minute: '2-digit' })
+  const date = now.toLocaleDateString('fr-CM')
+
+  return labels.map((step, index) => ({
+    ...step,
+    completed: index <= currentIndex,
+    current: index === currentIndex,
+    time,
+    date
+  }))
+}
 
 export default {
   name: 'TrackingView',
-  
+
   setup() {
     const route = useRoute()
     const orderId = route.params.id
-    
-    // Données de démonstration
+
     const order = ref({
-      id: 'ORD-2023-00145',
-      trackingNumber: 'TRK-789456123XYZ'
+      id: String(orderId || ''),
+      trackingNumber: String(orderId || '')
     })
-    
-    const deliverySteps = ref([
-      {
-        id: 1,
-        title: 'Commande confirmée',
-        description: 'Votre commande a été acceptée par le producteur',
-        icon: 'fas fa-check-circle',
-        completed: true,
-        current: false,
-        time: '09:30',
-        date: '25 Oct'
-      },
-      {
-        id: 2,
-        title: 'En préparation',
-        description: 'Le producteur prépare vos produits frais',
-        icon: 'fas fa-utensils',
-        completed: true,
-        current: false,
-        time: '10:15',
-        date: '25 Oct',
-        details: {
-          icon: 'fas fa-user',
-          title: 'Producteur : La Ferme du Val Joyeux',
-          description: 'Récolte en cours des produits de votre commande'
-        }
-      },
-      {
-        id: 3,
-        title: 'Prête pour livraison',
-        description: 'Votre colis est prêt et attend le livreur',
-        icon: 'fas fa-box',
-        completed: true,
-        current: false,
-        time: '13:45',
-        date: '25 Oct'
-      },
-      {
-        id: 4,
-        title: 'En cours de livraison',
-        description: 'Votre livreur a récupéré le colis',
-        icon: 'fas fa-truck',
-        completed: true,
-        current: true,
-        time: '14:30',
-        date: '25 Oct',
-        details: {
-          icon: 'fas fa-map-marker-alt',
-          title: 'En route vers votre domicile',
-          description: 'Le livreur se trouve à environ 15 minutes de chez vous',
-          action: 'Voir sur la carte'
-        }
-      },
-      {
-        id: 5,
-        title: 'Livraison',
-        description: 'Le livreur est à votre adresse',
-        icon: 'fas fa-home',
-        completed: false,
-        current: false,
-        time: '15:00 - 15:30',
-        date: '25 Oct (estimé)'
-      }
-    ])
-    
+
+    const deliverySteps = ref(buildSteps('pending'))
+
     const deliveryDriver = ref({
-      name: 'Thomas Martin',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-      rating: 4.9,
-      reviews: 247,
-      phone: '+33 6 12 34 56 78',
-      vehicle: 'Renault Kangoo électrique'
+      name: 'Livreur en cours d affectation',
+      avatar: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=200',
+      rating: 0,
+      reviews: 0,
+      phone: '',
+      vehicle: 'Vehicule de livraison'
     })
-    
+
     const deliveryAddress = ref({
-      street: '12 Rue des Vergers, Appt 3B',
-      city: '75000 Paris',
-      phone: '+33 6 98 76 54 32'
+      street: 'Adresse de livraison non disponible',
+      city: 'Cameroun',
+      phone: ''
     })
-    
-    const deliveryInstructions = ref('Sonner deux fois, laisser devant la porte si absence')
-    
-    const deliveryItems = ref([
-      { id: 1, name: 'Tomates anciennes', quantity: 2, image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200', fragile: true },
-      { id: 2, name: 'Salade verte', quantity: 1, image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200', fragile: false },
-      { id: 3, name: 'Fromage de chèvre', quantity: 1, image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200', fragile: true }
-    ])
-    
-    const estimatedArrival = ref('15:15 - 15:30')
-    const lastUpdateTime = ref('14:42')
-    
-    const canMarkAsReceived = computed(() => {
-      return deliverySteps.value[4].completed
-    })
-    
+
+    const deliveryInstructions = ref('')
+
+    const deliveryItems = ref([])
+
+    const estimatedArrival = ref('En attente de confirmation')
+    const lastUpdateTime = ref(new Date().toLocaleTimeString('fr-CM', { hour: '2-digit', minute: '2-digit' }))
+
+    const canMarkAsReceived = computed(() => deliverySteps.value[4]?.completed)
+
     const deliveryProgress = computed(() => {
       const completedSteps = deliverySteps.value.filter(step => step.completed).length
       return Math.round((completedSteps / deliverySteps.value.length) * 100)
     })
-    
-    const trackingNumber = computed(() => {
-      return order.value.trackingNumber
-    })
-    
-    // Méthodes
-    const copyTrackingNumber = () => {
-      navigator.clipboard.writeText(trackingNumber.value)
-      // Afficher une notification
-      console.log('Numéro de suivi copié')
-    }
-    
-    const handleStepAction = (step) => {
-      if (step.id === 4) {
-        // Voir sur la carte
-        console.log('Ouvrir la carte avec la position du livreur')
+
+    const trackingNumber = computed(() => order.value.trackingNumber)
+
+    const loadTracking = async () => {
+      try {
+        const details = await ordersService.getOrderDetail(String(orderId))
+
+        order.value = {
+          id: details.orderNumber || details.id,
+          trackingNumber: details.orderNumber || `CMD-${details.id}`
+        }
+
+        deliverySteps.value = buildSteps(details.status, details.producer?.name)
+
+        deliveryDriver.value = {
+          ...deliveryDriver.value,
+          name: details.producer?.name ? `Equipe ${details.producer.name}` : deliveryDriver.value.name,
+          phone: details.producer?.phone || '',
+          reviews: details.producer?.id ? 1 : 0
+        }
+
+        if (details.deliveryAddress) {
+          deliveryAddress.value = {
+            street: details.deliveryAddress.address || deliveryAddress.value.street,
+            city: [details.deliveryAddress.city, details.deliveryAddress.region].filter(Boolean).join(', ') || 'Cameroun',
+            phone: details.deliveryAddress.phone || ''
+          }
+        }
+
+        deliveryInstructions.value = details.notes || ''
+        deliveryItems.value = (details.items || []).map(item => ({
+          id: item.id,
+          name: item.productSnapshot?.name || item.product?.name || 'Article',
+          quantity: item.quantity,
+          image: item.productSnapshot?.images?.[0] || item.product?.images?.[0] || '',
+          fragile: false
+        }))
+
+        if (details.status === 'completed') {
+          estimatedArrival.value = 'Livree'
+        } else if (details.status === 'ready') {
+          estimatedArrival.value = 'Arrivee proche'
+        } else {
+          estimatedArrival.value = 'En cours'
+        }
+      } catch (error) {
+        console.error('Erreur chargement tracking:', error)
       }
     }
-    
+
+    const copyTrackingNumber = () => {
+      navigator.clipboard.writeText(String(trackingNumber.value || ''))
+    }
+
+    const handleStepAction = () => {}
+
     const contactDriver = () => {
-      console.log('Contacter le livreur:', deliveryDriver.value.name)
+      if (deliveryDriver.value.phone) {
+        window.location.href = `tel:${deliveryDriver.value.phone}`
+      }
     }
-    
-    const updateDeliveryAddress = () => {
-      console.log('Modifier l\'adresse de livraison')
-    }
-    
-    const delayDelivery = () => {
-      console.log('Reporter la livraison')
-    }
-    
+
+    const updateDeliveryAddress = () => {}
+
+    const delayDelivery = () => {}
+
     const markAsReceived = () => {
       if (canMarkAsReceived.value) {
         deliverySteps.value[4].completed = true
-        console.log('Commande marquée comme reçue')
       }
     }
-    
-    const openLiveChat = () => {
-      console.log('Ouvrir le chat en direct')
-    }
-    
-    // Simulation de mise à jour en temps réel
+
+    const openLiveChat = () => {}
+
     let updateInterval
     onMounted(() => {
+      loadTracking()
       updateInterval = setInterval(() => {
-        // Simuler une mise à jour
-        const now = new Date()
-        lastUpdateTime.value = now.toLocaleTimeString('fr-FR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+        lastUpdateTime.value = new Date().toLocaleTimeString('fr-CM', {
+          hour: '2-digit',
+          minute: '2-digit'
         })
-      }, 30000) // Toutes les 30 secondes
+      }, 30000)
     })
-    
+
     onUnmounted(() => {
       if (updateInterval) {
         clearInterval(updateInterval)
       }
     })
-    
+
     return {
       order,
       deliverySteps,
@@ -775,3 +804,4 @@ export default {
   transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>
+

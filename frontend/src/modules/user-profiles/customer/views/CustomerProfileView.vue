@@ -177,12 +177,12 @@
                                     <div class="flex items-center space-x-2 mb-2">
                                         <h3 class="font-semibold text-green-900">Adresse par défaut</h3>
                                         <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">
-                                            {{ defaultAddress.type === 'delivery' ? 'Livraison' : 'Facturation' }}
+                                            {{ defaultAddress.type === 'DELIVERY' ? 'Livraison' : 'Facturation' }}
                                         </span>
                                     </div>
                                     <p class="text-sm text-green-700/80 leading-relaxed">
                                         {{ defaultAddress.street }}<br>
-                                        {{ defaultAddress.postal_code }} {{ defaultAddress.city }}<br>
+                                        {{ defaultAddress.postalCode }} {{ defaultAddress.city }}<br>
                                         {{ defaultAddress.country }}
                                     </p>
                                 </div>
@@ -505,6 +505,7 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCustomerStore } from '../stores/useCustomerStore'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import type { CustomerProfile, UpdateCustomerProfileRequest } from '../types'
 
 // Icons
@@ -529,6 +530,7 @@ import {
 
 // Store et router
 const customerStore = useCustomerStore()
+const authStore = useAuthStore()
 const router = useRouter()
 
 // États
@@ -557,19 +559,10 @@ const editForm = reactive({
     }
 })
 
-// Données simulées pour la démo
-const orderCount = ref(12)
-const favoriteProducers = ref(5)
-const seasonPurchases = ref(8)
-const defaultAddress = ref({
-    id: '1',
-    street: 'Quartier Bastos, Avenue Kennedy',
-    city: 'Yaoundé',
-    postal_code: '00237',
-    country: 'Cameroun',
-    type: 'delivery' as const,
-    is_default: true
-})
+const orderCount = ref(0)
+const favoriteProducers = ref(0)
+const seasonPurchases = ref(0)
+const defaultAddress = computed(() => customerStore.activeDefaultAddress)
 
 const currentSeason = computed(() => {
     // Saisons du Cameroun (zone équatoriale - 4 saisons)
@@ -591,8 +584,7 @@ const seasonMessage = computed(() => {
 })
 
 const userEmail = computed(() => {
-    // Dans une vraie app, récupérer depuis le store auth
-    return 'client@example.com'
+    return authStore.currentUser?.email || profile.value?.email || ''
 })
 
 const dietaryRestrictions = [
@@ -640,37 +632,19 @@ const seasonalProducts = computed(() => {
 const loadProfile = async () => {
     loading.value = true
     try {
-        // Dans une vraie app : await customerStore.fetchProfile()
-        // Simulation de données
-        await new Promise(resolve => setTimeout(resolve, 800))
-
-        profile.value = {
-            id: '123',
-            userId: '123',
-            firstName: 'Marie',
-            lastName: 'Takam',
-            email: 'marie@example.com',
-            phone: '+237612345678',
-            avatar: null,
-            preferences: {
-                newsletterSubscription: true,
-                marketingEmails: true,
-                smsNotifications: false,
-                preferredDeliveryTime: 'AFTERNOON',
-                preferredCommunicationMethod: 'EMAIL',
-                dietaryRestrictions: ['Végétarien', 'Sans lactose'],
-                allergies: [],
-                language: 'fr'
-            },
-            createdAt: '2024-01-15T10:30:00Z',
-            updatedAt: '2024-01-15T10:30:00Z'
+        if (!authStore.currentUser) {
+            await authStore.fetchCurrentUser()
         }
+        await customerStore.fetchCompleteProfile()
+        profile.value = customerStore.profile
 
         // Remplir le formulaire d'édition
-        editForm.first_name = profile.value.firstName
-        editForm.last_name = profile.value.lastName
-        editForm.email = userEmail.value
-        Object.assign(editForm.preferences, profile.value.preferences)
+        if (profile.value) {
+            editForm.first_name = profile.value.firstName
+            editForm.last_name = profile.value.lastName
+            editForm.email = userEmail.value
+            Object.assign(editForm.preferences, profile.value.preferences)
+        }
 
     } catch (error) {
         console.error('Erreur chargement profil:', error)
@@ -696,18 +670,13 @@ const cancelEditing = () => {
 const saveProfile = async () => {
     saving.value = true
     try {
-        // Dans une vraie app : await customerStore.updateProfile(editForm)
-        await new Promise(resolve => setTimeout(resolve, 1500))
-
-        // Mettre à jour le profil local
-        if (profile.value) {
-            profile.value = {
-                ...profile.value,
-                firstName: editForm.first_name,
-                lastName: editForm.last_name,
-                preferences: editForm.preferences
-            }
+        const payload: UpdateCustomerProfileRequest = {
+            firstName: editForm.first_name,
+            lastName: editForm.last_name,
+            preferences: editForm.preferences
         }
+        await customerStore.updateProfile(payload)
+        profile.value = customerStore.profile
 
         showToastMessage('Profil mis à jour avec succès')
         isEditing.value = false
@@ -781,11 +750,11 @@ const viewProduct = (product: any) => {
 }
 
 const goToAddresses = () => {
-    router.push('/profile/addresses')
+    router.push('/profile/customer/addresses')
 }
 
 const goToSettings = () => {
-    router.push('/profile/settings')
+    router.push('/profile/customer/settings')
 }
 
 // Composant ToggleSwitch

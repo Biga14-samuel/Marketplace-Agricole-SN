@@ -50,8 +50,8 @@
               <div class="hero-badge">🌿 Bio &amp; Local</div>
               <img
                 class="hero-image"
-                src="https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&amp;fit=crop&amp;w=1200&amp;q=80"
-                alt="Produits frais"
+                src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Bakweri_cocoyam_farmer_from_Cameroon.jpg"
+                alt="Agriculture au Cameroun"
               />
               <div class="hero-overlay"></div>
               <div class="hero-caption">
@@ -358,3 +358,4 @@ export default {
   transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 </style>
+

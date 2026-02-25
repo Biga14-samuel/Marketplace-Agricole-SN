@@ -503,7 +503,7 @@ export const validateInventory = (inventory: Partial<Inventory>): string[] => {
 /**
  * Formate un prix
  */
-export const formatPrice = (price: number, currency: string = 'EUR'): string => {
+export const formatPrice = (price: number, currency: string = 'XAF'): string => {
   return new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency
@@ -671,4 +671,5 @@ export default {
   sanitizeData,
   isCatalogEndpoint
 }
+
 

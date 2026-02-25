@@ -7,15 +7,27 @@ const authRoutes: RouteRecordRaw[] = [
   // Routes plates pour compatibilité (redirections)
   {
     path: '/login',
-    redirect: '/auth/login'
+    redirect: (to) => ({
+      path: '/auth/login',
+      query: to.query,
+      hash: to.hash
+    })
   },
   {
     path: '/register',
-    redirect: '/auth/register'
+    redirect: (to) => ({
+      path: '/auth/register',
+      query: to.query,
+      hash: to.hash
+    })
   },
   {
     path: '/verify-email',
-    redirect: '/auth/verify-email'
+    redirect: (to) => ({
+      path: '/auth/verify-email',
+      query: to.query,
+      hash: to.hash
+    })
   },
   
   // Routes principales sous /auth

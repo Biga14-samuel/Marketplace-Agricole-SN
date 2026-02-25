@@ -43,7 +43,7 @@ export interface TagsApi {
 export const tagsApi: TagsApi = {
     createTag: async (data: CreateTagRequest): Promise<Tag> => {
         const response = await apiClient.post<Tag>(
-            '/products-catalog/tags',
+            '/products-catalog/products/tags',
             data
         );
         return response.data;
@@ -51,7 +51,7 @@ export const tagsApi: TagsApi = {
 
     getAllTags: async (): Promise<Tag[]> => {
         const response = await apiClient.get<Tag[]>(
-            '/products-catalog/tags'
+            '/products-catalog/products/tags'
         );
         return response.data;
     },

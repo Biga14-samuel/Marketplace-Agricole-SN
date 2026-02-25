@@ -92,7 +92,7 @@
                 
                 <div class="mt-4 md:mt-0">
                   <div class="text-2xl font-bold text-forest-green">
-                    {{ order.total }} €
+                    {{ formatCurrency(order.total) }}
                   </div>
                   <p class="text-sm text-nature-gray mt-1">
                     {{ order.items.length }} produit{{ order.items.length > 1 ? 's' : '' }}
@@ -235,14 +235,18 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
-import gsap from 'gsap'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useOrdersStore } from '../stores/orders.store'
 
 export default {
   name: 'OrderList',
   
   setup() {
+    const router = useRouter()
+    const ordersStore = useOrdersStore()
     const activeFilter = ref('all')
+    const orders = ref([])
     
     const filters = [
       { id: 'all', label: 'Toutes les commandes' },
@@ -252,40 +256,43 @@ export default {
       { id: 'cancelled', label: 'Annulées' }
     ]
 
-    // Données de démonstration
-    const orders = ref([
-      {
-        id: 'ORD-2023-00145',
-        date: '2023-10-15',
-        status: 'delivered',
-        total: 42.50,
-        items: [
-          { id: 1, name: 'Tomates anciennes', quantity: 2, image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=100' },
-          { id: 2, name: 'Salade verte', quantity: 1, image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w-100' },
-          { id: 3, name: 'Fromage de chèvre', quantity: 1, image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=100' }
-        ],
-        producer: {
-          name: 'La Ferme du Val Joyeux',
-          location: 'Saint-Rémy (10km)',
-          type: 'Bio'
-        }
-      },
-      {
-        id: 'ORD-2023-00146',
-        date: '2023-10-18',
-        status: 'preparing',
-        total: 68.90,
-        items: [
-          { id: 4, name: 'Pain au levain', quantity: 3, image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100' },
-          { id: 5, name: 'Confiture artisanale', quantity: 2, image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=100' }
-        ],
-        producer: {
-          name: 'Le Fournil des Champs',
-          location: 'Beaumont (5km)',
-          type: 'Artisanal'
-        }
+    const mapOrderStatus = (status) => {
+      const normalized = String(status || '').toLowerCase()
+      if (normalized === 'completed' || normalized === 'delivered' || normalized === 'ready') return 'delivered'
+      if (normalized === 'preparing') return 'preparing'
+      if (normalized === 'cancelled') return 'cancelled'
+      return 'pending'
+    }
+
+    const mapOrder = (order) => ({
+      id: String(order?.orderNumber || order?.id || ''),
+      rawId: order?.id,
+      date: order?.createdAt || new Date().toISOString(),
+      status: mapOrderStatus(order?.status),
+      total: Number(order?.totalAmount || 0),
+      items: Array.isArray(order?.items)
+        ? order.items.map((item) => ({
+            id: item?.id,
+            name: item?.productSnapshot?.name || item?.product?.name || 'Produit',
+            quantity: Number(item?.quantity || 0),
+            image: item?.productSnapshot?.images?.[0] || ''
+          }))
+        : [],
+      producer: {
+        name: order?.producer?.name || 'Producteur local',
+        location: order?.pickupPoint?.address || 'Cameroun',
+        type: 'Local'
       }
-    ])
+    })
+
+    const loadOrders = async () => {
+      try {
+        const response = await ordersStore.fetchMyOrders({ page: 1, limit: 100 })
+        orders.value = Array.isArray(response?.orders) ? response.orders.map(mapOrder) : []
+      } catch (error) {
+        orders.value = []
+      }
+    }
 
     const filteredOrders = computed(() => {
       if (activeFilter.value === 'all') return orders.value
@@ -313,7 +320,7 @@ export default {
     }
 
     const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString('fr-FR', {
+      return new Date(dateString).toLocaleDateString('fr-CM', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
@@ -321,9 +328,17 @@ export default {
       })
     }
 
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('fr-CM', {
+        style: 'currency',
+        currency: 'XAF',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(Number(amount || 0))
+    }
+
     const viewOrderDetails = (order) => {
-      console.log('Voir détails:', order.id)
-      // Navigation vers la page de détails
+      router.push(`/orders/${order.rawId || order.id}`)
     }
 
     const reorder = (order) => {
@@ -343,21 +358,25 @@ export default {
     }
 
     const staggerEnter = (el, done) => {
-      gsap.to(el, {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        delay: el.dataset.index * 0.1,
-        ease: 'back.out(1.7)',
-        onComplete: done
-      })
+      const delayMs = Number(el?.dataset?.index || 0) * 100
+      window.setTimeout(() => {
+        el.style.transition = 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
+        el.style.opacity = '1'
+        el.style.transform = 'translateY(0)'
+        window.setTimeout(() => done(), 460)
+      }, delayMs)
     }
+
+    onMounted(() => {
+      loadOrders()
+    })
 
     return {
       activeFilter,
       filters,
       orders,
       filteredOrders,
+      formatCurrency,
       getStatusClass,
       getStatusText,
       formatDate,
@@ -451,3 +470,4 @@ export default {
   .text-error-dark { color: #C62828; }
 }
 </style>
+

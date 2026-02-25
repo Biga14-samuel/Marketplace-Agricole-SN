@@ -458,7 +458,7 @@ const imageUrl = computed(() => {
   if (props.src) {
     return `/api/uploads/${props.src}`
   }
-  return '/placeholder-product.jpg'
+  return ''
 })
 
 const altText = computed(() => {
@@ -935,3 +935,4 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 </style>
+

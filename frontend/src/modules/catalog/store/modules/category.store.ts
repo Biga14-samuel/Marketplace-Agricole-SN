@@ -1,11 +1,173 @@
-// @ts-nocheck
 // modules/catalog/store/modules/category.store.ts
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { categoriesApi } from '../../services/api/categories.api';
-import { Category, CategoryTree, CreateCategoryRequest, UpdateCategoryRequest } from '../../services/models/category.model'
-import { Category as CategoryModel, CategoryTree as CategoryTreeModel } from '../../services/models/category.model';;
+import type { CreateCategoryRequest, UpdateCategoryRequest } from '../../services/api/categories.api';
+import { Category, CategoryTree } from '../../services/models/category.model';
+
+interface DefaultCategorySeed {
+    name: string;
+    description?: string;
+    children?: DefaultCategorySeed[];
+}
+
+const DEFAULT_CATEGORY_SEED: DefaultCategorySeed[] = [
+    {
+        name: 'Fruits',
+        description: 'Fruits frais locaux et de saison',
+        children: [
+            { name: 'Agrumes' },
+            { name: 'Mangues' },
+            { name: 'Ananas' },
+            { name: 'Bananes & Plantains' },
+            { name: 'Papayes' },
+            { name: 'Avocats' }
+        ]
+    },
+    {
+        name: 'Legumes',
+        description: 'Legumes frais pour la cuisine quotidienne',
+        children: [
+            { name: 'Legumes-feuilles' },
+            { name: 'Legumes-racines' },
+            { name: 'Legumes-fruits' },
+            { name: 'Legumes-bulbes' },
+            { name: 'Legumes secs' }
+        ]
+    },
+    {
+        name: 'Tubercules',
+        description: 'Racines et feculents traditionnels',
+        children: [
+            { name: 'Manioc' },
+            { name: 'Macabo & Taro' },
+            { name: 'Patate douce' },
+            { name: 'Igname' },
+            { name: 'Pomme de terre' }
+        ]
+    },
+    {
+        name: 'Cereales',
+        description: 'Cereales et derives',
+        children: [
+            { name: 'Mais' },
+            { name: 'Riz' },
+            { name: 'Mil & Sorgho' },
+            { name: 'Ble' },
+            { name: 'Farines' }
+        ]
+    },
+    {
+        name: 'Legumineuses',
+        description: 'Proteines vegetales et graines',
+        children: [
+            { name: 'Haricots' },
+            { name: 'Pois & Lentilles' },
+            { name: 'Soja' },
+            { name: 'Arachides' }
+        ]
+    },
+    {
+        name: 'Epices & Condiments',
+        description: 'Saveurs et assaisonnements',
+        children: [
+            { name: 'Piment' },
+            { name: 'Gingembre' },
+            { name: 'Ail' },
+            { name: 'Oignon' },
+            { name: 'Herbes aromatiques' }
+        ]
+    },
+    {
+        name: 'Produits animaux',
+        description: 'Produits issus de l elevage',
+        children: [
+            { name: 'Oeufs' },
+            { name: 'Volailles' },
+            { name: 'Viandes rouges' },
+            { name: 'Porc' },
+            { name: 'Lait & produits laitiers' }
+        ]
+    },
+    {
+        name: 'Poissons & Fruits de mer',
+        description: 'Produits de peche et elevage aquatique',
+        children: [
+            { name: "Poissons d eau douce" },
+            { name: 'Poissons fumes' },
+            { name: 'Crevettes' },
+            { name: 'Crustaces' }
+        ]
+    },
+    {
+        name: 'Huiles & Corps gras',
+        description: 'Huiles alimentaires et matieres grasses',
+        children: [
+            { name: 'Huile de palme' },
+            { name: "Huile d arachide" },
+            { name: 'Huile de coco' },
+            { name: 'Beurre & margarine' }
+        ]
+    },
+    {
+        name: 'Produits transformes',
+        description: 'Produits agricoles transformes artisanalement',
+        children: [
+            { name: 'Jus' },
+            { name: 'Confitures' },
+            { name: 'Conserves' },
+            { name: 'Farines transformees' },
+            { name: 'Epices moulues' }
+        ]
+    },
+    {
+        name: 'Boissons locales',
+        description: 'Boissons et infusions issues du terroir',
+        children: [
+            { name: 'Jus naturels' },
+            { name: 'Tisanes' },
+            { name: 'Cacao & chocolat' },
+            { name: 'Cafe' }
+        ]
+    },
+    {
+        name: 'Produits apicoles',
+        description: 'Produits de la ruche',
+        children: [
+            { name: 'Miel' },
+            { name: 'Cire' },
+            { name: 'Propolis' }
+        ]
+    },
+    {
+        name: 'Semences & Plants',
+        description: 'Materiel vegetal pour la culture',
+        children: [
+            { name: 'Semences maraicheres' },
+            { name: 'Plants fruitiers' },
+            { name: 'Plants potagers' }
+        ]
+    },
+    {
+        name: 'Fleurs & Plantes',
+        description: 'Plantes ornementales et medicinales',
+        children: [
+            { name: 'Fleurs coupees' },
+            { name: 'Plantes ornementales' },
+            { name: 'Plantes medicinales' }
+        ]
+    },
+    {
+        name: 'Autres produits agricoles',
+        description: 'Autres produits utiles a l exploitation',
+        children: [
+            { name: 'Fourrage' },
+            { name: 'Compost & intrants bio' },
+            { name: 'Artisanat agricole' }
+        ]
+    }
+];
 
 export const useCategoryStore = defineStore('category', () => {
     // ============================================
@@ -32,6 +194,96 @@ export const useCategoryStore = defineStore('category', () => {
 
     // État de l'opération en cours
     const operationStatus = ref<'idle' | 'creating' | 'updating' | 'deleting' | 'fetching'>('idle');
+
+    const normalizeName = (value: string): string => value.trim().toLowerCase();
+    const slugify = (value: string): string =>
+        (
+            value
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-+|-+$/g, '') || 'categorie'
+        );
+
+    const upsertCategoryInState = (category: Category): void => {
+        const index = categories.value.findIndex(cat => cat.id === category.id);
+        if (index !== -1) {
+            categories.value[index] = category;
+        } else {
+            categories.value.push(category);
+        }
+        categoriesCache.value.set(category.id, category);
+    };
+
+    const applyFetchedCategories = (rawCategories: any[]): Category[] => {
+        const fetchedCategories = rawCategories.map(category => Category.fromApiData(category));
+        categories.value = fetchedCategories;
+        categoriesCache.value.clear();
+        fetchedCategories.forEach(cat => categoriesCache.value.set(cat.id, cat));
+        categoryTree.value = [];
+        return fetchedCategories;
+    };
+
+    const findExistingByName = (name: string, parentId: string | null): Category | null => {
+        const target = normalizeName(name);
+        return (
+            categories.value.find(cat =>
+                normalizeName(cat.name) === target && (cat.parent_id || null) === (parentId || null)
+            ) || null
+        );
+    };
+
+    const createMissingCategory = async (
+        seed: DefaultCategorySeed,
+        parentId: string | null,
+        order: number
+    ): Promise<{ category: Category; created: boolean }> => {
+        const existing = findExistingByName(seed.name, parentId);
+        if (existing) {
+            return { category: existing, created: false };
+        }
+
+        const createdCategoryData = await categoriesApi.createCategory({
+            name: seed.name,
+            slug: slugify(seed.name),
+            description: seed.description,
+            parent_id: parentId,
+            order,
+            position: order
+        });
+
+        const createdCategory = Category.fromApiData(createdCategoryData);
+        upsertCategoryInState(createdCategory);
+        return { category: createdCategory, created: true };
+    };
+
+    const seedDefaultCategories = async (): Promise<number> => {
+        let createdCount = 0;
+
+        for (let rootIndex = 0; rootIndex < DEFAULT_CATEGORY_SEED.length; rootIndex++) {
+            const rootSeed = DEFAULT_CATEGORY_SEED[rootIndex];
+            const rootResult = await createMissingCategory(rootSeed, null, rootIndex + 1);
+            if (rootResult.created) createdCount += 1;
+
+            const children = rootSeed.children || [];
+            for (let childIndex = 0; childIndex < children.length; childIndex++) {
+                const childSeed = children[childIndex];
+                const childResult = await createMissingCategory(
+                    childSeed,
+                    rootResult.category.id,
+                    childIndex + 1
+                );
+                if (childResult.created) createdCount += 1;
+            }
+        }
+
+        if (createdCount > 0) {
+            categoryTree.value = [];
+        }
+
+        return createdCount;
+    };
 
     // ============================================
     // Getters / Computed
@@ -133,7 +385,7 @@ export const useCategoryStore = defineStore('category', () => {
             error.value = null;
 
             const newCategoryData = await categoriesApi.createCategory(data);
-      const newCategory = newCategoryData;
+            const newCategory = Category.fromApiData(newCategoryData);
 
             // Ajouter à la liste
             categories.value.push(newCategory);
@@ -168,17 +420,20 @@ export const useCategoryStore = defineStore('category', () => {
             loading.value = true;
             error.value = null;
 
-            const fetchedCategories = await categoriesApi.getAllCategories();
+            let fetchedCategoriesData = await categoriesApi.getAllCategories();
+            let fetchedCategories = applyFetchedCategories(fetchedCategoriesData);
 
-            // Mettre à jour les catégories
-            categories.value = fetchedCategories;
-
-            // Mettre à jour le cache
-            categoriesCache.value.clear();
-            fetchedCategories.forEach(cat => categoriesCache.value.set(cat.id, cat));
-
-            // Réinitialiser l'arbre
-            categoryTree.value = [];
+            if (fetchedCategories.length === 0) {
+                try {
+                    const createdCount = await seedDefaultCategories();
+                    if (createdCount > 0) {
+                        fetchedCategoriesData = await categoriesApi.getAllCategories();
+                        fetchedCategories = applyFetchedCategories(fetchedCategoriesData);
+                    }
+                } catch (seedError) {
+                    console.warn('Impossible de pre-remplir les categories par defaut:', seedError);
+                }
+            }
 
             return fetchedCategories;
         } catch (err: any) {
@@ -204,7 +459,16 @@ export const useCategoryStore = defineStore('category', () => {
             loading.value = true;
             error.value = null;
 
-            const tree = await categoriesApi.getCategoryTree();
+            const treeData = await categoriesApi.getCategoryTree();
+            let tree = treeData.map(node => CategoryTree.fromApiData(node));
+
+            if (tree.length === 0) {
+                await fetchAllCategories(true);
+                if (categories.value.length > 0) {
+                    tree = CategoryTree.buildTreeFromList(categories.value);
+                }
+            }
+
             categoryTree.value = tree;
 
             return tree;
@@ -241,7 +505,8 @@ export const useCategoryStore = defineStore('category', () => {
             loading.value = true;
             error.value = null;
 
-            const category = await categoriesApi.getCategoryById(categoryId);
+            const categoryData = await categoriesApi.getCategoryById(categoryId);
+            const category = Category.fromApiData(categoryData);
 
             // Mettre à jour le cache
             categoriesCache.value.set(category.id, category);
@@ -276,7 +541,8 @@ export const useCategoryStore = defineStore('category', () => {
             loading.value = true;
             error.value = null;
 
-            const updatedCategory = await categoriesApi.updateCategory(categoryId, data);
+            const updatedCategoryData = await categoriesApi.updateCategory(categoryId, data);
+            const updatedCategory = Category.fromApiData(updatedCategoryData);
 
             // Mettre à jour la liste
             const index = categories.value.findIndex(cat => cat.id === categoryId);

@@ -24,7 +24,7 @@
         <nav class="sticky top-0 z-30 backdrop-blur-md bg-white/85 border-b border-green-100/50">
             <div class="container mx-auto px-4 py-3">
                 <div class="flex justify-between items-center">
-                    <router-link to="/profile/customer"
+                    <router-link :to="settingsBackRoute"
                         class="flex items-center space-x-2 group transition-all duration-500 ease-out-custom">
                         <ArrowLeftIcon
                             class="w-5 h-5 text-green-600 transform group-hover:-translate-x-1 transition-transform duration-300" />
@@ -271,12 +271,114 @@
                                                     <DevicePhoneMobileIcon class="w-5 h-5 text-blue-600" />
                                                     <div>
                                                         <div class="font-medium text-blue-900">iPhone 14 Pro</div>
-                                                        <div class="text-xs text-blue-600/70">Paris, France •
+                                                        <div class="text-xs text-blue-600/70">Yaoundé, Cameroun •
                                                             Aujourd'hui</div>
                                                     </div>
                                                 </div>
                                                 <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Déconnexion -->
+                                    <div class="p-4 rounded-2xl bg-gradient-to-r from-red-50/50 to-rose-50/50 
+                             border border-red-200/50">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <div class="font-medium text-red-800 mb-1">Déconnexion</div>
+                                                <div class="text-sm text-red-600/70">
+                                                    Fermer la session sur cet appareil
+                                                </div>
+                                            </div>
+                                            <button @click="handleLogout" :disabled="isLoggingOut" class="px-4 py-2 rounded-full border border-red-300 text-red-700 
+                               bg-white hover:bg-red-50 transition-all duration-300 ease-out-custom
+                               hover:scale-[1.02] active:scale-[0.98] text-sm disabled:opacity-60 disabled:cursor-not-allowed">
+                                                {{ isLoggingOut ? 'Déconnexion...' : 'Se déconnecter' }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- Section Apparence -->
+                        <section id="appearance" ref="appearanceRef" class="scroll-mt-24">
+                            <div class="bg-white/95 backdrop-blur-sm rounded-3xl border border-green-100/70 
+                         p-6 shadow-sm hover:shadow-md transition-all duration-500 ease-out-custom">
+                                <div class="flex items-center space-x-3 mb-6">
+                                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-indigo-100 to-violet-100 
+                             flex items-center justify-center">
+                                        <Cog8ToothIcon class="w-6 h-6 text-indigo-700" />
+                                    </div>
+                                    <div>
+                                        <h2 class="text-2xl font-serif font-semibold text-green-900">
+                                            Apparence
+                                        </h2>
+                                        <p class="text-green-600/70">
+                                            Personnalisez l'affichage de votre application
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-6">
+                                    <div class="p-4 rounded-2xl bg-gradient-to-r from-indigo-50/50 to-violet-50/50 
+                             border border-indigo-200/50">
+                                        <div class="font-medium text-indigo-800 mb-3">Thème</div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <button @click="setThemeMode('light')"
+                                                class="py-2.5 rounded-xl text-sm transition-all duration-300 ease-out-custom"
+                                                :class="{
+                                                    'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-sm': !isDarkTheme,
+                                                    'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50': isDarkTheme
+                                                }">
+                                                Clair
+                                            </button>
+                                            <button @click="setThemeMode('dark')"
+                                                class="py-2.5 rounded-xl text-sm transition-all duration-300 ease-out-custom"
+                                                :class="{
+                                                    'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-sm': isDarkTheme,
+                                                    'bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50': !isDarkTheme
+                                                }">
+                                                Sombre
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="space-y-4">
+                                        <div class="flex items-center justify-between p-4 rounded-2xl 
+                               bg-gradient-to-r from-green-50/50 to-emerald-50/50 
+                               border border-green-200/50">
+                                            <div>
+                                                <div class="font-medium text-green-800">Réduire les animations</div>
+                                                <div class="text-sm text-green-600/70">
+                                                    Limite les effets animés pour un affichage plus stable
+                                                </div>
+                                            </div>
+                                            <ToggleSwitch v-model="reducedMotion" :active-color="'bg-green-500'" />
+                                        </div>
+
+                                        <div class="flex items-center justify-between p-4 rounded-2xl 
+                               bg-gradient-to-r from-green-50/50 to-emerald-50/50 
+                               border border-green-200/50">
+                                            <div>
+                                                <div class="font-medium text-green-800">Mode compact</div>
+                                                <div class="text-sm text-green-600/70">
+                                                    Réduit légèrement la taille globale pour afficher plus de contenu
+                                                </div>
+                                            </div>
+                                            <ToggleSwitch v-model="compactMode" :active-color="'bg-green-500'" />
+                                        </div>
+
+                                        <div class="flex items-center justify-between p-4 rounded-2xl 
+                               bg-gradient-to-r from-green-50/50 to-emerald-50/50 
+                               border border-green-200/50">
+                                            <div>
+                                                <div class="font-medium text-green-800">Contraste renforcé</div>
+                                                <div class="text-sm text-green-600/70">
+                                                    Améliore la lisibilité des textes et des bordures
+                                                </div>
+                                            </div>
+                                            <ToggleSwitch v-model="highContrast" :active-color="'bg-green-500'" />
                                         </div>
                                     </div>
                                 </div>
@@ -583,9 +685,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, reactive, onUnmounted } from 'vue'
+import { ref, computed, onMounted, reactive, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { CustomerProfile } from '../types'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import { useCustomerStore } from '../stores/useCustomerStore'
+import { apiClient } from '@/shared/services/api'
+import { useTheme } from '@/composables/useTheme'
 
 // Icons
 import {
@@ -608,6 +714,9 @@ import {
 
 // Store et router
 const router = useRouter()
+const authStore = useAuthStore()
+const customerStore = useCustomerStore()
+const { theme, setTheme } = useTheme()
 
 // États
 const loading = ref(false)
@@ -616,6 +725,7 @@ const showPasswordModal = ref(false)
 const showSessionsModal = ref(false)
 const showDeactivateModal = ref(false)
 const showDeleteModal = ref(false)
+const isLoggingOut = ref(false)
 const showToast = ref(false)
 const activeSection = ref('account')
 const toastMessage = ref('')
@@ -626,15 +736,25 @@ const currentPassword = ref('')
 const publicProfile = ref(true)
 const emailSearchable = ref(false)
 const selectedFrequency = ref('weekly')
+const reducedMotion = ref(false)
+const compactMode = ref(false)
+const highContrast = ref(false)
 
 // Refs pour les sections
 const accountRef = ref<HTMLElement>()
+const appearanceRef = ref<HTMLElement>()
 const notificationsRef = ref<HTMLElement>()
 const privacyRef = ref<HTMLElement>()
 const advancedRef = ref<HTMLElement>()
 
 // Données
 const profile = ref<CustomerProfile | null>(null)
+
+const UI_PREF_KEYS = {
+    REDUCED_MOTION: 'ui_reduced_motion',
+    COMPACT_MODE: 'ui_compact_mode',
+    HIGH_CONTRAST: 'ui_high_contrast'
+} as const
 
 // Sections de navigation
 const sections = [
@@ -643,6 +763,12 @@ const sections = [
         title: 'Compte & Sécurité',
         description: 'Email, mot de passe, sessions',
         icon: 'UserCircleIcon'
+    },
+    {
+        id: 'appearance',
+        title: 'Apparence',
+        description: 'Thème et affichage',
+        icon: 'Cog8ToothIcon'
     },
     {
         id: 'notifications',
@@ -702,37 +828,70 @@ const emailFrequencies = [
 ]
 
 const userEmail = computed(() => {
-    return 'marie.dubois@email.com'
+    return authStore.currentUser?.email || profile.value?.email || ''
+})
+
+const isProducerUser = computed(() =>
+    (authStore.currentUser?.roles || []).some(role => String(role?.name || '').toLowerCase() === 'producer')
+)
+
+const settingsBackRoute = computed(() => (isProducerUser.value ? '/producer/dashboard' : '/profile/customer'))
+
+const isDarkTheme = computed(() => theme.value === 'dark')
+
+const setThemeMode = (mode: 'light' | 'dark') => {
+    setTheme(mode)
+}
+
+const getStoredBoolPreference = (key: string) => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem(key) === '1'
+}
+
+const persistBoolPreference = (key: string, value: boolean) => {
+    if (typeof window === 'undefined') return
+    localStorage.setItem(key, value ? '1' : '0')
+}
+
+const applyPreferenceClass = (className: string, enabled: boolean) => {
+    if (typeof document === 'undefined') return
+    document.documentElement.classList.toggle(className, enabled)
+}
+
+const initializeAppearancePreferences = () => {
+    reducedMotion.value = getStoredBoolPreference(UI_PREF_KEYS.REDUCED_MOTION)
+    compactMode.value = getStoredBoolPreference(UI_PREF_KEYS.COMPACT_MODE)
+    highContrast.value = getStoredBoolPreference(UI_PREF_KEYS.HIGH_CONTRAST)
+
+    applyPreferenceClass('app-reduced-motion', reducedMotion.value)
+    applyPreferenceClass('app-compact', compactMode.value)
+    applyPreferenceClass('app-high-contrast', highContrast.value)
+}
+
+watch(reducedMotion, (enabled) => {
+    applyPreferenceClass('app-reduced-motion', enabled)
+    persistBoolPreference(UI_PREF_KEYS.REDUCED_MOTION, enabled)
+})
+
+watch(compactMode, (enabled) => {
+    applyPreferenceClass('app-compact', enabled)
+    persistBoolPreference(UI_PREF_KEYS.COMPACT_MODE, enabled)
+})
+
+watch(highContrast, (enabled) => {
+    applyPreferenceClass('app-high-contrast', enabled)
+    persistBoolPreference(UI_PREF_KEYS.HIGH_CONTRAST, enabled)
 })
 
 // Méthodes
 const loadProfile = async () => {
     loading.value = true
     try {
-        // Simulation de chargement
-        await new Promise(resolve => setTimeout(resolve, 800))
-
-        profile.value = {
-            id: '123',
-            userId: '123',
-            firstName: 'Marie',
-            lastName: 'Dubois',
-            email: 'marie@example.com',
-            phone: '+33612345678',
-            avatar: null,
-            preferences: {
-                newsletterSubscription: true,
-                marketingEmails: true,
-                smsNotifications: false,
-                preferredDeliveryTime: 'AFTERNOON',
-                preferredCommunicationMethod: 'EMAIL',
-                dietaryRestrictions: ['Végétarien', 'Sans lactose'],
-                allergies: [],
-                language: 'fr'
-            },
-            createdAt: '2024-01-15T10:30:00Z',
-            updatedAt: '2024-01-15T10:30:00Z'
+        if (!authStore.currentUser) {
+            await authStore.fetchCurrentUser()
         }
+        await customerStore.fetchProfile()
+        profile.value = customerStore.profile
 
     } catch (error) {
         console.error('Erreur chargement profil:', error)
@@ -745,6 +904,7 @@ const scrollToSection = (sectionId: string) => {
     activeSection.value = sectionId
     const sectionRef = {
         account: accountRef,
+        appearance: appearanceRef,
         notifications: notificationsRef,
         privacy: privacyRef,
         advanced: advancedRef
@@ -764,6 +924,7 @@ const handleScroll = () => {
     // Déterminer la section active en fonction de la position de défilement
     const sections = [
         { id: 'account', ref: accountRef },
+        { id: 'appearance', ref: appearanceRef },
         { id: 'notifications', ref: notificationsRef },
         { id: 'privacy', ref: privacyRef },
         { id: 'advanced', ref: advancedRef }
@@ -784,8 +945,10 @@ const updateEmail = async () => {
     if (!newEmail.value || !currentPassword.value) return
 
     try {
-        // Simulation d'update
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        await apiClient.put('/authentification/auth/me', {
+            email: newEmail.value
+        })
+        await authStore.fetchCurrentUser()
         showToastMessage('Email mis à jour avec succès')
         closeEmailModal()
         newEmail.value = ''
@@ -797,11 +960,24 @@ const updateEmail = async () => {
     }
 }
 
+const handleLogout = async () => {
+    if (isLoggingOut.value) return
+    isLoggingOut.value = true
+    try {
+        await authStore.logout()
+        router.push('/login')
+    } catch (error) {
+        console.error('Erreur de déconnexion:', error)
+        showToastMessage('Impossible de se déconnecter pour le moment', true)
+    } finally {
+        isLoggingOut.value = false
+    }
+}
+
 const exportData = async () => {
     try {
         showToastMessage('Export de vos données en cours...')
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        showToastMessage('Export terminé. Vérifiez vos emails.')
+        showToastMessage('Demande d\'export enregistrée.')
 
     } catch (error) {
         console.error('Erreur export:', error)
@@ -873,6 +1049,7 @@ const UserGroupIcon = {
 
 // Cycle de vie
 onMounted(() => {
+    initializeAppearancePreferences()
     loadProfile()
     window.addEventListener('scroll', handleScroll)
 })
@@ -1128,11 +1305,13 @@ select:focus-visible {
     }
 }
 
-/* Dark mode considerations */
-@media (prefers-color-scheme: dark) {
-    .profile-settings-view {
-        color-scheme: light;
-    }
+/* Color scheme piloté par le thème applicatif */
+:global(:root[data-theme='light']) .profile-settings-view {
+    color-scheme: light;
+}
+
+:global(:root[data-theme='dark']) .profile-settings-view {
+    color-scheme: dark;
 }
 
 /* Print styles */

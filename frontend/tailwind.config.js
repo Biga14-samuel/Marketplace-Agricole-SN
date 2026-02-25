@@ -16,7 +16,18 @@ export default {
         'forest-dark': '#2c5530',
         
         // Terre cuite - Secondaire (proximité)
-        'terracotta': '#d2691e',
+        'terracotta': {
+          DEFAULT: '#d2691e',
+          30: '#fefaf5',
+          50: '#fdf5f0',
+          100: '#fbebe1',
+          200: '#f7d8c3',
+          300: '#f3c4a5',
+          400: '#efb187',
+          500: '#eb9e69',
+          600: '#bc7e54',
+          700: '#8d5f3f',
+        },
         'terracotta-light': '#e38d4a',
         'terracotta-soft': '#f0c9a7',
         
@@ -24,6 +35,52 @@ export default {
         'cream-light': '#f8f4e9',
         'cream-medium': '#e8e0d0',
         'cream-dark': '#d4c9b8',
+
+        // Compatibilité couleurs custom utilisées dans les vues/modules
+        'forest-green': {
+          DEFAULT: '#2f7738',
+          50: '#f0f7ef',
+          100: '#d9ebd6',
+          200: '#b4d8ad',
+          300: '#8cc583',
+          400: '#64aa64',
+          500: '#3f8f47',
+          600: '#2f7738',
+          700: '#245d2d',
+          800: '#1b4521',
+          900: '#112d16',
+        },
+        'forest': {
+          25: '#f7faf7',
+          30: '#fbfdfb',
+          50: '#f0f7f0',
+          100: '#e0eee0',
+          200: '#c1ddc1',
+          300: '#a2cca2',
+          400: '#83bb83',
+          500: '#64aa64',
+          600: '#508850',
+          700: '#3c663c',
+          800: '#284428',
+        },
+        'cream': {
+          40: '#fefdf5',
+          50: '#fefaf0',
+          100: '#fdf5e1',
+          200: '#fbebc3',
+        },
+        'nature-gray': '#666666',
+        'natural-gray': '#666666',
+        'soft-green': '#66bb6a',
+        'earth-brown': '#8d6e63',
+        'success-light': '#c8e6c9',
+        'success-dark': '#2e7d32',
+        'warning-light': '#fff9c4',
+        'warning-dark': '#f57f17',
+        'info-light': '#b3e5fc',
+        'info-dark': '#0288d1',
+        'error-light': '#ffcdd2',
+        'error-dark': '#c62828',
         
         // Palette "fresh" complète basée sur la nouvelle identité
         'fresh': {

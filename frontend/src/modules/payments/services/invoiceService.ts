@@ -1,6 +1,7 @@
 // @ts-nocheck
 // frontend/src/modules/payments/services/invoiceService.ts
-import axios, { AxiosResponse } from 'axios'
+import axios from 'axios'
+import type { AxiosResponse } from 'axios'
 import type {
     Invoice,
     InvoiceLineItem,
@@ -13,7 +14,6 @@ import type {
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { formatCurrencyXAF } from '../utils/currencyFormatter'
 import { INVOICE_STATUS, INVOICE_TYPES } from '../constants/invoice.constants'
-import { generateInvoicePDF } from '../utils/invoiceGenerator'
 
 // Client axios partagé avec la configuration de base
 const apiClient = axios.create({
@@ -194,15 +194,7 @@ class InvoiceService {
             return response.data
         } catch (error: unknown) {
             console.error('Erreur téléchargement facture:', error)
-
-            // Fallback: générer le PDF côté client si l'API échoue
-            try {
-                const invoice = await this.getInvoice(invoiceId)
-                const pdfBlob = await generateInvoicePDF(invoice)
-                return pdfBlob
-            } catch (fallbackError) {
-                throw new Error(error.response?.data?.message || 'Erreur lors du téléchargement de la facture')
-            }
+            throw new Error(error.response?.data?.message || 'Erreur lors du téléchargement de la facture')
         }
     }
 

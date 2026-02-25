@@ -47,7 +47,24 @@ export const PickupPointService = {
         current_page: number;
     }> {
         const response = await api.get('/producer-profiles/producers/pickup-points', { params });
-        return response.data;
+        const data = response.data;
+
+        if (Array.isArray(data)) {
+            return {
+                pickup_points: data as PickupPoint[],
+                total: data.length,
+                pages: 1,
+                current_page: 1
+            };
+        }
+
+        const pickupPoints = Array.isArray(data?.pickup_points) ? data.pickup_points as PickupPoint[] : [];
+        return {
+            pickup_points: pickupPoints,
+            total: Number(data?.total ?? pickupPoints.length),
+            pages: Number(data?.pages ?? 1),
+            current_page: Number(data?.current_page ?? 1)
+        };
     },
 
     /**
@@ -92,10 +109,24 @@ export const PickupPointService = {
      * PATCH /api/v1/producer-profiles/producers/pickup-points/{point_id}/toggle
      */
     async togglePickupPoint(pointId: string, isActive: boolean): Promise<PickupPoint> {
-        const response = await api.patch(`/producer-profiles/producers/pickup-points/${pointId}/toggle`, {
-            is_active: isActive
-        });
-        return response.data;
+        try {
+            const response = await api.patch(`/producer-profiles/producers/pickup-points/${pointId}/toggle`, {
+                is_active: isActive
+            });
+            return response.data;
+        } catch (error: any) {
+            const status = Number(error?.response?.status || 0);
+
+            // Fallback MVP: endpoint /toggle parfois indisponible côté backend.
+            if (status === 404 || status === 405) {
+                const response = await api.put(`/producer-profiles/producers/pickup-points/${pointId}`, {
+                    is_active: isActive
+                });
+                return response.data;
+            }
+
+            throw error;
+        }
     },
 
     /**
@@ -171,7 +202,24 @@ export const PickupPointService = {
         current_page: number;
     }> {
         const response = await api.get(`/producer-profiles/producers/pickup-points/${pointId}/slots`, { params });
-        return response.data;
+        const data = response.data;
+
+        if (Array.isArray(data)) {
+            return {
+                slots: data as PickupSlot[],
+                total: data.length,
+                pages: 1,
+                current_page: 1
+            };
+        }
+
+        const slots = Array.isArray(data?.slots) ? (data.slots as PickupSlot[]) : [];
+        return {
+            slots,
+            total: Number(data?.total ?? slots.length),
+            pages: Number(data?.pages ?? 1),
+            current_page: Number(data?.current_page ?? 1)
+        };
     },
 
     /**

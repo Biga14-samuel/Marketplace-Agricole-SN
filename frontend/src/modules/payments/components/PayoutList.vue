@@ -497,6 +497,7 @@ import { useRouter } from 'vue-router'
 import PayoutListItem from './PayoutListItem.vue'
 import PayoutGridItem from './PayoutGridItem.vue'
 import PayoutDetailModal from './PayoutDetailModal.vue'
+import payoutService from '../services/payoutService'
 import {
     BanknotesIcon,
     PlusCircleIcon,
@@ -537,102 +538,10 @@ interface Payout {
     currency: string
 }
 
-// Données mockées
 const loading = ref(true)
-const payouts = ref<Payout[]>([
-    {
-        id: '1',
-        payout_number: 'PAY-2024-00123',
-        period_start: '2024-03-01',
-        period_end: '2024-03-31',
-        gross_amount: 456800,
-        commission: 68520,
-        net_amount: 388280,
-        status: 'completed',
-        paid_at: '2024-04-05',
-        payment_method: 'Mobile Money (MTN)',
-        transaction_id: 'TXN-7890123456',
-        orders_count: 42,
-        currency: 'XAF'
-    },
-    {
-        id: '2',
-        payout_number: 'PAY-2024-00124',
-        period_start: '2024-04-01',
-        period_end: '2024-04-15',
-        gross_amount: 287500,
-        commission: 43125,
-        net_amount: 244375,
-        status: 'processing',
-        payment_method: 'Orange Money',
-        orders_count: 28,
-        currency: 'XAF'
-    },
-    {
-        id: '3',
-        payout_number: 'PAY-2024-00125',
-        period_start: '2024-02-01',
-        period_end: '2024-02-29',
-        gross_amount: 389200,
-        commission: 58380,
-        net_amount: 330820,
-        status: 'completed',
-        paid_at: '2024-03-05',
-        payment_method: 'Virement bancaire',
-        transaction_id: 'TXN-7890123457',
-        orders_count: 35,
-        currency: 'XAF'
-    },
-    {
-        id: '4',
-        payout_number: 'PAY-2024-00126',
-        period_start: '2024-04-16',
-        period_end: '2024-04-30',
-        gross_amount: 156300,
-        commission: 23445,
-        net_amount: 132855,
-        status: 'pending',
-        payment_method: 'Non défini',
-        orders_count: 15,
-        currency: 'XAF'
-    },
-    {
-        id: '5',
-        payout_number: 'PAY-2024-00127',
-        period_start: '2024-01-01',
-        period_end: '2024-01-31',
-        gross_amount: 312400,
-        commission: 46860,
-        net_amount: 265540,
-        status: 'completed',
-        paid_at: '2024-02-05',
-        payment_method: 'Mobile Money (MTN)',
-        transaction_id: 'TXN-7890123458',
-        orders_count: 31,
-        currency: 'XAF'
-    },
-    {
-        id: '6',
-        payout_number: 'PAY-2024-00128',
-        period_start: '2023-12-01',
-        period_end: '2023-12-31',
-        gross_amount: 289500,
-        commission: 43425,
-        net_amount: 246075,
-        status: 'completed',
-        paid_at: '2024-01-05',
-        payment_method: 'Orange Money',
-        transaction_id: 'TXN-7890123459',
-        orders_count: 29,
-        currency: 'XAF'
-    }
-])
+const payouts = ref<Payout[]>([])
 
-const nextPayout = ref({
-    estimated_date: '2024-05-05',
-    estimated_amount: 215000,
-    orders_count: 22
-})
+const nextPayout = ref<{ estimated_date: string; estimated_amount: number; orders_count: number } | null>(null)
 
 // Filtres
 const searchQuery = ref('')
@@ -666,6 +575,36 @@ const statusOptions = [
     { value: 'completed', label: 'Complété', badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200' },
     { value: 'failed', label: 'Échoué', badgeClass: 'bg-red-100 text-red-800 border border-red-200' }
 ]
+
+const normalizePayoutStatus = (status: unknown): Payout['status'] => {
+    const normalized = String(status || '').toLowerCase()
+    if (normalized === 'pending') return 'pending'
+    if (normalized === 'processing' || normalized === 'in_progress') return 'processing'
+    if (normalized === 'completed' || normalized === 'paid') return 'completed'
+    return 'failed'
+}
+
+const mapBackendPayout = (payout: any): Payout => {
+    const grossAmount = Number(payout?.gross_amount ?? payout?.grossAmount ?? payout?.amount ?? 0)
+    const commission = Number(payout?.commission ?? payout?.fees ?? 0)
+    const netAmount = Number(payout?.net_amount ?? payout?.netAmount ?? (grossAmount - commission))
+
+    return {
+        id: String(payout?.id ?? ''),
+        payout_number: String(payout?.payout_number ?? payout?.payoutNumber ?? payout?.reference ?? `PAY-${payout?.id ?? ''}`),
+        period_start: String(payout?.period_start ?? payout?.periodStart ?? payout?.requestedAt ?? payout?.createdAt ?? new Date().toISOString()),
+        period_end: String(payout?.period_end ?? payout?.periodEnd ?? payout?.paidAt ?? payout?.updatedAt ?? payout?.requestedAt ?? new Date().toISOString()),
+        gross_amount: grossAmount,
+        commission,
+        net_amount: netAmount,
+        status: normalizePayoutStatus(payout?.status),
+        paid_at: payout?.paid_at ?? payout?.paidAt,
+        payment_method: String(payout?.payment_method ?? payout?.method ?? 'Non renseigné'),
+        transaction_id: payout?.transaction_id ?? payout?.transactionId,
+        orders_count: Number(payout?.orders_count ?? payout?.ordersCount ?? 0),
+        currency: String(payout?.currency ?? 'XAF')
+    }
+}
 
 // Statistiques
 const stats = computed(() => [
@@ -1020,12 +959,35 @@ const showToast = (message: string, details: string, type: 'success' | 'info', i
     }, 5000)
 }
 
+const loadPayouts = async () => {
+    loading.value = true
+    try {
+        const producerPayouts = await payoutService.getProducerPayouts()
+        payouts.value = Array.isArray(producerPayouts) ? producerPayouts.map(mapBackendPayout) : []
+
+        const upcoming = payouts.value
+            .filter(p => p.status === 'pending' || p.status === 'processing')
+            .sort((a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime())[0]
+
+        nextPayout.value = upcoming
+            ? {
+                estimated_date: upcoming.period_end,
+                estimated_amount: upcoming.net_amount,
+                orders_count: upcoming.orders_count
+            }
+            : null
+    } catch (error) {
+        payouts.value = []
+        nextPayout.value = null
+        showToast('Erreur', 'Impossible de charger vos versements', 'info', BanknotesIcon)
+    } finally {
+        loading.value = false
+    }
+}
+
 // Lifecycle
 onMounted(() => {
-    // Simulation de chargement
-    setTimeout(() => {
-        loading.value = false
-    }, 800)
+    loadPayouts()
 })
 </script>
 
@@ -1124,3 +1086,4 @@ onMounted(() => {
     --color-nature-900: #1c1917;
 }
 </style>
+

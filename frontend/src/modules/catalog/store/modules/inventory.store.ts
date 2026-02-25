@@ -1,13 +1,25 @@
-// @ts-nocheck
 // stores/inventory.store.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { Inventory } from '@/modules/catalog/types/catalog.types'
 import api from '@/shared/services/api'
 
+type InventoryRecord = Inventory & {
+  id?: string | number
+  isActive?: boolean
+}
+
+const getInventoryRecordId = (record: InventoryRecord): string => {
+  if (record.id !== undefined && record.id !== null) {
+    return String(record.id)
+  }
+
+  return `${record.product_id}:${record.variant_id ?? 'base'}:${record.location_id}`
+}
+
 export const useInventoryStore = defineStore('inventory', () => {
-  const inventories = ref<Inventory[]>([])
-  const currentInventory = ref<Inventory | null>(null)
+  const inventories = ref<InventoryRecord[]>([])
+  const currentInventory = ref<InventoryRecord | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -18,8 +30,8 @@ export const useInventoryStore = defineStore('inventory', () => {
       error.value = null
       const response = await api.get('/inventory')
       inventories.value = response.data
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la récupération des inventaires'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la récupération des inventaires'
       console.error('Error fetching inventories:', err)
     } finally {
       loading.value = false
@@ -34,8 +46,8 @@ export const useInventoryStore = defineStore('inventory', () => {
       const response = await api.get(`/inventory/${id}`)
       currentInventory.value = response.data
       return response.data
-    } catch (err: any) {
-      error.value = err.message || `Erreur lors de la récupération de l'inventaire ${id}`
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : `Erreur lors de la récupération de l'inventaire ${id}`
       console.error(`Error fetching inventory ${id}:`, err)
       throw err
     } finally {
@@ -44,15 +56,15 @@ export const useInventoryStore = defineStore('inventory', () => {
   }
 
   // POST /inventory - Créer un nouvel inventaire
-  const createInventory = async (inventoryData: Partial<Inventory>) => {
+  const createInventory = async (inventoryData: Partial<InventoryRecord>) => {
     try {
       loading.value = true
       error.value = null
       const response = await api.post('/inventory', inventoryData)
       inventories.value.push(response.data)
       return response.data
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la création de l\'inventaire'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la création de l\'inventaire'
       console.error('Error creating inventory:', err)
       throw err
     } finally {
@@ -61,26 +73,26 @@ export const useInventoryStore = defineStore('inventory', () => {
   }
 
   // PUT /inventory/:id - Mettre à jour un inventaire
-  const updateInventory = async (id: string | number, inventoryData: Partial<Inventory>) => {
+  const updateInventory = async (id: string | number, inventoryData: Partial<InventoryRecord>) => {
     try {
       loading.value = true
       error.value = null
       const response = await api.put(`/inventory/${id}`, inventoryData)
       
       // Mettre à jour dans la liste
-      const index = inventories.value.findIndex(inv => inv.id === id)
+      const index = inventories.value.findIndex(inv => getInventoryRecordId(inv) === String(id))
       if (index !== -1) {
         inventories.value[index] = response.data
       }
       
       // Mettre à jour l'élément courant si c'est lui
-      if (currentInventory.value?.id === id) {
+      if (currentInventory.value && getInventoryRecordId(currentInventory.value) === String(id)) {
         currentInventory.value = response.data
       }
       
       return response.data
-    } catch (err: any) {
-      error.value = err.message || `Erreur lors de la mise à jour de l'inventaire ${id}`
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : `Erreur lors de la mise à jour de l'inventaire ${id}`
       console.error(`Error updating inventory ${id}:`, err)
       throw err
     } finally {
@@ -96,14 +108,14 @@ export const useInventoryStore = defineStore('inventory', () => {
       await api.delete(`/inventory/${id}`)
       
       // Retirer de la liste
-      inventories.value = inventories.value.filter(inv => inv.id !== id)
+      inventories.value = inventories.value.filter(inv => getInventoryRecordId(inv) !== String(id))
       
       // Réinitialiser l'élément courant si c'est lui
-      if (currentInventory.value?.id === id) {
+      if (currentInventory.value && getInventoryRecordId(currentInventory.value) === String(id)) {
         currentInventory.value = null
       }
-    } catch (err: any) {
-      error.value = err.message || `Erreur lors de la suppression de l'inventaire ${id}`
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : `Erreur lors de la suppression de l'inventaire ${id}`
       console.error(`Error deleting inventory ${id}:`, err)
       throw err
     } finally {
@@ -112,15 +124,15 @@ export const useInventoryStore = defineStore('inventory', () => {
   }
 
   // Rechercher des inventaires (si endpoint disponible)
-  const searchInventories = async (criteria: Record<string, any>) => {
+  const searchInventories = async (criteria: Record<string, unknown>) => {
     try {
       loading.value = true
       error.value = null
       const response = await api.get('/inventory/search', { params: criteria })
       inventories.value = response.data
       return response.data
-    } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la recherche des inventaires'
+    } catch (err: unknown) {
+      error.value = err instanceof Error ? err.message : 'Erreur lors de la recherche des inventaires'
       console.error('Error searching inventories:', err)
       throw err
     } finally {
@@ -147,9 +159,9 @@ export const useInventoryStore = defineStore('inventory', () => {
     
     // Getters (computed)
     getInventoryById: (id: string | number) => 
-      inventories.value.find(inv => inv.id === id),
+      inventories.value.find(inv => getInventoryRecordId(inv) === String(id)),
     getActiveInventories: () => 
-      inventories.value.filter(inv => inv.isActive),
+      inventories.value.filter(inv => inv.isActive ?? inv.available_quantity > 0),
     
     // Actions
     fetchAllInventories,

@@ -101,7 +101,24 @@ export const ProducerDocumentService = {
         current_page: number;
     }> {
         const response = await api.get('/producer-profiles/producers/documents', { params });
-        return response.data;
+        const payload = response.data;
+
+        // Backend MVP retourne parfois directement une liste.
+        if (Array.isArray(payload)) {
+            return {
+                documents: payload as ProducerDocument[],
+                total: payload.length,
+                pages: 1,
+                current_page: 1
+            };
+        }
+
+        return {
+            documents: Array.isArray(payload?.documents) ? payload.documents : [],
+            total: Number(payload?.total ?? (Array.isArray(payload?.documents) ? payload.documents.length : 0)),
+            pages: Number(payload?.pages ?? 1),
+            current_page: Number(payload?.current_page ?? 1)
+        };
     },
 
     /**

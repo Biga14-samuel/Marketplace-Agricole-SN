@@ -864,13 +864,6 @@ export type InvoicePaymentStatus =
  */
 export type InvoiceCurrency =
     | 'XAF'
-    | 'EUR'
-    | 'USD'
-    | 'GBP'
-    | 'CAD'
-    | 'AUD'
-    | 'JPY'
-    | 'CNY'
 
 // ============ TYPES UTILITAIRES ============
 

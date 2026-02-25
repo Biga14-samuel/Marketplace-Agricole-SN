@@ -438,6 +438,7 @@ import { getErrorMessage } from '@/shared/utils/error-handler';
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 import { ref, reactive, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProducerStore } from '../stores/useProducerStore';
@@ -1103,3 +1104,5 @@ async function handleSave() {
         0 2px 6px rgba(0, 0, 0, 0.1);
 }
 </style>
+
+

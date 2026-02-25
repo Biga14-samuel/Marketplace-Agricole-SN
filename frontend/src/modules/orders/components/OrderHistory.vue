@@ -260,7 +260,7 @@
                         <div class="flex items-center justify-between mb-4 pt-4 border-t border-cream-light/30">
                           <div>
                             <p class="text-sm text-nature-gray">Total</p>
-                            <p class="text-xl font-bold text-forest-green">{{ order.total }} €</p>
+                            <p class="text-xl font-bold text-forest-green">{{ formatCurrency(order.total) }}</p>
                           </div>
                           <div class="text-right">
                             <p class="text-sm text-nature-gray">Articles</p>
@@ -427,7 +427,7 @@
             <h4 class="font-semibold text-forest-green">Dépenses totales</h4>
             <i class="fas fa-coins text-vintage-green text-xl"></i>
           </div>
-          <div class="text-3xl font-bold text-forest-green">{{ totalSpent }} €</div>
+          <div class="text-3xl font-bold text-forest-green">{{ formatCurrency(totalSpent) }}</div>
           <div class="text-sm text-nature-gray mt-2">Sur {{ filteredOrders.length }} commandes</div>
         </div>
         
@@ -457,7 +457,8 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
-import gsap from 'gsap'
+import { useRouter } from 'vue-router'
+import { useOrdersStore } from '../stores/orders.store'
 import OrderStatusBadge from './OrderStatusBadge.vue'
 
 export default {
@@ -468,6 +469,8 @@ export default {
   },
   
   setup() {
+    const router = useRouter()
+    const ordersStore = useOrdersStore()
     const activePeriod = ref('all')
     const activeMonth = ref('Tous')
     const searchQuery = ref('')
@@ -486,78 +489,61 @@ export default {
     const months = ['Tous', 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 
                     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
     
-    const stats = ref({
-      total: 24,
-      delivered: 18,
-      pending: 3,
-      preparing: 2,
-      cancelled: 1
-    })
-    
-    // Données de démonstration
-    const orders = ref([
-      {
-        id: 'ORD-2023-00145',
-        date: '15 Oct',
-        day: 'Dimanche',
-        time: '09:30',
-        month: 'Octobre',
-        year: 2023,
-        status: 'delivered',
-        producer: 'La Ferme du Val Joyeux',
-        items: [
-          { id: 1, name: 'Tomates anciennes', image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=100' },
-          { id: 2, name: 'Salade verte', image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=100' },
-          { id: 3, name: 'Fromage de chèvre', image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=100' }
-        ],
-        total: 42.50,
+    const orders = ref([])
+
+    const mapOrderStatus = (status) => {
+      const normalized = String(status || '').toLowerCase()
+      if (normalized === 'completed' || normalized === 'delivered' || normalized === 'ready') return 'delivered'
+      if (normalized === 'preparing') return 'preparing'
+      if (normalized === 'cancelled') return 'cancelled'
+      return 'pending'
+    }
+
+    const mapOrder = (order) => {
+      const createdAt = order?.createdAt ? new Date(order.createdAt) : new Date()
+      const status = mapOrderStatus(order?.status)
+      return {
+        id: String(order?.orderNumber || order?.id || ''),
+        rawId: order?.id,
+        date: createdAt.toISOString(),
+        day: createdAt.toLocaleDateString('fr-CM', { weekday: 'long' }),
+        time: createdAt.toLocaleTimeString('fr-CM', { hour: '2-digit', minute: '2-digit' }),
+        month: months[createdAt.getMonth() + 1] || 'Janvier',
+        year: createdAt.getFullYear(),
+        status,
+        producer: order?.producer?.name || 'Producteur local',
+        items: Array.isArray(order?.items)
+          ? order.items.map((item) => ({
+              id: item?.id,
+              name: item?.productSnapshot?.name || item?.product?.name || 'Produit',
+              image: item?.productSnapshot?.images?.[0] || ''
+            }))
+          : [],
+        total: Number(order?.totalAmount || 0),
         timeline: {
-          confirmed: true,
-          prepared: true,
-          delivered: true
-        }
-      },
-      {
-        id: 'ORD-2023-00144',
-        date: '12 Oct',
-        day: 'Jeudi',
-        time: '14:15',
-        month: 'Octobre',
-        year: 2023,
-        status: 'delivered',
-        producer: 'Le Fournil des Champs',
-        items: [
-          { id: 4, name: 'Pain au levain', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=100' },
-          { id: 5, name: 'Confiture artisanale', image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=100' }
-        ],
-        total: 28.90,
-        timeline: {
-          confirmed: true,
-          prepared: true,
-          delivered: true
-        }
-      },
-      {
-        id: 'ORD-2023-00143',
-        date: '8 Oct',
-        day: 'Dimanche',
-        time: '11:45',
-        month: 'Octobre',
-        year: 2023,
-        status: 'preparing',
-        producer: 'Les Jardins de la Rivière',
-        items: [
-          { id: 6, name: 'Courges', image: 'https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?w=100' },
-          { id: 7, name: 'Pommes de terre', image: 'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=100' }
-        ],
-        total: 35.20,
-        timeline: {
-          confirmed: true,
-          prepared: false,
-          delivered: false
+          confirmed: ['pending', 'preparing', 'delivered'].includes(status),
+          prepared: ['preparing', 'delivered'].includes(status),
+          delivered: status === 'delivered'
         }
       }
-    ])
+    }
+
+    const loadOrders = async () => {
+      try {
+        const response = await ordersStore.fetchMyOrders({ page: 1, limit: 100 })
+        orders.value = Array.isArray(response?.orders) ? response.orders.map(mapOrder) : []
+      } catch (error) {
+        orders.value = []
+      }
+    }
+
+    const stats = computed(() => ({
+      total: orders.value.length,
+      delivered: orders.value.filter(order => order.status === 'delivered').length,
+      pending: orders.value.filter(order => order.status === 'pending').length,
+      preparing: orders.value.filter(order => order.status === 'preparing').length,
+      cancelled: orders.value.filter(order => order.status === 'cancelled').length
+    }))
     
     const filteredOrders = computed(() => {
       let filtered = orders.value
@@ -630,11 +616,9 @@ export default {
       return end > filteredOrders.value.length ? filteredOrders.value.length : end
     })
     
-    const totalSpent = computed(() => {
-      return filteredOrders.value
-        .reduce((sum, order) => sum + parseFloat(order.total), 0)
-        .toFixed(2)
-    })
+    const totalSpent = computed(() =>
+      filteredOrders.value.reduce((sum, order) => sum + Number(order.total || 0), 0)
+    )
     
     const favoriteProducer = computed(() => {
       const producerCounts = {}
@@ -675,7 +659,7 @@ export default {
     
     // Actions
     const viewOrderDetails = (order) => {
-      console.log('Voir détails de la commande:', order.id)
+      router.push(`/orders/${order.rawId || order.id}`)
     }
     
     const reorder = (order) => {
@@ -688,6 +672,15 @@ export default {
     
     const clearSearch = () => {
       searchQuery.value = ''
+    }
+
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('fr-CM', {
+        style: 'currency',
+        currency: 'XAF',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(Number(amount || 0))
     }
     
     const previousPage = () => {
@@ -709,17 +702,17 @@ export default {
     }
     
     const staggerEnter = (el, done) => {
-      gsap.to(el, {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        delay: el.dataset.index * 0.2,
-        ease: 'back.out(1.7)',
-        onComplete: done
-      })
+      const delayMs = Number(el?.dataset?.index || 0) * 100
+      window.setTimeout(() => {
+        el.style.transition = 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
+        el.style.opacity = '1'
+        el.style.transform = 'translateY(0)'
+        window.setTimeout(() => done(), 460)
+      }, delayMs)
     }
     
     onMounted(() => {
+      loadOrders()
       // Initialiser les animations
       document.querySelectorAll('.animate-fade-in-up').forEach((el, index) => {
         el.style.animationDelay = `${index * 100}ms`
@@ -745,6 +738,7 @@ export default {
       totalSpent,
       favoriteProducer,
       satisfactionRate,
+      formatCurrency,
       getStatusColor,
       getStatusPulseColor,
       viewOrderDetails,
@@ -919,3 +913,4 @@ export default {
   background: #4A7C59;
 }
 </style>
+

@@ -432,6 +432,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { createEmojiIcon } from '@/shared/components/icons/emoji'
+import { categoriesApi, type CategoryTree } from '../../services/api/categories.api'
 
 // Icons
 const FilterIcon = createEmojiIcon('🎛️', 'Filter')
@@ -474,6 +475,14 @@ const ratingFilter = ref(0)
 const selectedCategories = ref<string[]>([])
 const selectedLabels = ref<string[]>([])
 
+interface FilterCategoryNode {
+  id: string
+  name: string
+  product_count?: number
+  level: number
+  children: FilterCategoryNode[]
+}
+
 // Filtres
 const filters = ref({
   inStock: false,
@@ -481,39 +490,7 @@ const filters = ref({
   seasonal: false
 })
 
-// Données de test
-const categoryTree = ref([
-  {
-    id: '1',
-    name: 'Fruits',
-    product_count: 45,
-    level: 0,
-    children: [
-      { id: '11', name: 'Fruits tropicaux', product_count: 25, level: 1 },
-      { id: '12', name: 'Fruits de saison', product_count: 20, level: 1 }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Légumes',
-    product_count: 38,
-    level: 0,
-    children: [
-      { id: '21', name: 'Légumes feuilles', product_count: 18, level: 1 },
-      { id: '22', name: 'Légumes racines', product_count: 15, level: 1 }
-    ]
-  },
-  {
-    id: '3',
-    name: 'Épicerie',
-    product_count: 27,
-    level: 0,
-    children: [
-      { id: '31', name: 'Céréales', product_count: 12, level: 1 },
-      { id: '32', name: 'Huiles & Condiments', product_count: 10, level: 1 }
-    ]
-  }
-])
+const categoryTree = ref<FilterCategoryNode[]>([])
 
 // Régions du Cameroun
 const northernRegions = ['Adamaoua', 'Nord', 'Extrême-Nord']
@@ -714,10 +691,31 @@ const resetFilters = () => {
   }, 500)
 }
 
+const mapCategoryTreeNode = (node: CategoryTree & { product_count?: number }, level = 0): FilterCategoryNode => {
+  return {
+    id: String(node.id),
+    name: node.name,
+    product_count: node.product_count || 0,
+    level,
+    children: Array.isArray(node.children)
+      ? node.children.map(child => mapCategoryTreeNode(child as CategoryTree & { product_count?: number }, level + 1))
+      : []
+  }
+}
+
+const loadCategoryTree = async () => {
+  try {
+    const apiTree = await categoriesApi.getCategoryTree()
+    categoryTree.value = apiTree.map(node => mapCategoryTreeNode(node as CategoryTree & { product_count?: number }))
+  } catch (error) {
+    console.error('Erreur lors du chargement des catégories:', error)
+    categoryTree.value = []
+  }
+}
+
 // Initialisation
 onMounted(() => {
-  // Charger les catégories depuis l'API
-  // categoryStore.fetchCategories()
+  void loadCategoryTree()
 })
 
 // Watch pour les changements de props
@@ -1002,3 +1000,4 @@ watch(() => props.modelValue, (newValue) => {
   }
 }
 </style>
+

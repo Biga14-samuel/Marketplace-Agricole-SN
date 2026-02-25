@@ -428,10 +428,9 @@ const toastDescription = ref('')
 const addressEmojis = ['🏠', '🏢', '🏡', '🏘️', '📍', '🗺️', '🌍', '🚚', '🧾', '📦', '📮', '🎯']
 const countries = [
     { code: 'CM', name: 'Cameroun', flag: '🇨🇲' },
-    { code: 'FR', name: 'France', flag: '🇫🇷' },
-    { code: 'BE', name: 'Belgique', flag: '🇧🇪' },
-    { code: 'CH', name: 'Suisse', flag: '🇨🇭' },
-    { code: 'CA', name: 'Canada', flag: '🇨🇦' },
+    { code: 'TD', name: 'Tchad', flag: '🇹🇩' },
+    { code: 'GA', name: 'Gabon', flag: '🇬🇦' },
+    { code: 'CG', name: 'Congo', flag: '🇨🇬' },
     { code: 'SN', name: 'Sénégal', flag: '🇸🇳' },
     { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮' },
 ]

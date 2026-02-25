@@ -425,7 +425,7 @@ export const API_CONFIG: ApiConfig = {
                         orders: [
                             {
                                 id: 'order_123456',
-                                orderNumber: 'CMD-2024-00123',
+                                orderNumber: 'ORDER_NUMBER_PLACEHOLDER',
                                 status: 'processing',
                                 totalAmount: 14625,
                                 itemCount: 3,
@@ -457,11 +457,11 @@ export const API_CONFIG: ApiConfig = {
                         orders: [
                             {
                                 id: 'order_123456',
-                                orderNumber: 'CMD-2024-00123',
+                                orderNumber: 'ORDER_NUMBER_PLACEHOLDER',
                                 status: 'pending',
                                 totalAmount: 14625,
                                 itemCount: 3,
-                                customerName: 'Jean Dupont',
+                                customerName: 'Nom client',
                                 customerPhone: '+237677123456',
                                 createdAt: '2024-01-15T10:30:00Z',
                                 deliveryAddress: '123 Rue du Commerce, Yaoundé'
@@ -490,7 +490,7 @@ export const API_CONFIG: ApiConfig = {
                         success: true,
                         order: {
                             id: 'order_123456',
-                            orderNumber: 'CMD-2024-00123',
+                            orderNumber: 'ORDER_NUMBER_PLACEHOLDER',
                             status: 'processing',
                             statusHistory: [
                                 { status: 'pending', timestamp: '2024-01-15T10:30:00Z' },
@@ -498,7 +498,7 @@ export const API_CONFIG: ApiConfig = {
                             ],
                             customer: {
                                 id: 'user_123',
-                                name: 'Jean Dupont',
+                                name: 'Nom client',
                                 email: 'jean@example.com',
                                 phone: '+237677123456'
                             },
@@ -1026,64 +1026,4 @@ export class ApiClient {
     }
 }
 
-/**
- * Démonstration de l'utilisation
- */
-export function demonstrateApiEndpoints(): void {
-    const builder = getApiEndpointBuilder();
 
-    console.log('=== Configuration des Endpoints API ===\n');
-
-    // Afficher les endpoints de commandes
-    const ordersGroup = API_CONFIG.endpoints.orders;
-    console.log(`Groupe: ${ordersGroup.name}`);
-    console.log(`Description: ${ordersGroup.description}`);
-    console.log(`Base Path: ${ordersGroup.basePath}`);
-    console.log(`Nombre d'endpoints: ${Object.keys(ordersGroup.endpoints).length}\n`);
-
-    // Générer des URLs d'exemple
-    console.log('=== URLs d\'exemple ===\n');
-
-    console.log('Panier:');
-    console.log(`- Ajouter au panier: ${ApiEndpoints.addToCart()}`);
-    console.log(`- Voir panier: ${ApiEndpoints.getCart()}`);
-    console.log(`- Mettre à jour article: ${ApiEndpoints.updateCartItem('item_123')}`);
-    console.log(`- Retirer article: ${ApiEndpoints.removeCartItem('item_123')}\n`);
-
-    console.log('Commandes:');
-    console.log(`- Checkout: ${ApiEndpoints.checkout()}`);
-    console.log(`- Mes commandes: ${ApiEndpoints.getMyOrders({ page: 1, limit: 10 })}`);
-    console.log(`- Détails commande: ${ApiEndpoints.getOrderDetails('order_123')}`);
-    console.log(`- Historique: ${ApiEndpoints.getOrderHistory('order_123')}\n`);
-
-    // Afficher la configuration d'un endpoint
-    console.log('=== Configuration d\'endpoint ===\n');
-
-    const config = ApiEndpoints.getConfig('orders', 'addToCart');
-    if (config) {
-        console.log('Endpoint: addToCart');
-        console.log(`Méthode: ${config.method}`);
-        console.log(`Description: ${config.description}`);
-        console.log(`Authentification requise: ${config.requiresAuth}`);
-        console.log(`Rôles autorisés: ${config.allowedRoles?.join(', ')}`);
-        console.log(`Rate limiting: ${config.rateLimit?.maxRequests} req/${config.rateLimit?.windowMs}ms`);
-    }
-
-    // Exemple d'utilisation du client API
-    console.log('\n=== Exemple client API ===\n');
-
-    const apiClient = new ApiClient();
-    apiClient.setAuthToken('fake-jwt-token');
-
-    console.log('Client API initialisé avec token JWT');
-    console.log('Méthodes disponibles:');
-    console.log('- apiClient.addToCart(data)');
-    console.log('- apiClient.getCart()');
-    console.log('- apiClient.checkout(data)');
-    console.log('- apiClient.getMyOrders(params)');
-}
-
-// Exécuter la démonstration si le fichier est exécuté directement
-if (require.main === module) {
-    demonstrateApiEndpoints();
-}

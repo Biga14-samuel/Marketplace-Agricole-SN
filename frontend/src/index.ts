@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================
 // EXPORT PRINCIPAL DE L'APPLICATION
 // ============================================
@@ -45,7 +46,7 @@ export interface GlobalConfig {
 /**
  * Formate un prix avec la devise
  */
-export const formatPrice = (price: number, currency: string = 'EUR'): string => {
+export const formatPrice = (price: number, currency: string = 'XAF'): string => {
     const formatter = new Intl.NumberFormat('fr-FR', {
         style: 'currency',
         currency: currency

@@ -25,6 +25,11 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
+                        <router-link to="/producer/settings"
+                            class="px-4 py-3 bg-white text-forest-700 border border-forest-200 rounded-xl shadow-sm hover:shadow-md hover:bg-forest-50 transition-all duration-300 ease-organic flex items-center space-x-2">
+                            <span>⚙️</span>
+                            <span class="hidden sm:inline">Paramètres</span>
+                        </router-link>
                         <!-- Vue carte/liste -->
                         <div class="flex bg-forest-50 rounded-lg p-1">
                             <button @click="viewMode = 'list'"
@@ -108,8 +113,8 @@
                                     Ce mois
                                 </span>
                             </div>
-                            <div class="text-3xl font-bold text-forest-800">156</div>
-                            <div class="text-sm text-terracotta-600">Retraits effectués</div>
+                            <div class="text-3xl font-bold text-forest-800">{{ totalUpcomingOrders }}</div>
+                            <div class="text-sm text-terracotta-600">Commandes planifiées</div>
                         </div>
                     </div>
 
@@ -444,7 +449,7 @@
                                     </div>
                                     <div>
                                         <div class="font-medium text-forest-800">Heure de pointe</div>
-                                        <div class="text-terracotta-600">17h-19h</div>
+                                        <div class="text-terracotta-600">{{ busiestHourLabel }}</div>
                                     </div>
                                 </div>
                                 <div class="flex items-center space-x-3">
@@ -453,7 +458,7 @@
                                     </div>
                                     <div>
                                         <div class="font-medium text-forest-800">Taux d'occupation moyen</div>
-                                        <div class="text-terracotta-600">78%</div>
+                                        <div class="text-terracotta-600">{{ averageOccupancyRate }}%</div>
                                     </div>
                                 </div>
                             </div>
@@ -568,7 +573,7 @@
                                     </label>
                                     <input v-model="pointForm.name" type="text" required
                                         class="w-full px-4 py-3 border border-forest-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-transparent transition-all duration-200"
-                                        placeholder="Ex: Ferme principale, Marché central..." />
+                                        placeholder="Ex: Point retrait quartier Mballa II..." />
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-forest-700 mb-2">
@@ -733,125 +738,212 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useProducerStore } from '@/modules/user-profiles/producer/stores/useProducerStore'
+
+type ViewPickupPoint = {
+    id: string
+    name: string
+    icon: string
+    type: string
+    address: string
+    instructions: string
+    is_active: boolean
+    schedule_summary: string
+    slot_count: number
+    upcoming_orders: number
+    capacity: number
+    mapPosition: { top: string; left: string }
+}
 
 const router = useRouter()
+const producerStore = useProducerStore()
 
-// État de l'interface
 const viewMode = ref<'list' | 'map'>('list')
 const showPointModal = ref(false)
 const showSuccessToast = ref(false)
 const searchQuery = ref('')
-const statusFilter = ref('all')
-const selectedPoint = ref<any>(null)
-const editingPoint = ref<any>(null)
+const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
+const selectedPoint = ref<ViewPickupPoint | null>(null)
+const editingPoint = ref<ViewPickupPoint | null>(null)
 const toastMessage = ref('')
 const toastDescription = ref('')
 
-// Jours de la semaine pour la planification
 const daysOfWeek = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const dayApiByLabel: Record<string, string> = {
+    Lun: 'monday',
+    Mar: 'tuesday',
+    Mer: 'wednesday',
+    Jeu: 'thursday',
+    Ven: 'friday',
+    Sam: 'saturday',
+    Dim: 'sunday'
+}
 
-// Formulaire pour créer/modifier un point
+const mapPositions = [
+    { top: '40%', left: '30%' },
+    { top: '45%', left: '60%' },
+    { top: '55%', left: '45%' },
+    { top: '65%', left: '70%' },
+    { top: '35%', left: '50%' },
+    { top: '30%', left: '75%' },
+    { top: '60%', left: '25%' }
+]
+
 const pointForm = reactive({
     name: '',
     icon: '🏡',
-    type: 'ferme',
+    type: 'point',
     address: '',
     instructions: '',
     capacity: 10,
     is_active: true
 })
 
-// Données des points de retrait
-const pickupPoints = ref([
-    {
-        id: 1,
-        name: 'Ferme principale',
-        icon: '🏡',
-        type: 'ferme',
-        address: '123 Route des Vergers, 75000 Paris',
-        instructions: 'Sonner à l\'entrée principale. Parking gratuit disponible.',
-        is_active: true,
-        schedule_summary: 'Lun-Ven: 9h-18h, Sam: 9h-17h',
-        slot_count: 12,
-        upcoming_orders: 8,
-        capacity: 75,
-        mapPosition: { top: '40%', left: '30%' }
-    },
-    {
-        id: 2,
-        name: 'Marché central',
-        icon: '🏪',
-        type: 'marche',
-        address: 'Place du Marché, 75001 Paris',
-        instructions: 'Stand numéro 42, dans l\'allée des producteurs locaux.',
-        is_active: true,
-        schedule_summary: 'Mar et Ven: 7h-13h',
-        slot_count: 6,
-        upcoming_orders: 3,
-        capacity: 45,
-        mapPosition: { top: '45%', left: '60%' }
-    },
-    {
-        id: 3,
-        name: 'Boutique urbaine',
-        icon: '🛒',
-        type: 'boutique',
-        address: '15 Rue des Artisans, 75002 Paris',
-        instructions: 'Au fond du magasin, zone "Producteurs du terroir".',
-        is_active: false,
-        schedule_summary: 'Lun-Sam: 10h-20h',
-        slot_count: 8,
-        upcoming_orders: 0,
-        capacity: 60,
-        mapPosition: { top: '55%', left: '45%' }
-    },
-    {
-        id: 4,
-        name: 'Point relais BioCoop',
-        icon: '📍',
-        type: 'relais',
-        address: '42 Avenue des Champs, 75008 Paris',
-        instructions: 'Présenter votre numéro de commande au comptoir.',
-        is_active: true,
-        schedule_summary: 'Lun-Sam: 8h-20h, Dim: 9h-12h',
-        slot_count: 15,
-        upcoming_orders: 12,
-        capacity: 90,
-        mapPosition: { top: '65%', left: '70%' }
-    },
-    {
-        id: 5,
-        name: 'Livraison express',
-        icon: '🚚',
-        type: 'autre',
-        address: 'Service de livraison à domicile',
-        instructions: 'Le livreur appellera 15min avant l\'arrivée.',
-        is_active: true,
-        schedule_summary: 'Sur rendez-vous uniquement',
-        slot_count: 20,
-        upcoming_orders: 5,
-        capacity: 100,
-        mapPosition: { top: '35%', left: '50%' }
+const normalizeTime = (value: string | null | undefined): string => {
+    if (!value) return ''
+    return value.slice(0, 5)
+}
+
+const inferIcon = (name: string, address: string): string => {
+    const haystack = `${name} ${address}`.toLowerCase()
+    if (haystack.includes('march')) return '🏪'
+    if (haystack.includes('livrai')) return '🚚'
+    if (haystack.includes('boutique')) return '🛒'
+    if (haystack.includes('relais')) return '📍'
+    if (haystack.includes('ferme')) return '🏡'
+    return '📍'
+}
+
+const inferType = (name: string, address: string): string => {
+    const haystack = `${name} ${address}`.toLowerCase()
+    if (haystack.includes('ferme')) return 'ferme'
+    if (haystack.includes('march')) return 'marche'
+    if (haystack.includes('boutique')) return 'boutique'
+    if (haystack.includes('relais')) return 'relais'
+    if (haystack.includes('livrai')) return 'livraison'
+    return 'point'
+}
+
+const normalizeDay = (value: unknown): string => {
+    if (typeof value === 'string') return value.toLowerCase()
+    if (typeof value === 'number') {
+        const map: Record<number, string> = {
+            1: 'monday',
+            2: 'tuesday',
+            3: 'wednesday',
+            4: 'thursday',
+            5: 'friday',
+            6: 'saturday',
+            7: 'sunday'
+        }
+        return map[value] || ''
     }
-])
+    return ''
+}
 
-// Computed properties
-const activePointsCount = computed(() =>
-    pickupPoints.value.filter(p => p.is_active).length
-)
+const slotsByPoint = computed<Record<string, any[]>>(() => {
+    const grouped: Record<string, any[]> = {}
+    for (const slot of producerStore.slots as any[]) {
+        const pointId = String((slot as any).pickup_point_id ?? (slot as any).pickupPointId ?? '')
+        if (!pointId) continue
+        if (!grouped[pointId]) grouped[pointId] = []
+        grouped[pointId].push(slot)
+    }
+    return grouped
+})
 
-const totalSlots = computed(() =>
-    pickupPoints.value.reduce((total, point) => total + point.slot_count, 0)
-)
+const buildScheduleSummary = (pointId: string): string => {
+    const slots = slotsByPoint.value[pointId] || []
+    if (slots.length === 0) return 'Non configuré'
+
+    const grouped: Record<string, string[]> = {}
+    for (const slot of slots) {
+        const day = normalizeDay((slot as any).day_of_week ?? (slot as any).dayOfWeek)
+        if (!day) continue
+        const start = normalizeTime((slot as any).start_time ?? (slot as any).startTime)
+        const end = normalizeTime((slot as any).end_time ?? (slot as any).endTime)
+        if (!start || !end) continue
+        if (!grouped[day]) grouped[day] = []
+        grouped[day].push(`${start}-${end}`)
+    }
+
+    const entries = Object.entries(grouped).slice(0, 2)
+    if (entries.length === 0) return 'Créneaux configurés'
+
+    const dayLabel: Record<string, string> = {
+        monday: 'Lun',
+        tuesday: 'Mar',
+        wednesday: 'Mer',
+        thursday: 'Jeu',
+        friday: 'Ven',
+        saturday: 'Sam',
+        sunday: 'Dim'
+    }
+
+    return entries
+        .map(([day, ranges]) => `${dayLabel[day] || day}: ${ranges[0]}`)
+        .join(', ')
+}
+
+const pickupPoints = computed<ViewPickupPoint[]>(() => {
+    const rawPoints = (producerStore.pickupPoints as any[]) || []
+    return rawPoints.map((point, index) => {
+        const id = String(point.id)
+        const addressText = [point.address, point.postal_code, point.city].filter(Boolean).join(', ')
+        const slots = slotsByPoint.value[id] || []
+        const upcomingOrders = slots.reduce((sum: number, slot: any) => {
+            const count = Number(slot?.bookings?.current_orders ?? slot?.current_orders ?? 0)
+            return sum + (Number.isFinite(count) ? count : 0)
+        }, 0)
+        const maxOrders = slots.reduce((sum: number, slot: any) => {
+            const max = Number(slot?.capacity?.max_orders ?? slot?.max_orders ?? 0)
+            return sum + (Number.isFinite(max) ? max : 0)
+        }, 0)
+        const occupancy = maxOrders > 0 ? Math.round((upcomingOrders / maxOrders) * 100) : 0
+
+        return {
+            id,
+            name: point.name || 'Point de retrait',
+            icon: inferIcon(point.name || '', addressText),
+            type: inferType(point.name || '', addressText),
+            address: addressText || 'Adresse non renseignée',
+            instructions: point.instructions || '',
+            is_active: Boolean(point.is_active),
+            schedule_summary: buildScheduleSummary(id),
+            slot_count: slots.length,
+            upcoming_orders: upcomingOrders,
+            capacity: occupancy,
+            mapPosition: mapPositions[index % mapPositions.length]
+        }
+    })
+})
+
+const activePointsCount = computed(() => pickupPoints.value.filter((p) => p.is_active).length)
+const totalSlots = computed(() => pickupPoints.value.reduce((total, point) => total + point.slot_count, 0))
+const totalUpcomingOrders = computed(() => pickupPoints.value.reduce((total, point) => total + point.upcoming_orders, 0))
+const averageOccupancyRate = computed(() => {
+    if (pickupPoints.value.length === 0) return 0
+    const total = pickupPoints.value.reduce((sum, point) => sum + point.capacity, 0)
+    return Math.round(total / pickupPoints.value.length)
+})
+const busiestHourLabel = computed(() => {
+    const hourCount: Record<string, number> = {}
+    for (const slot of producerStore.slots as any[]) {
+        const start = normalizeTime((slot as any).start_time ?? (slot as any).startTime)
+        if (!start) continue
+        const current = Number((slot as any)?.bookings?.current_orders ?? (slot as any)?.current_orders ?? 0)
+        hourCount[start] = (hourCount[start] || 0) + (Number.isFinite(current) ? current : 0)
+    }
+    const peak = Object.entries(hourCount).sort((a, b) => b[1] - a[1])[0]
+    return peak ? `${peak[0]}-${peak[0].slice(0, 2)}h59` : 'N/A'
+})
 
 const filteredPoints = computed(() => {
-    return pickupPoints.value.filter(point => {
-        // Filtre par recherche
+    return pickupPoints.value.filter((point) => {
         const matchesSearch = !searchQuery.value ||
             point.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
             point.address.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-        // Filtre par statut
         const matchesStatus = statusFilter.value === 'all' ||
             (statusFilter.value === 'active' && point.is_active) ||
             (statusFilter.value === 'inactive' && !point.is_active)
@@ -867,13 +959,40 @@ const mostPopularPoint = computed(() => {
     )
 })
 
-// Méthodes
+const parseAddress = (fullAddress: string) => {
+    const raw = fullAddress.trim()
+    const parts = raw.split(',').map((p) => p.trim()).filter(Boolean)
+    const postalMatch = raw.match(/\b\d{4,6}\b/)
+    const postalCode = postalMatch?.[0] || '00000'
+    const cityFromTail = parts.length > 1 ? parts[parts.length - 1] : 'Yaoundé'
+    const city = cityFromTail.replace(postalCode, '').trim() || 'Yaoundé'
+
+    return {
+        street: parts[0] || raw || 'Adresse non renseignée',
+        city,
+        postal_code: postalCode
+    }
+}
+
+const loadData = async () => {
+    try {
+        await producerStore.fetchPickupPoints()
+        try {
+            await producerStore.fetchAllSlots()
+        } catch {
+            // On laisse la vue fonctionner même si les créneaux ne sont pas disponibles.
+        }
+    } catch (error: any) {
+        showToast('Chargement impossible', error?.message || 'Impossible de charger les points de retrait')
+    }
+}
+
 const openNewPointModal = () => {
     editingPoint.value = null
     Object.assign(pointForm, {
         name: '',
         icon: '🏡',
-        type: 'ferme',
+        type: 'point',
         address: '',
         instructions: '',
         capacity: 10,
@@ -887,114 +1006,116 @@ const closePointModal = () => {
     editingPoint.value = null
 }
 
-const savePoint = () => {
-    if (editingPoint.value) {
-        // Mettre à jour le point existant
-        const index = pickupPoints.value.findIndex(p => p.id === editingPoint.value.id)
-        if (index !== -1) {
-            pickupPoints.value[index] = { ...editingPoint.value, ...pointForm }
+const savePoint = async () => {
+    try {
+        const parsed = parseAddress(pointForm.address)
+        const payload: any = {
+            name: pointForm.name,
+            address: parsed.street,
+            city: parsed.city,
+            postal_code: parsed.postal_code,
+            instructions: pointForm.instructions || undefined,
+            is_active: pointForm.is_active
         }
-        showToast('Point mis à jour !', 'Le point de retrait a été modifié avec succès')
-    } else {
-        // Créer un nouveau point
-        const newPoint = {
-            id: Math.max(...pickupPoints.value.map(p => p.id)) + 1,
-            ...pointForm,
-            schedule_summary: 'Non configuré',
-            slot_count: 0,
-            upcoming_orders: 0,
-            capacity: pointForm.capacity,
-            mapPosition: {
-                top: `${Math.random() * 50 + 25}%`,
-                left: `${Math.random() * 50 + 25}%`
-            }
+
+        if (editingPoint.value) {
+            await producerStore.updatePickupPoint(String(editingPoint.value.id), payload)
+            showToast('Point mis à jour', 'Le point de retrait a été modifié avec succès')
+        } else {
+            await producerStore.createPickupPoint(payload)
+            showToast('Point créé', 'Le nouveau point de retrait a été ajouté')
         }
-        pickupPoints.value.push(newPoint)
-        showToast('Point créé !', 'Le nouveau point de retrait a été ajouté')
+
+        await loadData()
+        closePointModal()
+    } catch (error: any) {
+        showToast('Erreur', error?.message || 'Échec lors de la sauvegarde du point')
     }
-    closePointModal()
 }
 
-const editPoint = (point: any) => {
+const editPoint = (point: ViewPickupPoint) => {
     editingPoint.value = point
     Object.assign(pointForm, {
         name: point.name,
         icon: point.icon,
         type: point.type,
         address: point.address,
-        instructions: point.instructions,
-        capacity: point.capacity,
+        instructions: point.instructions || '',
+        capacity: 10,
         is_active: point.is_active
     })
     showPointModal.value = true
 }
 
-const deletePoint = (point: any) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le point "${point.name}" ?`)) {
-        pickupPoints.value = pickupPoints.value.filter(p => p.id !== point.id)
+const deletePoint = async (point: ViewPickupPoint) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer le point "${point.name}" ?`)) return
+    try {
+        await producerStore.deletePickupPoint(String(point.id))
+        await loadData()
         showToast('Point supprimé', 'Le point de retrait a été supprimé')
+    } catch (error: any) {
+        showToast('Erreur', error?.message || 'Impossible de supprimer ce point')
     }
 }
 
-const togglePointStatus = (point: any) => {
-    point.is_active = !point.is_active
-    showToast(
-        point.is_active ? 'Point activé' : 'Point désactivé',
-        `Le point "${point.name}" est maintenant ${point.is_active ? 'actif' : 'inactif'}`
-    )
+const togglePointStatus = async (point: ViewPickupPoint) => {
+    try {
+        await producerStore.togglePickupPoint(String(point.id), !point.is_active)
+        await loadData()
+        showToast(
+            !point.is_active ? 'Point activé' : 'Point désactivé',
+            `Le point "${point.name}" est maintenant ${!point.is_active ? 'actif' : 'inactif'}`
+        )
+    } catch (error: any) {
+        showToast('Erreur', error?.message || 'Impossible de changer le statut du point')
+    }
 }
 
-const viewPointDetails = (point: any) => {
-    console.log('Voir détails du point:', point)
-    // Navigation vers la page de détails
+const viewPointDetails = (point: ViewPickupPoint) => {
     router.push(`/producer/pickup-points/${point.id}`)
 }
 
-const manageSchedule = (point: any) => {
-    console.log('Gérer les horaires du point:', point)
-    router.push('/producer/schedule')
+const manageSchedule = (point: ViewPickupPoint) => {
+    router.push({ path: '/producer/schedule', query: { pointId: String(point.id) } })
 }
 
-const viewAnalytics = (point: any) => {
-    console.log('Voir statistiques du point:', point)
-    // Ouvrir les statistiques du point
+const viewAnalytics = (_point: ViewPickupPoint) => {
+    showToast('Info', 'Les statistiques détaillées seront disponibles dans une prochaine itération')
 }
 
-const selectPointOnMap = (point: any) => {
+const selectPointOnMap = (point: ViewPickupPoint) => {
     selectedPoint.value = selectedPoint.value?.id === point.id ? null : point
 }
 
-const centerOnPoint = (point: any) => {
+const centerOnPoint = (point: ViewPickupPoint) => {
     selectedPoint.value = point
-    // En réalité, ici on centrerait la carte sur le point
-    console.log('Centrer sur le point:', point)
 }
 
 const zoomIn = () => {
-    console.log('Zoom in')
+    // Placeholder UX: future intégration d'une vraie carte.
 }
 
 const zoomOut = () => {
-    console.log('Zoom out')
+    // Placeholder UX: future intégration d'une vraie carte.
 }
 
 const resetView = () => {
-    console.log('Réinitialiser la vue')
     selectedPoint.value = null
 }
 
-const getPointSchedule = (point: any, day: string) => {
-    // Simuler des horaires pour la démo
-    const schedules: Record<string, string> = {
-        'Lun': '9h-18h',
-        'Mar': '9h-18h',
-        'Mer': '9h-18h',
-        'Jeu': '9h-18h',
-        'Ven': '9h-18h',
-        'Sam': point.type === 'ferme' ? '9h-17h' : '9h-12h',
-        'Dim': 'Fermé'
-    }
-    return schedules[day] || 'Fermé'
+const getPointSchedule = (point: ViewPickupPoint, day: string) => {
+    const targetDay = dayApiByLabel[day]
+    if (!targetDay) return '-'
+    const slots = (slotsByPoint.value[String(point.id)] || []).filter((slot: any) => {
+        return normalizeDay((slot as any).day_of_week ?? (slot as any).dayOfWeek) === targetDay
+    })
+    if (slots.length === 0) return null
+
+    const first = slots[0]
+    const start = normalizeTime((first as any).start_time ?? (first as any).startTime)
+    const end = normalizeTime((first as any).end_time ?? (first as any).endTime)
+    if (!start || !end) return 'Ouvert'
+    return `${start}-${end}`
 }
 
 const goToSchedule = () => {
@@ -1010,8 +1131,8 @@ const showToast = (message: string, description: string) => {
     }, 3000)
 }
 
-onMounted(() => {
-    console.log('PickupPointsView monté')
+onMounted(async () => {
+    await loadData()
 })
 </script>
 

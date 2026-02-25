@@ -3,6 +3,10 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './assets/css/main.css'
+import { initializeTheme } from '@/composables/useTheme'
+
+// Initialise le thème avant le montage pour limiter le "flash" visuel.
+initializeTheme()
 
 const app = createApp(App)
 const pinia = createPinia()

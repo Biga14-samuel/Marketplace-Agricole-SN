@@ -53,7 +53,6 @@ export type * from './types/payout.types'
 
 // Export des utilitaires
 export * from './utils/paymentFormatters'
-export * from './utils/invoiceGenerator'
 export * from './utils/currencyFormatter'
 export * from './utils/cameroonPaymentUtils'
 export * from './utils/paymentValidators'

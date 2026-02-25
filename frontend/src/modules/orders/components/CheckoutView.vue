@@ -896,9 +896,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOrdersStore } from '../stores/orders.store'
+import { useCustomerStore } from '@/modules/user-profiles/customer/stores/useCustomerStore'
+import { DeliveryType, type CheckoutRequest } from '../types/orders.types'
 
 const router = useRouter()
 const ordersStore = useOrdersStore()
+const customerStore = useCustomerStore()
 
 // Accès aux données du store
 const cart = computed(() => ordersStore.cart)
@@ -925,55 +928,22 @@ const form = ref({
   notes: ''
 })
 
-// Données simulées
 const steps = ['Livraison', 'Paiement', 'Confirmation']
-const addresses = ref([
-  {
-    id: 1,
-    firstName: 'Jean',
-    lastName: 'Mbarga',
-    address: '123 Rue du Marché',
-    city: 'Douala',
-    region: 'Littoral',
-    phone: '237 6XX XXX XXX',
-    isDefault: true
-  },
-  {
-    id: 2,
-    firstName: 'Amina',
-    lastName: 'Diallo',
-    address: '456 Avenue des Producteurs',
-    city: 'Yaoundé',
-    region: 'Centre',
-    phone: '237 6XX XXX XXX',
-    isDefault: false
-  }
-])
+const addresses = computed(() =>
+  customerStore.addresses.map(address => ({
+    id: address.id,
+    firstName: address.firstName,
+    lastName: address.lastName,
+    address: address.street,
+    city: address.city,
+    region: address.region || address.country,
+    phone: address.phone,
+    isDefault: address.isDefault
+  }))
+)
 
-const pickupPoints = ref([
-  {
-    id: 1,
-    name: 'Marché Central',
-    address: 'Place du Marché',
-    city: 'Douala',
-    region: 'Littoral',
-    openingHours: '8h - 18h'
-  },
-  {
-    id: 2,
-    name: 'Ferme Bio de Bafoussam',
-    address: 'Route de la Ferme',
-    city: 'Bafoussam',
-    region: 'Ouest',
-    openingHours: '7h - 17h'
-  }
-])
-
-const pickupSlots = ref([
-  { id: 1, date: 'Aujourd\'hui', startTime: '09:00', endTime: '12:00' },
-  { id: 2, date: 'Aujourd\'hui', startTime: '14:00', endTime: '17:00' },
-  { id: 3, date: 'Demain', startTime: '10:00', endTime: '13:00' }
-])
+const pickupPoints = ref<any[]>([])
+const pickupSlots = ref<any[]>([])
 
 const deliveryOptions = [
   {
@@ -1101,15 +1071,15 @@ const canProceedToStep2 = computed(() => {
 })
 
 const selectedAddress = computed(() => {
-  return addresses.value.find(addr => addr.id === form.value.deliveryAddressId)
+  return addresses.value.find(addr => String(addr.id) === String(form.value.deliveryAddressId ?? ''))
 })
 
 const selectedPickupPoint = computed(() => {
-  return pickupPoints.value.find(point => point.id === form.value.pickupPointId)
+  return pickupPoints.value.find(point => String(point.id) === String(form.value.pickupPointId ?? ''))
 })
 
 const selectedPickupSlot = computed(() => {
-  return pickupSlots.value.find(slot => slot.id === form.value.pickupSlotId)
+  return pickupSlots.value.find(slot => String(slot.id) === String(form.value.pickupSlotId ?? ''))
 })
 
 const selectedPaymentMethod = computed(() => {
@@ -1135,6 +1105,14 @@ const fetchCart = async () => {
     await ordersStore.fetchCart()
   } catch (err) {
     console.error('Error fetching cart:', err)
+  }
+}
+
+const fetchCustomerAddresses = async () => {
+  try {
+    await customerStore.fetchAddresses({ page: 1, limit: 100 })
+  } catch (err) {
+    console.error('Error fetching customer addresses:', err)
   }
 }
 
@@ -1179,21 +1157,40 @@ const submitOrder = async () => {
     return
   }
 
+  if (!form.value.paymentMethod) {
+    alert('Veuillez sélectionner un mode de paiement')
+    return
+  }
+
   isSubmitting.value = true
 
   try {
-    // Simuler un délai de traitement
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // Générer un numéro de commande
-    orderNumber.value = 'CMD-' + Date.now().toString().slice(-8)
-    
-    // Afficher le modal de succès
+    const payload: CheckoutRequest = {
+      deliveryType: form.value.deliveryType as DeliveryType,
+      paymentMethod: form.value.paymentMethod,
+      notes: form.value.notes || undefined
+    }
+
+    if (form.value.deliveryType === DeliveryType.DELIVERY) {
+      if (!form.value.deliveryAddressId) {
+        throw new Error('Veuillez sélectionner une adresse de livraison')
+      }
+      payload.deliveryAddressId = form.value.deliveryAddressId
+    } else {
+      if (!form.value.pickupPointId || !form.value.pickupSlotId) {
+        throw new Error('Veuillez sélectionner un point et un créneau de retrait')
+      }
+      payload.pickupPointId = form.value.pickupPointId
+      payload.pickupSlotId = form.value.pickupSlotId
+    }
+
+    const createdOrder = await ordersStore.checkout(payload)
+    orderNumber.value = createdOrder.orderNumber || String(createdOrder.id)
     showSuccessModal.value = true
-    
-  } catch (err) {
+
+  } catch (err: any) {
     console.error('Error submitting order:', err)
-    alert('Une erreur est survenue lors de la commande')
+    alert(err?.message || 'Une erreur est survenue lors de la commande')
   } finally {
     isSubmitting.value = false
   }
@@ -1210,23 +1207,15 @@ const continueShopping = () => {
 }
 
 // Lifecycle
-onMounted(() => {
-  fetchCart()
-  
-  // Sélectionner l'adresse par défaut
+onMounted(async () => {
+  await Promise.all([
+    fetchCart(),
+    fetchCustomerAddresses()
+  ])
+
   const defaultAddress = addresses.value.find(addr => addr.isDefault)
   if (defaultAddress) {
     form.value.deliveryAddressId = defaultAddress.id
-  }
-  
-  // Sélectionner le premier point de retrait par défaut
-  if (pickupPoints.value.length > 0) {
-    form.value.pickupPointId = pickupPoints.value[0].id
-  }
-  
-  // Sélectionner le premier créneau par défaut
-  if (pickupSlots.value.length > 0) {
-    form.value.pickupSlotId = pickupSlots.value[0].id
   }
 })
 </script>

@@ -155,3 +155,4 @@ export default {
 .text-nature-gray { color: #6b6b6b; }
 .transition-organic { transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1); }
 </style>
+

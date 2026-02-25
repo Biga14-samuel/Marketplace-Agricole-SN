@@ -112,7 +112,7 @@
                             <div class="flex items-center space-x-4">
                                 <div class="text-right">
                                     <div class="text-sm text-nature-gray">Chiffre d'affaires du mois</div>
-                                    <div class="text-2xl font-bold text-forest-green">{{ monthlyRevenue }}€</div>
+                                    <div class="text-2xl font-bold text-forest-green">{{ formatXaf(Number(monthlyRevenue)) }}</div>
                                 </div>
                                 <div
                                     class="w-12 h-12 rounded-xl bg-gradient-to-br from-forest-green/10 to-terracotta/10 flex items-center justify-center text-forest-green">
@@ -242,7 +242,7 @@
 
                                         <!-- Colonne Prix -->
                                         <div class="col-span-2 text-center">
-                                            <div class="product-price">{{ product.price }}€</div>
+                                            <div class="product-price">{{ formatXaf(product.price) }}</div>
                                             <div class="text-xs text-nature-gray mt-1">{{ product.unit }}</div>
                                         </div>
 
@@ -308,7 +308,7 @@
                                             </div>
                                             <div class="detail-item">
                                                 <div class="detail-label">Revenus totaux</div>
-                                                <div class="detail-value">{{ product.totalRevenue }}€</div>
+                                                <div class="detail-value">{{ formatXaf(product.totalRevenue) }}</div>
                                             </div>
                                             <div class="detail-item">
                                                 <div class="detail-label">Taux de conversion</div>
@@ -386,7 +386,7 @@
                                         <div v-for="product in topPerformingProducts.slice(0, 3)" :key="product.id"
                                             class="insight-item">
                                             <span class="insight-item-name">{{ product.name }}</span>
-                                            <span class="insight-item-value">{{ product.totalRevenue }}€</span>
+                                            <span class="insight-item-value">{{ formatXaf(product.totalRevenue) }}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -476,6 +476,8 @@
 
 <script>
 import ProductForm from '@/modules/catalog/components/Product/ProductForm.vue'
+import catalogService from '@/modules/catalog/services/catalog.service'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
 
 export default {
     name: 'MyProductsView',
@@ -484,7 +486,7 @@ export default {
     },
     data() {
         return {
-            producerName: 'Jean-Pierre Martin',
+            producerName: 'Producteur',
             searchQuery: '',
             sortBy: 'name',
             currentPage: 1,
@@ -499,8 +501,8 @@ export default {
             toastTitle: '',
             toastMessage: '',
             toastIcon: '',
-            unreadNotifications: 3,
-            monthlyRevenue: '1,247.50',
+            unreadNotifications: 0,
+            monthlyRevenue: '0',
             activeFilters: [],
             fieldPattern: `<svg width="100%" height="100%" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         <path d="M10,10 L90,10 L90,90 L10,90 Z" fill="none" stroke="rgba(34,139,34,0.03)" stroke-width="0.5" stroke-dasharray="5,5"/>
@@ -519,215 +521,14 @@ export default {
         <line x1="50" y1="30" x2="50" y2="70" stroke="rgba(226,114,91,0.02)" stroke-width="0.3"/>
       </svg>`,
             filters: [
-                { id: 'active', label: 'Actifs', icon: '✅', count: 8 },
-                { id: 'inactive', label: 'Inactifs', icon: '⏸️', count: 2 },
-                { id: 'bio', label: 'Bio', icon: '🌿', count: 6 },
-                { id: 'low-stock', label: 'Stock bas', icon: '⚠️', count: 3 },
-                { id: 'out-of-stock', label: 'Rupture', icon: '❌', count: 1 },
-                { id: 'seasonal', label: 'De saison', icon: '🌸', count: 5 }
+                { id: 'active', label: 'Actifs', icon: '✅', count: 0 },
+                { id: 'inactive', label: 'Inactifs', icon: '⏸️', count: 0 },
+                { id: 'bio', label: 'Bio', icon: '🌿', count: 0 },
+                { id: 'low-stock', label: 'Stock bas', icon: '⚠️', count: 0 },
+                { id: 'out-of-stock', label: 'Rupture', icon: '❌', count: 0 },
+                { id: 'seasonal', label: 'De saison', icon: '🌸', count: 0 }
             ],
-            products: [
-                {
-                    id: 1,
-                    name: 'Tomates Anciennes Coeur de Boeuf',
-                    category: 'Légumes fruits',
-                    image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=400',
-                    price: 5.90,
-                    unit: 'kg',
-                    stock: 28,
-                    maxStock: 100,
-                    isActive: true,
-                    isBio: true,
-                    isSeasonal: true,
-                    sales: 142,
-                    rating: 4.8,
-                    monthlySales: 45,
-                    totalRevenue: 837.10,
-                    conversionRate: 12.5,
-                    reviewCount: 124,
-                    lastUpdate: 'il y a 2 jours'
-                },
-                {
-                    id: 2,
-                    name: 'Courgettes Bio',
-                    category: 'Légumes',
-                    image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400',
-                    price: 3.50,
-                    unit: 'kg',
-                    stock: 15,
-                    maxStock: 80,
-                    isActive: true,
-                    isBio: true,
-                    isSeasonal: true,
-                    sales: 89,
-                    rating: 4.6,
-                    monthlySales: 32,
-                    totalRevenue: 298.50,
-                    conversionRate: 10.2,
-                    reviewCount: 67,
-                    lastUpdate: 'il y a 1 jour'
-                },
-                {
-                    id: 3,
-                    name: 'Aubergines Violette',
-                    category: 'Légumes',
-                    image: 'https://images.unsplash.com/photo-1551845543-2f7c2a4a2cc5?auto=format&fit=crop&w=400',
-                    price: 4.30,
-                    unit: 'kg',
-                    stock: 5,
-                    maxStock: 60,
-                    isActive: true,
-                    isBio: false,
-                    isSeasonal: true,
-                    sales: 56,
-                    rating: 4.4,
-                    monthlySales: 18,
-                    totalRevenue: 240.80,
-                    conversionRate: 8.7,
-                    reviewCount: 42,
-                    lastUpdate: 'il y a 3 jours'
-                },
-                {
-                    id: 4,
-                    name: 'Poivrons Tricolores',
-                    category: 'Légumes',
-                    image: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&w=400',
-                    price: 5.80,
-                    unit: 'kg',
-                    stock: 0,
-                    maxStock: 50,
-                    isActive: false,
-                    isBio: true,
-                    isSeasonal: true,
-                    sales: 123,
-                    rating: 4.9,
-                    monthlySales: 0,
-                    totalRevenue: 713.40,
-                    conversionRate: 15.3,
-                    reviewCount: 98,
-                    lastUpdate: 'il y a 5 jours'
-                },
-                {
-                    id: 5,
-                    name: 'Concombres Rustiques',
-                    category: 'Légumes',
-                    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400',
-                    price: 2.90,
-                    unit: 'pièce',
-                    stock: 42,
-                    maxStock: 150,
-                    isActive: true,
-                    isBio: true,
-                    isSeasonal: true,
-                    sales: 234,
-                    rating: 4.7,
-                    monthlySales: 78,
-                    totalRevenue: 678.60,
-                    conversionRate: 14.1,
-                    reviewCount: 156,
-                    lastUpdate: 'aujourd\'hui'
-                },
-                {
-                    id: 6,
-                    name: 'Salade Batavia',
-                    category: 'Légumes feuilles',
-                    image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=400',
-                    price: 1.80,
-                    unit: 'pièce',
-                    stock: 8,
-                    maxStock: 40,
-                    isActive: true,
-                    isBio: false,
-                    isSeasonal: true,
-                    sales: 178,
-                    rating: 4.5,
-                    monthlySales: 56,
-                    totalRevenue: 320.40,
-                    conversionRate: 11.8,
-                    reviewCount: 89,
-                    lastUpdate: 'il y a 2 jours'
-                },
-                {
-                    id: 7,
-                    name: 'Carottes Nouvelles',
-                    category: 'Légumes racines',
-                    image: 'https://images.unsplash.com/photo-1598170845058-78132e1b46d1?auto=format&fit=crop&w=400',
-                    price: 2.40,
-                    unit: 'kg',
-                    stock: 65,
-                    maxStock: 120,
-                    isActive: true,
-                    isBio: true,
-                    isSeasonal: false,
-                    sales: 189,
-                    rating: 4.6,
-                    monthlySales: 63,
-                    totalRevenue: 453.60,
-                    conversionRate: 13.2,
-                    reviewCount: 134,
-                    lastUpdate: 'hier'
-                },
-                {
-                    id: 8,
-                    name: 'Radis Rose',
-                    category: 'Légumes racines',
-                    image: 'https://images.unsplash.com/photo-1579113800032-c38bd7635818?auto=format&fit=crop&w=400',
-                    price: 1.90,
-                    unit: 'botte',
-                    stock: 3,
-                    maxStock: 30,
-                    isActive: true,
-                    isBio: false,
-                    isSeasonal: true,
-                    sales: 67,
-                    rating: 4.3,
-                    monthlySales: 21,
-                    totalRevenue: 127.30,
-                    conversionRate: 7.9,
-                    reviewCount: 45,
-                    lastUpdate: 'il y a 4 jours'
-                },
-                {
-                    id: 9,
-                    name: 'Oignons Jaunes',
-                    category: 'Légumes bulbes',
-                    image: 'https://images.unsplash.com/photo-1580201092675-a0a6a6cafbb1?auto=format&fit=crop&w=400',
-                    price: 2.10,
-                    unit: 'kg',
-                    stock: 92,
-                    maxStock: 200,
-                    isActive: true,
-                    isBio: true,
-                    isSeasonal: false,
-                    sales: 145,
-                    rating: 4.4,
-                    monthlySales: 48,
-                    totalRevenue: 304.50,
-                    conversionRate: 10.5,
-                    reviewCount: 78,
-                    lastUpdate: 'il y a 1 semaine'
-                },
-                {
-                    id: 10,
-                    name: 'Ail Rose',
-                    category: 'Légumes bulbes',
-                    image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=400',
-                    price: 3.20,
-                    unit: 'tête',
-                    stock: 25,
-                    maxStock: 60,
-                    isActive: false,
-                    isBio: true,
-                    isSeasonal: false,
-                    sales: 78,
-                    rating: 4.7,
-                    monthlySales: 0,
-                    totalRevenue: 249.60,
-                    conversionRate: 9.3,
-                    reviewCount: 56,
-                    lastUpdate: 'il y a 2 semaines'
-                }
-            ]
+            products: []
         }
     },
     computed: {
@@ -804,6 +605,92 @@ export default {
         }
     },
     methods: {
+        formatXaf(amount) {
+            return new Intl.NumberFormat('fr-CM', {
+                style: 'currency',
+                currency: 'XAF',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(Number(amount || 0))
+        },
+        formatRelativeUpdateLabel(value) {
+            if (!value) return 'mis à jour récemment'
+            const date = new Date(value)
+            if (Number.isNaN(date.getTime())) return 'mis à jour récemment'
+
+            const now = new Date()
+            const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+            if (diffDays <= 0) return 'aujourd\'hui'
+            if (diffDays === 1) return 'hier'
+            if (diffDays < 7) return `il y a ${diffDays} jours`
+            return date.toLocaleDateString('fr-CM')
+        },
+        normalizeProductFromApi(product) {
+            const tags = Array.isArray(product?.tags) ? product.tags : []
+            const tagObjects = Array.isArray(product?.tag_objects) ? product.tag_objects : []
+            const isBio = tags.includes('bio') || tagObjects.some(tag => tag?.slug === 'bio' || tag?.type === 'bio')
+            const isSeasonal = tags.includes('season') || tags.includes('saison') ||
+                tagObjects.some(tag => tag?.slug === 'season' || tag?.type === 'season')
+            const stock = Number(product?.stock_quantity ?? 0)
+            const lowStockThreshold = Number(product?.low_stock_threshold ?? 10)
+            const maxStock = Math.max(stock, lowStockThreshold * 5, 10)
+            const price = Number(product?.price ?? 0)
+
+            return {
+                id: product?.id ?? Date.now(),
+                name: product?.name || 'Produit',
+                category: product?.category?.name || 'Non catégorisé',
+                image: product?.images?.[0]?.url || '',
+                price,
+                unit: product?.unit?.abbreviation || product?.unit?.name || 'unité',
+                stock,
+                maxStock,
+                isActive: Boolean(product?.is_active),
+                isBio,
+                isSeasonal,
+                sales: 0,
+                rating: 0,
+                monthlySales: 0,
+                totalRevenue: 0,
+                conversionRate: 0,
+                reviewCount: 0,
+                lastUpdate: this.formatRelativeUpdateLabel(product?.updated_at)
+            }
+        },
+        refreshFilterCounts() {
+            const total = this.products.length
+            const active = this.products.filter(p => p.isActive).length
+            const inactive = total - active
+            const bio = this.products.filter(p => p.isBio).length
+            const lowStock = this.products.filter(p => p.stock > 0 && p.stock <= p.maxStock * 0.2).length
+            const outOfStock = this.products.filter(p => p.stock === 0).length
+            const seasonal = this.products.filter(p => p.isSeasonal).length
+
+            this.filters = this.filters.map(filter => {
+                if (filter.id === 'active') return { ...filter, count: active }
+                if (filter.id === 'inactive') return { ...filter, count: inactive }
+                if (filter.id === 'bio') return { ...filter, count: bio }
+                if (filter.id === 'low-stock') return { ...filter, count: lowStock }
+                if (filter.id === 'out-of-stock') return { ...filter, count: outOfStock }
+                if (filter.id === 'seasonal') return { ...filter, count: seasonal }
+                return filter
+            })
+        },
+        async loadMyProducts() {
+            try {
+                const response = await catalogService.getMyProducts({ limit: 200 })
+                this.products = Array.isArray(response?.products)
+                    ? response.products.map((product) => this.normalizeProductFromApi(product))
+                    : []
+                this.monthlyRevenue = '0'
+                this.refreshFilterCounts()
+            } catch (error) {
+                console.error('Erreur chargement des produits du producteur:', error)
+                this.products = []
+                this.monthlyRevenue = '0'
+                this.refreshFilterCounts()
+            }
+        },
         toggleFilter(filterId) {
             const index = this.activeFilters.indexOf(filterId)
             if (index === -1) {
@@ -827,6 +714,7 @@ export default {
         },
         toggleProductStatus(product) {
             product.isActive = !product.isActive
+            this.refreshFilterCounts()
             this.showToastMessage(
                 product.isActive ? 'Produit activé' : 'Produit désactivé',
                 `"${product.name}" est maintenant ${product.isActive ? 'visible' : 'masqué'} dans le catalogue`,
@@ -873,6 +761,7 @@ export default {
                 const index = this.products.findIndex(p => p.id === this.productToDelete.id)
                 if (index !== -1) {
                     this.products.splice(index, 1)
+                    this.refreshFilterCounts()
                     this.showToastMessage('Produit supprimé', `"${this.productToDelete.name}" a été supprimé`, '🗑️')
                 }
             }
@@ -882,6 +771,9 @@ export default {
             this.showProductModal = false
             this.editingProduct = null
             document.body.style.overflow = 'auto'
+            if (this.$route.path.endsWith('/products/new')) {
+                this.$router.push('/producer/products')
+            }
         },
         handleProductSubmit(productData) {
             if (this.modalMode === 'add') {
@@ -895,6 +787,7 @@ export default {
                     lastUpdate: 'à l\'instant'
                 }
                 this.products.unshift(newProduct)
+                this.refreshFilterCounts()
                 this.showToastMessage('Produit ajouté', 'Votre nouveau produit a été ajouté au catalogue', '✅')
             } else {
                 const index = this.products.findIndex(p => p.id === productData.id)
@@ -904,6 +797,7 @@ export default {
                         ...productData,
                         lastUpdate: 'à l\'instant'
                     }
+                    this.refreshFilterCounts()
                     this.showToastMessage('Produit modifié', 'Les modifications ont été enregistrées', '✏️')
                 }
             }
@@ -950,6 +844,26 @@ export default {
         },
         hideToast() {
             this.showToast = false
+        }
+    },
+    watch: {
+        '$route.path'(newPath) {
+            if (newPath.endsWith('/products/new') && !this.showProductModal) {
+                this.showAddProductModal()
+            }
+        }
+    },
+    async mounted() {
+        const authStore = useAuthStore()
+        const email = authStore?.user?.email
+        if (email && typeof email === 'string') {
+            this.producerName = email.split('@')[0] || 'Producteur'
+        }
+
+        await this.loadMyProducts()
+
+        if (this.$route.path.endsWith('/products/new')) {
+            this.showAddProductModal()
         }
     }
 }
@@ -1366,7 +1280,7 @@ input:checked+.slider:before {
 }
 
 .duplicate-btn {
-    @apply bg-forest-green/10 text-forest-green hover:bg-forest-green/20;
+    @apply bg-forest-green bg-opacity-10 text-forest-green hover:bg-opacity-20;
 }
 
 .delete-btn {
@@ -1388,7 +1302,7 @@ input:checked+.slider:before {
 
 /* État vide */
 .empty-state {
-    @apply bg-gradient-to-br from-white/70 to-cream-light/30 backdrop-blur-sm rounded-3xl p-12 text-center border-2 border-dashed border-forest-green/20;
+    @apply bg-gradient-to-br from-white/70 to-cream-light backdrop-blur-sm rounded-3xl p-12 text-center border-2 border-dashed border-forest-green border-opacity-20;
 }
 
 .empty-icon {
@@ -1409,7 +1323,7 @@ input:checked+.slider:before {
 }
 
 .pagination-btn {
-    @apply px-4 py-2 bg-white/80 backdrop-blur-sm border border-forest-green/20 rounded-xl text-forest-green font-medium transition-all duration-300 hover:bg-forest-green/5 hover:border-forest-green/40 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-4 py-2 bg-white/80 backdrop-blur-sm border border-forest-green border-opacity-20 rounded-xl text-forest-green font-medium transition-all duration-300 hover:bg-forest-green hover:bg-opacity-5 hover:border-opacity-40 disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .pagination-numbers {
@@ -1417,7 +1331,7 @@ input:checked+.slider:before {
 }
 
 .pagination-number {
-    @apply w-10 h-10 flex items-center justify-center bg-white/80 backdrop-blur-sm border border-forest-green/20 rounded-xl text-forest-green font-medium transition-all duration-300 hover:bg-forest-green/5 hover:border-forest-green/40;
+    @apply w-10 h-10 flex items-center justify-center bg-white/80 backdrop-blur-sm border border-forest-green border-opacity-20 rounded-xl text-forest-green font-medium transition-all duration-300 hover:bg-forest-green hover:bg-opacity-5 hover:border-opacity-40;
 }
 
 .pagination-active {
@@ -1426,7 +1340,7 @@ input:checked+.slider:before {
 
 /* Section insights */
 .insights-section {
-    @apply bg-gradient-to-br from-white/60 to-cream-light/30 backdrop-blur-sm rounded-3xl p-8 border border-forest-green/10;
+    @apply bg-gradient-to-br from-white/60 to-cream-light backdrop-blur-sm rounded-3xl p-8 border border-forest-green border-opacity-10;
 }
 
 .section-title {
@@ -1434,7 +1348,7 @@ input:checked+.slider:before {
 }
 
 .insight-card {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10 transition-all duration-500 hover:scale-105 hover:shadow-xl;
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10 transition-all duration-500 hover:scale-105 hover:shadow-xl;
 }
 
 .insight-icon {
@@ -1450,7 +1364,7 @@ input:checked+.slider:before {
 }
 
 .insight-item {
-    @apply flex justify-between items-center py-2 border-b border-forest-green/5 last:border-b-0;
+    @apply flex justify-between items-center py-2 border-b border-forest-green border-opacity-5 last:border-b-0;
 }
 
 .insight-item-name {
@@ -1468,7 +1382,7 @@ input:checked+.slider:before {
 }
 
 .btn-secondary {
-    @apply bg-gradient-to-r from-terracotta/10 to-terracotta/5 text-terracotta font-semibold rounded-xl border border-terracotta/20 transition-all duration-500 hover:border-terracotta/40 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-gradient-to-r from-cream-light to-white text-terracotta font-semibold rounded-xl border border-terracotta border-opacity-20 transition-all duration-500 hover:border-opacity-40 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -1482,7 +1396,7 @@ input:checked+.slider:before {
 }
 
 .modal-header {
-    @apply flex justify-between items-center p-6 border-b border-forest-green/10 sticky top-0 bg-white/95 backdrop-blur-sm z-10;
+    @apply flex justify-between items-center p-6 border-b border-forest-green border-opacity-10 bg-white/95 backdrop-blur-sm;
 }
 
 .modal-title {
@@ -1490,7 +1404,7 @@ input:checked+.slider:before {
 }
 
 .modal-close {
-    @apply w-10 h-10 rounded-full bg-forest-green/10 text-forest-green flex items-center justify-center hover:bg-forest-green/20 transition-colors duration-300;
+    @apply w-10 h-10 rounded-full bg-forest-green bg-opacity-10 text-forest-green flex items-center justify-center hover:bg-opacity-20 transition-colors duration-300;
 }
 
 .modal-body {
@@ -1541,7 +1455,7 @@ input:checked+.slider:before {
 
 /* Toast notification */
 .toast-notification {
-    @apply fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-forest-green/10 flex items-center space-x-4 max-w-sm;
+    @apply fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-forest-green border-opacity-10 flex items-center space-x-4 max-w-sm;
 }
 
 .toast-icon {
@@ -1561,7 +1475,7 @@ input:checked+.slider:before {
 }
 
 .toast-close {
-    @apply w-8 h-8 rounded-full bg-forest-green/10 text-forest-green flex items-center justify-center hover:bg-forest-green/20 transition-colors duration-300;
+    @apply w-8 h-8 rounded-full bg-forest-green bg-opacity-10 text-forest-green flex items-center justify-center hover:bg-opacity-20 transition-colors duration-300;
 }
 
 .toast-enter-active,
@@ -1608,11 +1522,11 @@ input:checked+.slider:before {
 }
 
 ::-webkit-scrollbar-track {
-    @apply bg-forest-green/5 rounded-full;
+    @apply bg-forest-green bg-opacity-5 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply bg-forest-green/20 rounded-full hover:bg-forest-green/30 transition-colors duration-300;
+    @apply bg-forest-green bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors duration-300;
 }
 </style>
 
@@ -1670,3 +1584,4 @@ body {
     color: var(--nature-gray);
 }
 </style>
+

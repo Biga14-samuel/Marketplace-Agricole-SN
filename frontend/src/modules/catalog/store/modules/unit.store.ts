@@ -1,11 +1,22 @@
-// @ts-nocheck
 // modules/catalog/store/modules/unit.store.ts
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { unitsApi } from '../../services/api/units.api';
-import { Unit, CreateUnitRequest, UpdateUnitRequest, UnitHelper, UnitCategory, UnitConverter } from '../../services/models/unit.model'
-import { Unit as UnitModel } from '../../services/models/unit.model';;
+import type { CreateUnitRequest, UpdateUnitRequest } from '../../services/api/units.api';
+import { Unit, UnitHelper, UnitCategory, UnitConverter } from '../../services/models/unit.model';
+
+type ExtendedCreateUnitRequest = CreateUnitRequest & {
+    category?: UnitCategory;
+    conversion_factor?: number;
+    base_unit_id?: string;
+};
+
+type ExtendedUpdateUnitRequest = UpdateUnitRequest & {
+    category?: UnitCategory;
+    conversion_factor?: number;
+    base_unit_id?: string;
+};
 
 export const useUnitStore = defineStore('unit', () => {
     // ============================================
@@ -210,7 +221,7 @@ export const useUnitStore = defineStore('unit', () => {
      * Créer une unité
      * Endpoint: POST /api/v1/products-catalog/products/units
      */
-    const createUnit = async (data: CreateUnitRequest): Promise<Unit> => {
+    const createUnit = async (data: ExtendedCreateUnitRequest): Promise<Unit> => {
         try {
             operationStatus.value = 'creating';
             loading.value = true;
@@ -226,8 +237,18 @@ export const useUnitStore = defineStore('unit', () => {
                 throw new Error(`Une unité avec le nom "${data.name}" existe déjà`);
             }
 
-            const newUnitData = await unitsApi.createUnit(data);
-      const newUnit = new UnitModel(newUnitData);
+            const newUnitData = await unitsApi.createUnit({
+                name: data.name,
+                symbol: data.symbol,
+                description: data.description,
+            });
+
+            const newUnit = Unit.fromApiData({
+                ...newUnitData,
+                category: data.category,
+                conversion_factor: data.conversion_factor,
+                base_unit_id: data.base_unit_id,
+            });
 
             // Ajouter à la liste
             units.value.push(newUnit);
@@ -262,7 +283,8 @@ export const useUnitStore = defineStore('unit', () => {
             loading.value = true;
             error.value = null;
 
-            const fetchedUnits = await unitsApi.getAllUnits();
+            const fetchedUnitsData = await unitsApi.getAllUnits();
+            const fetchedUnits = fetchedUnitsData.map(unit => Unit.fromApiData(unit));
 
             // Mettre à jour les unités
             units.value = fetchedUnits;
@@ -319,7 +341,7 @@ export const useUnitStore = defineStore('unit', () => {
     /**
      * Mettre à jour une unité (méthode locale, pas d'endpoint spécifique pour l'instant)
      */
-    const updateUnit = async (unitId: string, data: UpdateUnitRequest): Promise<Unit> => {
+    const updateUnit = async (unitId: string, data: ExtendedUpdateUnitRequest): Promise<Unit> => {
         try {
             operationStatus.value = 'updating';
             loading.value = true;
@@ -600,7 +622,7 @@ export const useUnitStore = defineStore('unit', () => {
     /**
      * Créer plusieurs unités
      */
-    const createUnitsFromList = async (unitsList: CreateUnitRequest[]): Promise<Unit[]> => {
+    const createUnitsFromList = async (unitsList: ExtendedCreateUnitRequest[]): Promise<Unit[]> => {
         try {
             operationStatus.value = 'creating';
             loading.value = true;
@@ -612,7 +634,17 @@ export const useUnitStore = defineStore('unit', () => {
                 // Vérifier si l'unité existe déjà (par symbole)
                 if (!unitSymbolExists.value(unitData.symbol)) {
                     try {
-                        const newUnit = await unitsApi.createUnit(unitData);
+                        const newUnitData = await unitsApi.createUnit({
+                            name: unitData.name,
+                            symbol: unitData.symbol,
+                            description: unitData.description,
+                        });
+                        const newUnit = Unit.fromApiData({
+                            ...newUnitData,
+                            category: unitData.category,
+                            conversion_factor: unitData.conversion_factor,
+                            base_unit_id: unitData.base_unit_id,
+                        });
                         units.value.push(newUnit);
                         unitsCache.value.set(newUnit.id, newUnit);
                         createdUnits.push(newUnit);
@@ -658,7 +690,7 @@ export const useUnitStore = defineStore('unit', () => {
      * Importer des unités standard (système métrique, impérial, etc.)
      */
     const importStandardUnits = async (): Promise<Unit[]> => {
-        const standardUnits: CreateUnitRequest[] = [
+        const standardUnits: ExtendedCreateUnitRequest[] = [
             // Unités de poids (métrique)
             { name: 'Gramme', symbol: 'g', category: UnitCategory.WEIGHT, conversion_factor: 0.001, base_unit_id: undefined },
             { name: 'Kilogramme', symbol: 'kg', category: UnitCategory.WEIGHT, conversion_factor: 1, base_unit_id: undefined },

@@ -351,7 +351,7 @@ export class CameroonPaymentProviders {
                 licenseExpiry: new Date('2025-12-31'),
                 isPCICompliant: true,
                 isGDPRCompliant: true,
-                dataCenters: ['Yaoundé', 'Douala', 'Paris'],
+                dataCenters: ['Yaoundé', 'Douala', 'Libreville'],
                 backupPolicy: 'Daily backups with 30-day retention'
             },
 
@@ -370,7 +370,7 @@ export class CameroonPaymentProviders {
                     testPhoneNumbers: ['237677123456', '237678123456'],
                     testAmounts: [100, 500, 1000, 5000],
                     simulationMode: true,
-                    mockResponses: true
+                    mockResponses: false
                 },
                 production: {
                     auditLogging: true,
@@ -498,7 +498,7 @@ export class CameroonPaymentProviders {
                     testPhoneNumbers: ['237699123456', '237677123456'],
                     testAmounts: [100, 1000, 5000],
                     simulationMode: true,
-                    mockResponses: true
+                    mockResponses: false
                 },
                 production: {
                     auditLogging: true,
@@ -625,7 +625,7 @@ export class CameroonPaymentProviders {
                     testPhoneNumbers: ['237677123456'],
                     testAmounts: [100, 500, 1000],
                     simulationMode: true,
-                    mockResponses: true
+                    mockResponses: false
                 },
                 production: {
                     auditLogging: true,
@@ -712,7 +712,7 @@ export class CameroonPaymentProviders {
                 }
             },
 
-            supportedCurrencies: ['XAF', 'EUR', 'USD', 'XOF'],
+            supportedCurrencies: ['XAF'],
             supportedMethods: ['Mobile App', 'Web', 'API', 'QR Code'],
             additionalServices: ['International Transfers', 'Currency Exchange', 'Merchant Services', 'API Marketplace'],
 
@@ -732,7 +732,7 @@ export class CameroonPaymentProviders {
                 licenseExpiry: new Date('2025-03-31'),
                 isPCICompliant: true,
                 isGDPRCompliant: true,
-                dataCenters: ['Douala', 'Paris', 'Dakar'],
+                dataCenters: ['Douala', 'Libreville', 'Dakar'],
                 backupPolicy: 'Multi-region redundancy'
             },
 
@@ -751,14 +751,14 @@ export class CameroonPaymentProviders {
                     testPhoneNumbers: ['237673123456', '237677123456'],
                     testAmounts: [100, 500, 1000, 5000],
                     simulationMode: true,
-                    mockResponses: true
+                    mockResponses: false
                 },
                 production: {
                     auditLogging: true,
                     realTimeMonitoring: true,
                     fraudDetection: true,
                     autoReconciliation: true,
-                    multiCurrency: true
+                    multiCurrency: false
                 }
             }
         });
@@ -839,7 +839,7 @@ export class CameroonPaymentProviders {
                 }
             },
 
-            supportedCurrencies: ['XAF', 'XOF', 'EUR', 'USD', 'GNF'],
+            supportedCurrencies: ['XAF'],
             supportedMethods: ['MTN', 'Orange', 'Moov', 'Visa', 'MasterCard', 'PayPal'],
             additionalServices: ['Recurring Payments', 'Marketplace', 'Split Payments', 'Payment Links'],
 
@@ -859,7 +859,7 @@ export class CameroonPaymentProviders {
                 licenseExpiry: new Date('2024-12-31'),
                 isPCICompliant: true,
                 isGDPRCompliant: true,
-                dataCenters: ['Abidjan', 'Paris', 'Dakar', 'Yaoundé'],
+                dataCenters: ['Abidjan', 'Libreville', 'Dakar', 'Yaoundé'],
                 backupPolicy: 'Real-time synchronous replication'
             },
 
@@ -878,7 +878,7 @@ export class CameroonPaymentProviders {
                     testPhoneNumbers: ['237677123456', '237699123456'],
                     testAmounts: [100, 1000, 10000],
                     simulationMode: true,
-                    mockResponses: true,
+                    mockResponses: false,
                     testCards: {
                         success: '4111111111111111',
                         failure: '4000000000000002'
@@ -1186,54 +1186,3 @@ export const cameroonPaymentProviders = {
         CameroonPaymentProviders.getApiUrl(providerId, endpoint, environment)
 };
 
-/**
- * Démonstration de l'utilisation
- */
-export function demonstrateProviders(): void {
-    CameroonPaymentProviders.initialize();
-
-    console.log('=== Fournisseurs de paiement Camerounais ===\n');
-
-    // Afficher tous les fournisseurs actifs
-    const activeProviders = CameroonPaymentProviders.getActiveProviders();
-
-    console.log(`Fournisseurs actifs: ${activeProviders.length}\n`);
-
-    activeProviders.forEach(provider => {
-        console.log(`=== ${provider.name} ===`);
-        console.log(`Catégorie: ${provider.metadata.providerCategory}`);
-        console.log(`Statut: ${provider.status}`);
-        console.log(`Devises: ${provider.supportedCurrencies.join(', ')}`);
-        console.log(`Limites: ${provider.limits.minTransaction} - ${provider.limits.maxTransaction} ${provider.supportedCurrencies[0]}`);
-        console.log(`Frais dépôt: ${provider.fees.deposit.percentage}% + ${provider.fees.deposit.fixed} fixe`);
-        console.log(`Intégration: ${provider.metadata.integrationLevel}`);
-        console.log(`Dernière mise à jour: ${provider.metadata.lastUpdated.toLocaleDateString('fr-FR')}`);
-        console.log();
-    });
-
-    // Comparer les frais
-    console.log('=== Comparaison des frais (10,000 XAF) ===\n');
-
-    const comparison = CameroonPaymentProviders.compareFees(10000);
-    comparison.forEach(item => {
-        console.log(`${item.name}: ${item.totalFees} XAF (${item.percentage}% + ${item.fees}fixed)`);
-    });
-
-    // Obtenir les fournisseurs par catégorie
-    console.log('\n=== Fournisseurs par catégorie ===\n');
-
-    const categories = ['TELCO', 'BANK', 'FIN_TECH', 'PAYMENT_GATEWAY'];
-
-    categories.forEach(category => {
-        const providers = CameroonPaymentProviders.getProvidersByCategory(category);
-        if (providers.length > 0) {
-            console.log(`${category}: ${providers.length} fournisseur(s)`);
-            providers.forEach(p => console.log(`  - ${p.name}`));
-        }
-    });
-}
-
-// Exécuter la démonstration si le fichier est exécuté directement
-if (require.main === module) {
-    demonstrateProviders();
-}

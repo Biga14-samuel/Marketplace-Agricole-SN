@@ -599,6 +599,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { formatCurrency } from '../utils/currencyFormatter'
 import InvoicePreviewModal from '../components/InvoiceViewer.vue'
+import invoiceService from '../services/invoiceService'
 
 // Composants décoratifs
 const LeafDecoration = {
@@ -683,99 +684,7 @@ export default {
         const activeActionMenu = ref(null)
         const activeQuickFilter = ref('recent')
 
-        // Données de test
-        const invoices = ref([
-            {
-                id: 1,
-                number: 'FACT-2024-00123',
-                date: '2024-03-15',
-                dueDate: '2024-04-15',
-                amount: 15750,
-                vat: 865,
-                type: 'purchase',
-                status: 'paid',
-                products: ['Tomates cerises bio', 'Avocats hass', 'Piments frais'],
-                customer: {
-                    name: 'Jean Dupont',
-                    address: 'Rue 1234, Yaoundé'
-                }
-            },
-            {
-                id: 2,
-                number: 'FACT-2024-00124',
-                date: '2024-03-10',
-                dueDate: '2024-04-10',
-                amount: 8900,
-                vat: 489,
-                type: 'subscription',
-                status: 'pending',
-                products: ['Abonnement Panier Hebdo'],
-                customer: {
-                    name: 'Marie Lambert',
-                    address: 'Avenue Kennedy, Douala'
-                }
-            },
-            {
-                id: 3,
-                number: 'FACT-2024-00125',
-                date: '2024-03-05',
-                dueDate: '2024-03-25',
-                amount: 12400,
-                vat: 682,
-                type: 'purchase',
-                status: 'overdue',
-                products: ['Mangues', 'Ananas', 'Papayes'],
-                customer: {
-                    name: 'Paul Martin',
-                    address: 'Boulevard du 20 Mai, Yaoundé'
-                }
-            },
-            {
-                id: 4,
-                number: 'FACT-2024-00126',
-                date: '2024-02-28',
-                dueDate: '2024-03-28',
-                amount: 6500,
-                vat: 0,
-                type: 'refund',
-                status: 'paid',
-                products: ['Remboursement commande'],
-                customer: {
-                    name: 'Sophie Bernard',
-                    address: 'Quartier Bastos, Yaoundé'
-                }
-            },
-            {
-                id: 5,
-                number: 'FACT-2024-00127',
-                date: '2024-02-20',
-                dueDate: '2024-03-20',
-                amount: 21300,
-                vat: 1171,
-                type: 'purchase',
-                status: 'paid',
-                products: ['Poulet fermier', 'Œufs bio', 'Fromage local'],
-                customer: {
-                    name: 'Thomas Petit',
-                    address: 'Rue des Banques, Bafoussam'
-                }
-            },
-            {
-                id: 6,
-                number: 'FACT-2024-00128',
-                date: '2024-02-15',
-                dueDate: '2024-03-15',
-                amount: 7400,
-                vat: 0,
-                type: 'purchase',
-                status: 'paid',
-                products: ['Courgettes', 'Aubergines'],
-                customer: {
-                    name: 'Lisa Moreau',
-                    address: 'Carrefour Ngoa, Yaoundé'
-                }
-            }
-        ])
+        const invoices = ref([])
 
         const quickFilters = ref([
             { id: 'recent', label: 'Récentes' },
@@ -785,6 +694,38 @@ export default {
             { id: 'lastMonth', label: 'Mois dernier' },
             { id: 'highAmount', label: 'Montant élevé' }
         ])
+
+        const normalizeStatus = (status) => {
+            const normalized = String(status || '').toLowerCase()
+            if (normalized === 'paid' || normalized === 'completed') return 'paid'
+            if (normalized === 'overdue' || normalized === 'late') return 'overdue'
+            return 'pending'
+        }
+
+        const normalizeType = (type) => {
+            const normalized = String(type || '').toLowerCase()
+            if (normalized === 'refund' || normalized === 'credit') return 'refund'
+            if (normalized === 'subscription' || normalized === 'recurring') return 'subscription'
+            return 'purchase'
+        }
+
+        const mapBackendInvoice = (invoice) => ({
+            id: invoice?.id,
+            number: invoice?.invoice_number || invoice?.invoiceNumber || `FACT-${invoice?.id || ''}`,
+            date: invoice?.issue_date || invoice?.issueDate || invoice?.createdAt || new Date().toISOString(),
+            dueDate: invoice?.due_date || invoice?.dueDate,
+            amount: Number(invoice?.total || invoice?.total_amount || invoice?.totalAmount || 0),
+            vat: Number(invoice?.vat || invoice?.tax_amount || invoice?.taxAmount || 0),
+            type: normalizeType(invoice?.type),
+            status: normalizeStatus(invoice?.status),
+            products: Array.isArray(invoice?.items)
+                ? invoice.items.map(item => item?.description || item?.productName || item?.name).filter(Boolean)
+                : [],
+            customer: {
+                name: invoice?.customer_name || invoice?.customerName || invoice?.customer?.name || 'Client',
+                address: invoice?.customer_address || invoice?.customerAddress?.street || invoice?.customer?.address || 'Cameroun'
+            }
+        })
 
         // Computed properties
         const filteredInvoices = computed(() => {
@@ -838,15 +779,13 @@ export default {
         })
 
         const vatSaved = computed(() => {
-            // Simuler des économies de TVA sur les produits locaux
             return invoices.value
                 .filter(inv => inv.type === 'purchase')
-                .reduce((sum, inv) => sum + (inv.amount * 0.1375), 0) // Différence entre 19.25% et 5.5%
+                .reduce((sum, inv) => sum + Number(inv.vat || 0), 0)
         })
 
         const carbonSaved = computed(() => {
-            // Simuler des économies de CO2
-            return (invoices.value.length * 12.5).toFixed(1)
+            return (invoices.value.length * 0.5).toFixed(1)
         })
 
         const availableYears = computed(() => {
@@ -1005,9 +944,19 @@ export default {
             console.log('Contact support')
         }
 
+        const fetchInvoices = async () => {
+            try {
+                const userInvoices = await invoiceService.getUserInvoices()
+                invoices.value = Array.isArray(userInvoices)
+                    ? userInvoices.map(mapBackendInvoice)
+                    : []
+            } catch (error) {
+                invoices.value = []
+            }
+        }
+
         onMounted(() => {
-            // Charger les factures depuis l'API
-            // fetchInvoices()
+            fetchInvoices()
         })
 
         return {
@@ -1200,3 +1149,4 @@ export default {
     background: rgba(0, 168, 107, 0.5);
 }
 </style>
+

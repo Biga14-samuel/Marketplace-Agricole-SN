@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { createPinia } from 'pinia'
 import type { App } from 'vue'
 import { useProductStore } from './modules/product.store'

@@ -1,7 +1,7 @@
 // @ts-nocheck
 // modules/orders/router/orders.routes.ts
 import type { RouteRecordRaw } from 'vue-router'
-import { Role } from '@/modules/auth/types/auth.types'
+import { RoleName } from '@/modules/auth/types/auth.types'
 
 const OrdersRoutes: RouteRecordRaw[] = [
   {
@@ -13,7 +13,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
       requiresAuth: true,
       breadcrumb: 'Panier',
       icon: 'mdi-cart',
-      roles: [Role.ADMIN, Role.MANAGER, Role.VIEWER, Role.CUSTOMER]
+      roles: [RoleName.ADMIN, RoleName.CUSTOMER, RoleName.PRODUCER]
     }
   },
   {
@@ -24,7 +24,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
       title: 'Finaliser la commande',
       requiresAuth: true,
       breadcrumb: 'Checkout',
-      roles: [Role.ADMIN, Role.MANAGER, Role.VIEWER, Role.CUSTOMER]
+      roles: [RoleName.ADMIN, RoleName.CUSTOMER, RoleName.PRODUCER]
     }
   },
   {
@@ -35,7 +35,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
       requiresAuth: true,
       breadcrumb: 'Commandes',
       icon: 'mdi-package-variant-closed',
-      roles: [Role.ADMIN, Role.MANAGER, Role.VIEWER, Role.CUSTOMER]
+      roles: [RoleName.ADMIN, RoleName.CUSTOMER, RoleName.PRODUCER]
     },
     children: [
       {
@@ -45,7 +45,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Mes Commandes',
           breadcrumb: 'Mes Commandes',
-          roles: [Role.ADMIN, Role.MANAGER, Role.VIEWER, Role.CUSTOMER]
+          roles: [RoleName.ADMIN, RoleName.CUSTOMER, RoleName.PRODUCER]
         }
       },
       {
@@ -55,7 +55,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Commandes Reçues',
           breadcrumb: 'Commandes Reçues',
-          roles: [Role.ADMIN, Role.MANAGER]
+          roles: [RoleName.ADMIN, RoleName.PRODUCER]
         }
       },
       {
@@ -65,7 +65,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Détails de la Commande',
           breadcrumb: 'Détails',
-          roles: [Role.ADMIN, Role.MANAGER, Role.VIEWER, Role.CUSTOMER]
+          roles: [RoleName.ADMIN, RoleName.CUSTOMER, RoleName.PRODUCER]
         },
         props: true
       },
@@ -76,7 +76,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Suivi de Livraison',
           breadcrumb: 'Suivi',
-          roles: [Role.ADMIN, Role.MANAGER, Role.VIEWER, Role.CUSTOMER]
+          roles: [RoleName.ADMIN, RoleName.CUSTOMER, RoleName.PRODUCER]
         },
         props: true
       },
@@ -87,7 +87,7 @@ const OrdersRoutes: RouteRecordRaw[] = [
         meta: {
           title: 'Historique de la Commande',
           breadcrumb: 'Historique',
-          roles: [Role.ADMIN, Role.MANAGER]
+          roles: [RoleName.ADMIN, RoleName.PRODUCER]
         },
         props: true
       }

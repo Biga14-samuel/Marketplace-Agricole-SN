@@ -147,12 +147,12 @@ export class ProductVariant {
 
     // Obtenir le prix formaté
     getFormattedPrice(): string {
-        return `${this.price.toFixed(2)} €`;
+        return `${this.price.toFixed(2)} FCFA`;
     }
 
     // Obtenir le prix de comparaison formaté
     getFormattedComparePrice(): string {
-        return this.compare_price ? `${this.compare_price.toFixed(2)} €` : '';
+        return this.compare_price ? `${this.compare_price.toFixed(2)} FCFA` : '';
     }
 
     // Obtenir la chaîne des attributs formatée

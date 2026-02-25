@@ -690,7 +690,7 @@ const formatNumber = (num: number) => {
 const formatPrice = (price: number) => {
     return new Intl.NumberFormat('fr-FR', {
         style: 'currency',
-        currency: 'EUR',
+        currency: 'XAF',
         minimumFractionDigits: 2
     }).format(price)
 }
@@ -1616,3 +1616,4 @@ onUnmounted(() => {
     border-radius: 2px;
 }
 </style>
+

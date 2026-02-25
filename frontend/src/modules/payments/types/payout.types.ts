@@ -46,11 +46,7 @@ export enum PAYOUT_PRIORITY {
 }
 
 export enum PAYOUT_CURRENCY {
-    XAF = 'XAF',                        // Franc CFA
-    EUR = 'EUR',                        // Euro
-    USD = 'USD',                        // Dollar US
-    GBP = 'GBP',                        // Livre Sterling
-    CAD = 'CAD'                         // Dollar Canadien
+    XAF = 'XAF'                         // Franc CFA
 }
 
 export enum PAYOUT_TYPE {

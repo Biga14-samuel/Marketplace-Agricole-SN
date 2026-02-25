@@ -647,8 +647,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ordersService } from '@/modules/orders/services/orders.service'
+import refundService from '../services/refundService'
 import {
     ClockIcon,
     ShieldCheckIcon,
@@ -678,46 +680,7 @@ const router = useRouter()
 const currentStep = ref(1)
 const progress = computed(() => (currentStep.value / 3) * 100)
 
-// Données mockées
-const eligibleOrders = ref([
-    {
-        id: '1',
-        order_number: '2024-04567',
-        date: '2024-03-15',
-        delivery_date: '2024-03-17',
-        refund_deadline: '2024-03-31',
-        total: 33500,
-        items_count: 8,
-        payment_method: 'Mobile Money (MTN)',
-        items: [
-            { id: '1', name: 'Tomates bio' },
-            { id: '2', name: 'Avocats' },
-            { id: '3', name: 'Carottes' },
-            { id: '4', name: 'Bananes plantain' },
-            { id: '5', name: 'Oignons' },
-            { id: '6', name: 'Pommes de terre' },
-            { id: '7', name: 'Salade' },
-            { id: '8', name: 'Concombres' }
-        ]
-    },
-    {
-        id: '2',
-        order_number: '2024-04568',
-        date: '2024-03-10',
-        delivery_date: '2024-03-12',
-        refund_deadline: '2024-03-26',
-        total: 18700,
-        items_count: 5,
-        payment_method: 'Orange Money',
-        items: [
-            { id: '1', name: 'Mangues' },
-            { id: '2', name: 'Ananas' },
-            { id: '3', name: 'Papayes' },
-            { id: '4', name: 'Citrons' },
-            { id: '5', name: 'Gingembre' }
-        ]
-    }
-])
+const eligibleOrders = ref<any[]>([])
 
 const selectedOrder = ref<any>(null)
 
@@ -763,22 +726,7 @@ const refundReasons = [
     }
 ]
 
-const previousRefunds = ref([
-    {
-        id: '1',
-        order_id: '2024-04566',
-        amount: 12000,
-        status: 'completed',
-        created_at: '2024-03-05'
-    },
-    {
-        id: '2',
-        order_id: '2024-04565',
-        amount: 8500,
-        status: 'processing',
-        created_at: '2024-03-12'
-    }
-])
+const previousRefunds = ref<any[]>([])
 
 // Données du formulaire
 const formData = ref({
@@ -792,6 +740,71 @@ const formData = ref({
 const customAmount = ref('')
 const fileInput = ref<HTMLInputElement>()
 const showConfirmationModal = ref(false)
+const submitting = ref(false)
+
+const mapOrderForRefund = (order: any) => {
+    const createdAt = String(order?.createdAt ?? new Date().toISOString())
+    const createdDate = new Date(createdAt)
+    const deadline = new Date(createdDate)
+    deadline.setDate(deadline.getDate() + 14)
+
+    return {
+        id: String(order?.id ?? ''),
+        order_number: String(order?.orderNumber ?? order?.id ?? ''),
+        date: createdAt,
+        delivery_date: String(order?.updatedAt ?? createdAt),
+        refund_deadline: deadline.toISOString(),
+        total: Number(order?.totalAmount ?? 0),
+        items_count: Number(order?.items?.length ?? 0),
+        payment_method: String(order?.paymentMethod ?? order?.paymentStatus ?? 'Non renseigné'),
+        payment_id: String(order?.paymentId ?? ''),
+        items: Array.isArray(order?.items)
+            ? order.items.map((item: any) => ({
+                id: String(item?.id ?? ''),
+                name: String(item?.productSnapshot?.name ?? item?.product?.name ?? 'Produit')
+            }))
+            : []
+    }
+}
+
+const normalizeRefundStatus = (status: unknown): string => {
+    const normalized = String(status || '').toLowerCase()
+    if (normalized === 'completed') return 'completed'
+    if (normalized === 'rejected' || normalized === 'failed') return 'rejected'
+    if (normalized === 'processing' || normalized === 'approved' || normalized === 'under_review') return 'processing'
+    return 'pending'
+}
+
+const mapRefundForList = (refund: any) => ({
+    id: String(refund?.id ?? ''),
+    order_id: String(refund?.orderId ?? refund?.order_id ?? ''),
+    amount: Number(refund?.amount ?? refund?.requestedAmount ?? refund?.refundedAmount ?? 0),
+    status: normalizeRefundStatus(refund?.status),
+    created_at: String(refund?.createdAt ?? refund?.requestedAt ?? new Date().toISOString())
+})
+
+const loadEligibleOrders = async () => {
+    try {
+        const response = await ordersService.getMyOrders({ page: 1, limit: 100 })
+        const sourceOrders = Array.isArray(response?.orders) ? response.orders : []
+        const refundableOrders = sourceOrders.filter((order: any) => {
+            const status = String(order?.status || '').toLowerCase()
+            return status === 'completed' || status === 'ready' || status === 'confirmed'
+        })
+        eligibleOrders.value = refundableOrders.map(mapOrderForRefund)
+    } catch (error) {
+        eligibleOrders.value = []
+    }
+}
+
+const loadPreviousRefunds = async () => {
+    try {
+        const refunds = await refundService.getUserRefunds()
+        previousRefunds.value = Array.isArray(refunds) ? refunds.slice(0, 5).map(mapRefundForList) : []
+    } catch (error) {
+        previousRefunds.value = []
+    }
+}
 
 // Méthodes
 const formatCurrency = (amount: number) => {
@@ -902,14 +915,40 @@ const viewRefund = (refund: any) => {
 }
 
 const submitRefundRequest = async () => {
-    if (!formData.value.agreeTerms) return
+    if (!formData.value.agreeTerms || !selectedOrder.value || submitting.value) return
 
-    // Simuler un appel API
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    const reasonMap: Record<string, string> = {
+        quality: 'quality_issue',
+        delivery: 'late_delivery',
+        mistake: 'wrong_item',
+        other: 'other'
+    }
 
-    showConfirmationModal.value = true
-    currentStep.value = 1
-    resetForm()
+    const fallbackItems = (selectedOrder.value.items || []).map((item: any) => ({
+        orderItemId: String(item?.id ?? ''),
+        quantity: 1
+    }))
+
+    submitting.value = true
+    try {
+        await refundService.requestRefund({
+            orderId: String(selectedOrder.value.id),
+            paymentId: String(selectedOrder.value.payment_id || selectedOrder.value.id),
+            reason: (reasonMap[formData.value.reason] || 'other') as any,
+            explanation: formData.value.details || 'Demande de remboursement',
+            requestedAmount: Number(formData.value.amount || 0),
+            items: fallbackItems
+        } as any)
+
+        await loadPreviousRefunds()
+        showConfirmationModal.value = true
+        currentStep.value = 1
+        resetForm()
+    } catch (error) {
+        // L'erreur est gérée côté service; conserver l'état pour correction utilisateur
+    } finally {
+        submitting.value = false
+    }
 }
 
 const closeConfirmationModal = () => {
@@ -933,6 +972,10 @@ const resetForm = () => {
     selectedOrder.value = null
     customAmount.value = ''
 }
+
+onMounted(async () => {
+    await Promise.all([loadEligibleOrders(), loadPreviousRefunds()])
+})
 </script>
 
 <style scoped>
@@ -1013,4 +1056,5 @@ const resetForm = () => {
     --color-nature-900: #1c1917;
 }
 
-</script>
+</style>
+

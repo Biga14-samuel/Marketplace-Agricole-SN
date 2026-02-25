@@ -27,6 +27,7 @@
 
         <!-- Conteneur principal -->
         <div class="container mx-auto px-4 py-8 relative z-10">
+            <div v-if="loading" class="mb-4 text-sm text-nature-600">Chargement de la facture...</div>
             <!-- En-tête avec navigation -->
             <Transition appear enter-active-class="transition-all duration-700 custom-bezier"
                 enter-from-class="opacity-0 -translate-y-4" enter-to-class="opacity-100 translate-y-0">
@@ -100,7 +101,7 @@
                                         <div class="flex items-center space-x-4 mb-6">
                                             <div
                                                 class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-100 to-primary-200 flex items-center justify-center">
-                                                <LeafIcon class="w-6 h-6 text-primary-600" />
+                                                <CheckCircleIcon class="w-6 h-6 text-primary-600" />
                                             </div>
                                             <div>
                                                 <h2 class="text-2xl font-bold text-nature-900">FreshMarket</h2>
@@ -208,7 +209,7 @@
                                                 <div class="col-span-6 lg:col-span-5">
                                                     <div class="flex items-center space-x-3">
                                                         <div class="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
-                                                            <img :src="item.image || '/placeholder-product.jpg'"
+                                                            <img :src="item.image || ''"
                                                                 :alt="item.name" class="w-full h-full object-cover" />
                                                         </div>
                                                         <div>
@@ -531,15 +532,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+// @ts-nocheck
+import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PaymentOptionsModal from './PaymentOptionsModal.vue'
+import invoiceService from '../services/invoiceService'
 import {
     ArrowLeftIcon,
     ArrowDownTrayIcon,
     ShareIcon,
     PrinterIcon,
-    LeafIcon,
     ShieldCheckIcon,
     DocumentTextIcon,
     CreditCardIcon,
@@ -555,6 +557,7 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const router = useRouter()
+const route = useRoute()
 
 // Props avec données par défaut
 interface InvoiceItem {
@@ -592,75 +595,25 @@ interface Invoice {
     items: InvoiceItem[]
 }
 
-// Données mockées pour la démonstration
 const invoice = ref<Invoice>({
-    id: 'INV-2024-00123',
-    invoice_number: '2024-00123',
-    order_id: 'ORD-2024-04567',
+    id: '',
+    invoice_number: '',
+    order_id: '',
     issue_date: new Date().toISOString(),
-    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    status: 'sent',
-    subtotal: 28750,
-    discount: 1500,
-    tax_amount: 4250,
-    tax_rate: 19.25,
-    shipping: 2000,
-    total: 33500,
-    customer_name: 'Jean Dupont',
-    customer_email: 'jean.dupont@example.com',
-    customer_phone: '+237 699 887 766',
-    customer_address: 'Rue des Marchés, Douala, Cameroun',
-    payment_method: 'Mobile Money (MTN)',
-    transaction_id: 'TXN-7890123456',
-    notes: 'Livraison prévue entre 9h et 12h. Merci de vérifier la fraîcheur des produits à réception.',
-    items: [
-        {
-            id: '1',
-            name: 'Tomates fraîches bio',
-            description: 'Tomates cerises du producteur local',
-            quantity: 3,
-            unit_price: 1500,
-            total: 4500,
-            category: 'Légumes'
-        },
-        {
-            id: '2',
-            name: 'Avocats mûrs',
-            description: 'Avocats Hass de qualité supérieure',
-            quantity: 6,
-            unit_price: 800,
-            total: 4800,
-            category: 'Fruits'
-        },
-        {
-            id: '3',
-            name: 'Carottes nouvelles',
-            description: 'Carottes bio du marché local',
-            quantity: 2,
-            unit_price: 1200,
-            total: 2400,
-            category: 'Légumes'
-        },
-        {
-            id: '4',
-            name: 'Bananes plantain',
-            description: 'Bananes plantain mûres à point',
-            quantity: 5,
-            unit_price: 300,
-            total: 1500,
-            category: 'Fruits'
-        },
-        {
-            id: '5',
-            name: 'Oignons nouveaux',
-            description: 'Oignons frais du producteur',
-            quantity: 2,
-            unit_price: 900,
-            total: 1800,
-            category: 'Légumes'
-        }
-    ]
+    status: 'draft',
+    subtotal: 0,
+    discount: 0,
+    tax_amount: 0,
+    shipping: 0,
+    total: 0,
+    customer_name: '',
+    customer_email: '',
+    customer_phone: '',
+    customer_address: '',
+    payment_method: '',
+    items: []
 })
+const loading = ref(true)
 
 // État
 const showPaymentOptions = ref(false)
@@ -671,6 +624,74 @@ const toast = ref({
     details: '',
     icon: CheckCircleIcon
 })
+
+const normalizeInvoiceStatus = (status: unknown): Invoice['status'] => {
+    const normalized = String(status || '').toLowerCase()
+    if (normalized === 'draft') return 'draft'
+    if (normalized === 'paid' || normalized === 'completed') return 'paid'
+    if (normalized === 'overdue' || normalized === 'late') return 'overdue'
+    return 'sent'
+}
+
+const mapBackendInvoice = (raw: any): Invoice => {
+    const items = Array.isArray(raw?.items) ? raw.items : []
+    const subtotal = Number(raw?.subtotal ?? raw?.subTotal ?? 0)
+    const taxAmount = Number(raw?.tax_amount ?? raw?.taxAmount ?? 0)
+    const discount = Number(raw?.discount ?? raw?.discount_amount ?? raw?.discountAmount ?? 0)
+    const shipping = Number(raw?.shipping ?? raw?.shipping_amount ?? raw?.deliveryFee ?? 0)
+    const total = Number(raw?.total ?? raw?.total_amount ?? raw?.totalAmount ?? subtotal + taxAmount + shipping - discount)
+
+    return {
+        id: String(raw?.id ?? ''),
+        invoice_number: String(raw?.invoice_number ?? raw?.invoiceNumber ?? ''),
+        order_id: String(raw?.order_id ?? raw?.orderId ?? ''),
+        issue_date: String(raw?.issue_date ?? raw?.issueDate ?? raw?.created_at ?? raw?.createdAt ?? new Date().toISOString()),
+        due_date: raw?.due_date ?? raw?.dueDate,
+        payment_date: raw?.payment_date ?? raw?.paidAt,
+        status: normalizeInvoiceStatus(raw?.status),
+        subtotal,
+        discount,
+        tax_amount: taxAmount,
+        tax_rate: Number(raw?.tax_rate ?? raw?.taxRate ?? 0) || undefined,
+        shipping,
+        total,
+        customer_name: String(raw?.customer_name ?? raw?.customerName ?? raw?.customer?.name ?? 'Client'),
+        customer_email: String(raw?.customer_email ?? raw?.customerEmail ?? raw?.customer?.email ?? ''),
+        customer_phone: String(raw?.customer_phone ?? raw?.customerPhone ?? raw?.customer?.phone ?? ''),
+        customer_address: String(raw?.customer_address ?? raw?.customerAddress?.street ?? raw?.customer?.address ?? ''),
+        payment_method: String(raw?.payment_method ?? raw?.paymentMethod ?? 'Non renseigné'),
+        transaction_id: raw?.transaction_id ?? raw?.transactionId,
+        notes: Array.isArray(raw?.notes) ? raw.notes.join(' ') : raw?.notes,
+        items: items.map((item: any) => ({
+            id: String(item?.id ?? ''),
+            name: String(item?.name ?? item?.productName ?? item?.description ?? 'Produit'),
+            description: String(item?.description ?? item?.name ?? item?.productName ?? ''),
+            quantity: Number(item?.quantity ?? 0),
+            unit_price: Number(item?.unit_price ?? item?.unitPrice ?? 0),
+            total: Number(item?.total ?? item?.totalPrice ?? (Number(item?.quantity ?? 0) * Number(item?.unit_price ?? item?.unitPrice ?? 0))),
+            image: item?.image,
+            category: item?.category
+        }))
+    }
+}
+
+const loadInvoice = async () => {
+    const invoiceId = String(route.params.id || '')
+    if (!invoiceId) {
+        loading.value = false
+        return
+    }
+
+    loading.value = true
+    try {
+        const rawInvoice = await invoiceService.getInvoice(invoiceId)
+        invoice.value = mapBackendInvoice(rawInvoice)
+    } catch (error) {
+        showToast('Erreur', 'Impossible de charger cette facture', 'info', QuestionMarkCircleIcon)
+    } finally {
+        loading.value = false
+    }
+}
 
 // Méthodes
 const goBack = () => {
@@ -802,6 +823,10 @@ const showToast = (message: string, details: string, type: 'success' | 'info', i
         toast.value.show = false
     }, 5000)
 }
+
+onMounted(() => {
+    loadInvoice()
+})
 </script>
 
 <style scoped>
@@ -893,3 +918,7 @@ const showToast = (message: string, details: string, type: 'success' | 'info', i
     }
 }
 </style>
+
+
+
+

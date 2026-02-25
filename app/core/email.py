@@ -4,6 +4,7 @@ Service d'envoi d'emails avec FastAPI-Mail
 from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
 from pydantic import EmailStr
 from typing import List
+from urllib.parse import quote
 from app.core.config import settings
 
 # Configuration de la connexion email
@@ -27,7 +28,9 @@ async def send_verification_email(email: EmailStr, token: str, user_name: str = 
     """
     Envoie un email de vérification avec le lien de confirmation
     """
-    verification_link = f"{settings.FRONTEND_URL}/auth/verify-email?token={token}"
+    frontend_base = settings.FRONTEND_URL.rstrip("/")
+    encoded_token = quote(token, safe="")
+    verification_link = f"{frontend_base}/auth/verify-email?token={encoded_token}"
     
     print(f"=== ENVOI EMAIL DE VÉRIFICATION ===")
     print(f"Email destinataire: {email}")
@@ -136,7 +139,7 @@ async def send_verification_email(email: EmailStr, token: str, user_name: str = 
                 </div>
                 
                 <div class="warning">
-                    <strong>⏰ Important :</strong> Ce lien est valide pendant 24 heures.
+                    <strong>⏰ Important :</strong> Ce lien est valide pendant 48 heures.
                 </div>
                 
                 <p style="color: #666; font-size: 14px;">
@@ -228,7 +231,9 @@ async def send_password_reset_email(email: EmailStr, token: str, user_name: str 
     """
     Envoie un email de réinitialisation de mot de passe
     """
-    reset_link = f"{settings.FRONTEND_URL}/auth/reset-password?token={token}"
+    frontend_base = settings.FRONTEND_URL.rstrip("/")
+    encoded_token = quote(token, safe="")
+    reset_link = f"{frontend_base}/auth/reset-password?token={encoded_token}"
     
     html_content = f"""
     <!DOCTYPE html>

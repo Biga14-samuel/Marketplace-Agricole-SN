@@ -27,9 +27,17 @@ export class Product {
     low_stock_threshold?: number;
     category_id?: string;
     unit_id?: string;
+    unit_name?: string;
     tags: string[];
     is_active: boolean;
     is_virtual: boolean;
+    stock?: number;
+    min_order?: number;
+    max_order?: number;
+    origin?: string;
+    producer_name?: string;
+    producer?: Record<string, any>;
+    image?: string;
     weight?: number;
     dimensions?: {
         length?: number;
@@ -57,9 +65,17 @@ export class Product {
         this.low_stock_threshold = data.low_stock_threshold;
         this.category_id = data.category_id;
         this.unit_id = data.unit_id;
+        this.unit_name = data.unit_name;
         this.tags = data.tags || [];
         this.is_active = data.is_active ?? true;
         this.is_virtual = data.is_virtual ?? false;
+        this.stock = data.stock ?? data.stock_quantity;
+        this.min_order = data.min_order;
+        this.max_order = data.max_order;
+        this.origin = data.origin;
+        this.producer_name = data.producer_name;
+        this.producer = data.producer;
+        this.image = data.image;
         this.weight = data.weight;
         this.dimensions = data.dimensions || {};
         this.created_at = data.created_at ? new Date(data.created_at) : new Date();
@@ -86,9 +102,17 @@ export class Product {
             low_stock_threshold: data.low_stock_threshold,
             category_id: data.category_id,
             unit_id: data.unit_id,
+            unit_name: data.unit_name || data.unit?.name,
             tags: data.tags || [],
             is_active: data.is_active,
             is_virtual: data.is_virtual,
+            stock: data.stock ?? data.stock_quantity,
+            min_order: data.min_order,
+            max_order: data.max_order,
+            origin: data.origin,
+            producer_name: data.producer_name || data.producer?.name || data.producer?.business_name,
+            producer: data.producer,
+            image: data.image || data.main_image || data.images?.[0]?.url,
             weight: data.weight,
             dimensions: data.dimensions,
             created_at: data.created_at,
@@ -197,12 +221,12 @@ export class Product {
 
     // Obtenir le prix formaté
     getFormattedPrice(): string {
-        return `${this.price.toFixed(2)} €`;
+        return `${this.price.toFixed(2)} FCFA`;
     }
 
     // Obtenir le prix de comparaison formaté
     getFormattedComparePrice(): string {
-        return this.compare_price ? `${this.compare_price.toFixed(2)} €` : '';
+        return this.compare_price ? `${this.compare_price.toFixed(2)} FCFA` : '';
     }
 
     // Calculer le volume (dimensions)
@@ -849,3 +873,4 @@ export type {
     SearchProductsResponse as ProductsSearchResponse,
     CompleteProduct
 } from '../api/products.api';
+

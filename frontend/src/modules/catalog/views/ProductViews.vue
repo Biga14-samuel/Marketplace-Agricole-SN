@@ -212,7 +212,7 @@
                             <div class="mb-8">
                                 <div class="flex items-center justify-between mb-6">
                                     <div>
-                                        <div class="text-3xl font-bold text-forest-green">{{ product.price }}€</div>
+                                        <div class="text-3xl font-bold text-forest-green">{{ formatCurrency(product.price) }}</div>
                                         <div v-if="product.unit" class="text-nature-gray text-sm">/{{ product.unit }}
                                         </div>
                                     </div>
@@ -250,7 +250,7 @@
                                         </div>
                                     </div>
                                     <div class="text-xl font-bold text-terracotta">
-                                        Total : {{ (product.price * quantity).toFixed(2) }}€
+                                        Total : {{ formatCurrency(product.price * quantity) }}
                                     </div>
                                 </div>
 
@@ -285,7 +285,7 @@
                                     <div class="text-center">
                                         <div class="text-forest-green text-2xl mb-2">🚚</div>
                                         <div class="font-medium text-forest-green">Livraison gratuite</div>
-                                        <div class="text-sm text-nature-gray">dès 40€</div>
+                                        <div class="text-sm text-nature-gray">dès {{ formatCurrency(40) }}</div>
                                     </div>
                                     <div class="text-center">
                                         <div class="text-forest-green text-2xl mb-2">↩️</div>
@@ -435,7 +435,7 @@
                                     {{ related.name }}</h4>
                                 <p class="text-sm text-nature-gray mb-2">{{ related.producer }}</p>
                                 <div class="flex justify-between items-center">
-                                    <span class="font-bold text-forest-green">{{ related.price }}€</span>
+                                    <span class="font-bold text-forest-green">{{ formatCurrency(related.price) }}</span>
                                     <span class="text-xs px-2 py-1 bg-forest-green/10 text-forest-green rounded-full">{{
                                         related.unit }}</span>
                                 </div>
@@ -629,14 +629,16 @@ export default {
                 this.quantity--
             }
         },
-        addToCart() {
+        addToCart(event) {
             if (this.product.stock === 0) return
 
             this.cartCount++
             // Animation de confirmation
-            const btn = event.target.closest('button')
-            btn.classList.add('animate-pulse')
-            setTimeout(() => btn.classList.remove('animate-pulse'), 500)
+            const btn = event?.target?.closest?.('button')
+            if (btn) {
+                btn.classList.add('animate-pulse')
+                setTimeout(() => btn.classList.remove('animate-pulse'), 500)
+            }
 
             // Notification visuelle
             this.$toast?.success(`${this.quantity} ${this.product.name} ajouté au panier`)
@@ -664,6 +666,14 @@ export default {
 
                 this.$toast?.success('Merci pour votre avis !')
             }
+        },
+        formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-CM', {
+                style: 'currency',
+                currency: 'XAF',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(Number(amount || 0))
         }
     }
 }
@@ -835,21 +845,21 @@ export default {
 }
 
 .feature-card {
-    @apply bg-white/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-forest-green/10 transition-all duration-500 hover:scale-105 hover:shadow-lg;
+    @apply bg-white/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-forest-green border-opacity-10 transition-all duration-500 hover:scale-105 hover:shadow-lg;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .producer-card {
-    @apply bg-gradient-to-br from-white/70 to-cream-light/30 backdrop-blur-sm rounded-3xl p-8 border border-forest-green/10 shadow-xl;
+    @apply bg-gradient-to-br from-white/70 to-cream-light backdrop-blur-sm rounded-3xl p-8 border border-forest-green border-opacity-10 shadow-xl;
 }
 
 .review-card {
-    @apply bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10 transition-all duration-500 hover:scale-105 hover:shadow-lg;
+    @apply bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10 transition-all duration-500 hover:scale-105 hover:shadow-lg;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .related-product-card {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-forest-green/10 transition-all duration-500 hover:scale-105 hover:shadow-xl;
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-forest-green border-opacity-10 transition-all duration-500 hover:scale-105 hover:shadow-xl;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -860,7 +870,7 @@ export default {
 }
 
 .btn-secondary {
-    @apply bg-gradient-to-r from-terracotta/10 to-terracotta/5 text-terracotta font-semibold rounded-full border border-terracotta/20 transition-all duration-500 hover:border-terracotta/40 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-gradient-to-r from-cream-light to-white text-terracotta font-semibold rounded-full border border-terracotta border-opacity-20 transition-all duration-500 hover:border-opacity-40 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -963,3 +973,4 @@ export default {
     animation: gentlePulse 2s ease-in-out infinite;
 }
 </style>
+

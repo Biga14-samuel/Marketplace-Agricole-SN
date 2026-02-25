@@ -462,7 +462,7 @@ export default {
 
 /* Composants stylisés */
 .card-producer {
-    @apply bg-white/90 backdrop-blur-sm rounded-2xl overflow-hidden border border-forest-green/10 shadow-lg hover:shadow-2xl transition-all duration-700;
+    @apply bg-white/90 backdrop-blur-sm rounded-2xl overflow-hidden border border-forest-green border-opacity-10 shadow-lg hover:shadow-2xl transition-all duration-700;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -471,7 +471,7 @@ export default {
 }
 
 .card-stat {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 text-center border border-forest-green/10 shadow-lg;
+    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 text-center border border-forest-green border-opacity-10 shadow-lg;
 }
 
 .cta-container {
@@ -512,7 +512,7 @@ export default {
 }
 
 .btn-secondary {
-    @apply bg-gradient-to-r from-terracotta/10 to-terracotta/5 text-terracotta font-semibold rounded-full border border-terracotta/20 transition-all duration-500 hover:border-terracotta/40 transform hover:scale-105;
+    @apply bg-gradient-to-r from-cream-light to-white text-terracotta font-semibold rounded-full border border-terracotta border-opacity-20 transition-all duration-500 hover:border-opacity-40 transform hover:scale-105;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -577,3 +577,4 @@ export default {
     color: var(--nature-gray);
 }
 </style>
+

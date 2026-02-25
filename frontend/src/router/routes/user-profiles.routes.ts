@@ -76,6 +76,15 @@ const userProfilesRoutes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'settings',
+        name: 'ProducerSettings',
+        component: () => import('@/modules/user-profiles/customer/views/ProfileSettingsView.vue'),
+        meta: {
+          title: 'Paramètres producteur',
+          requiresAuth: true
+        }
+      },
+      {
         path: 'pickup-points',
         name: 'ProducerPickupPoints',
         component: () => import('@/modules/user-profiles/producer/views/PickupPointsView.vue'),
@@ -115,7 +124,7 @@ const userProfilesRoutes: RouteRecordRaw[] = [
       {
         path: 'products/new',
         name: 'ProducerProductCreate',
-        component: () => import('@/modules/catalog/views/ProductViews.vue'),
+        component: () => import('@/modules/catalog/views/MyProductsView.vue'),
         meta: {
           title: 'Nouveau produit',
           requiresAuth: true
@@ -187,6 +196,7 @@ const userProfilesRoutes: RouteRecordRaw[] = [
   { path: '/profile/producer', redirect: '/producer/profile' },
   { path: '/profile/producer/dashboard', redirect: '/producer/dashboard' },
   { path: '/profile/producer/verification', redirect: '/producer/verification' },
+  { path: '/profile/producer/settings', redirect: '/producer/settings' },
   { path: '/profile/producer/pickup-points', redirect: '/producer/pickup-points' },
   { path: '/profile/producer/schedule', redirect: '/producer/schedule' },
   { path: '/profile/producer/products', redirect: '/producer/products' },

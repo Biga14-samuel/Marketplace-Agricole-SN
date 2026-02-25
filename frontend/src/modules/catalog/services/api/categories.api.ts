@@ -18,16 +18,24 @@ export interface CategoryTree extends Category {
 
 export interface CreateCategoryRequest {
     name: string;
+    slug?: string;
     description?: string;
-    parent_id?: string | null;
+    icon?: string;
+    parent_id?: string | number | null;
     order?: number;
+    position?: number;
+    is_active?: boolean;
 }
 
 export interface UpdateCategoryRequest {
     name?: string;
+    slug?: string;
     description?: string;
-    parent_id?: string | null;
+    icon?: string;
+    parent_id?: string | number | null;
     order?: number;
+    position?: number;
+    is_active?: boolean;
 }
 
 export interface CategoriesApi {
@@ -53,7 +61,7 @@ export interface CategoriesApi {
 export const categoriesApi: CategoriesApi = {
     createCategory: async (data: CreateCategoryRequest): Promise<Category> => {
         const response = await apiClient.post<Category>(
-            '/products-catalog/categories',
+            '/products-catalog/products/categories',
             data
         );
         return response.data;
@@ -61,28 +69,28 @@ export const categoriesApi: CategoriesApi = {
 
     getAllCategories: async (): Promise<Category[]> => {
         const response = await apiClient.get<Category[]>(
-            '/products-catalog/categories'
+            '/products-catalog/products/categories'
         );
         return response.data;
     },
 
     getCategoryTree: async (): Promise<CategoryTree[]> => {
         const response = await apiClient.get<CategoryTree[]>(
-            '/products-catalog/categories/tree'
+            '/products-catalog/products/categories/tree'
         );
         return response.data;
     },
 
     getCategoryById: async (categoryId: string): Promise<Category> => {
         const response = await apiClient.get<Category>(
-            `/products-catalog/categories/${categoryId}`
+            `/products-catalog/products/categories/${categoryId}`
         );
         return response.data;
     },
 
     updateCategory: async (categoryId: string, data: UpdateCategoryRequest): Promise<Category> => {
         const response = await apiClient.put<Category>(
-            `/products-catalog/categories/${categoryId}`,
+            `/products-catalog/products/categories/${categoryId}`,
             data
         );
         return response.data;
@@ -90,7 +98,7 @@ export const categoriesApi: CategoriesApi = {
 
     deleteCategory: async (categoryId: string): Promise<void> => {
         await apiClient.delete(
-            `/products-catalog/categories/${categoryId}`
+            `/products-catalog/products/categories/${categoryId}`
         );
     },
 };

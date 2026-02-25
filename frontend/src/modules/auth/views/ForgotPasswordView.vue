@@ -572,10 +572,7 @@ onUnmounted(() => {
 
 // Initialisation
 onMounted(() => {
-    // Pré-remplir pour le développement
-    if (import.meta.env.DEV) {
-        form.email = 'jean.dupont@example.com'
-    }
+    // Garder le formulaire vide pour éviter tout auto-remplissage.
 })
 </script>
 

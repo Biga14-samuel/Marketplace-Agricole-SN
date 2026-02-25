@@ -607,26 +607,3 @@ export interface CategorySelectComponentProps {
     className?: string;
 }
 
-// ============================================
-// Types pour les tests
-// ============================================
-
-/**
- * Données de test pour une catégorie
- */
-export interface TestCategory {
-    id: string;
-    name: string;
-    description?: string;
-    parent_id?: string | null;
-    order: number;
-}
-
-/**
- * Configuration des tests de catégories
- */
-export interface CategoryTestConfig {
-    create_mock_categories: (count: number) => TestCategory[];
-    create_mock_tree: (depth: number, breadth: number) => TestCategory[];
-    validate_category_structure: (categories: Category[]) => boolean;
-}

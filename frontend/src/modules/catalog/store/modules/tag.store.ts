@@ -1,11 +1,10 @@
-// @ts-nocheck
 // modules/catalog/store/modules/tag.store.ts
 
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { tagsApi } from '../../services/api/tags.api';
-import { Tag, CreateTagRequest, UpdateTagRequest, TagHelper } from '../../services/models/tag.model'
-import { Tag as TagModel } from '../../services/models/tag.model';;
+import type { CreateTagRequest, UpdateTagRequest } from '../../services/api/tags.api';
+import { Tag, TagHelper } from '../../services/models/tag.model';
 
 export const useTagStore = defineStore('tag', () => {
     // ============================================
@@ -139,7 +138,7 @@ export const useTagStore = defineStore('tag', () => {
             }
 
             const newTagData = await tagsApi.createTag(data);
-      const newTag = new TagModel(newTagData);
+            const newTag = Tag.fromApiData(newTagData);
 
             // Ajouter à la liste
             tags.value.push(newTag);
@@ -171,7 +170,8 @@ export const useTagStore = defineStore('tag', () => {
             loading.value = true;
             error.value = null;
 
-            const fetchedTags = await tagsApi.getAllTags();
+            const fetchedTagsData = await tagsApi.getAllTags();
+            const fetchedTags = fetchedTagsData.map(tag => Tag.fromApiData(tag));
 
             // Mettre à jour les tags
             tags.value = fetchedTags;
@@ -449,7 +449,8 @@ export const useTagStore = defineStore('tag', () => {
                 // Vérifier si le tag existe déjà
                 if (!tagNameExists.value(name)) {
                     try {
-                        const newTag = await tagsApi.createTag({ name });
+                        const newTagData = await tagsApi.createTag({ name });
+                        const newTag = Tag.fromApiData(newTagData);
                         tags.value.push(newTag);
                         tagsCache.value.set(newTag.id, newTag);
                         createdTags.push(newTag);

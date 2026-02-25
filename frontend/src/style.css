@@ -413,37 +413,35 @@
   }
 }
 
-/* Support du mode sombre - MIS À JOUR */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --green-soft: #8abf7a;
-    --green-light: #a5d495;
-    --green-medium: #4a7a4a;
-    --forest-dark: #1a3a1e;
-    --cream-light: #1a1915;
-    --cream-medium: #2a2924;
-    --cream-dark: #3a3934;
-  }
+/* Support du mode sombre piloté par le thème applicatif */
+:root[data-theme='dark'] {
+  --green-soft: #8abf7a;
+  --green-light: #a5d495;
+  --green-medium: #4a7a4a;
+  --forest-dark: #1a3a1e;
+  --cream-light: #1a1915;
+  --cream-medium: #2a2924;
+  --cream-dark: #3a3934;
+}
 
-  body {
-    @apply bg-nature-950 text-nature-100;
-    background: linear-gradient(135deg,
-        rgba(26, 25, 21, 0.95) 0%,
-        rgba(42, 41, 36, 0.85) 50%,
-        rgba(74, 122, 74, 0.1) 100%);
-  }
+:root[data-theme='dark'] body {
+  @apply bg-nature-950 text-nature-100;
+  background: linear-gradient(135deg,
+      rgba(26, 25, 21, 0.95) 0%,
+      rgba(42, 41, 36, 0.85) 50%,
+      rgba(74, 122, 74, 0.1) 100%);
+}
 
-  .product-card {
-    @apply bg-nature-900/50 border-nature-700;
-  }
+:root[data-theme='dark'] .product-card {
+  @apply bg-nature-900/50 border-nature-700;
+}
 
-  .input-organic {
-    @apply bg-nature-800/50 border-nature-700 text-nature-100 placeholder-nature-500;
-  }
+:root[data-theme='dark'] .input-organic {
+  @apply bg-nature-800/50 border-nature-700 text-nature-100 placeholder-nature-500;
+}
 
-  .bg-gradient-naturel {
-    background: linear-gradient(135deg, var(--cream-light) 0%, var(--cream-medium) 100%);
-  }
+:root[data-theme='dark'] .bg-gradient-naturel {
+  background: linear-gradient(135deg, var(--cream-light) 0%, var(--cream-medium) 100%);
 }
 
 /* Animation globale d'arrière-plan pour toute l'application */

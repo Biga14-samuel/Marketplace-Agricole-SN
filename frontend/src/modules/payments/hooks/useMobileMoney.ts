@@ -11,7 +11,7 @@ import type {
     PaymentRequest,
     PaymentResponse
 } from '../types/payment.types'
-import { PaymentStatus } from '../constants/payment.constants'
+import { PAYMENT_STATUS } from '../constants/payment.constants'
 import { CameroonProviders } from '../constants/cameroon.constants'
 import { usePayment } from './usePayment'
 
@@ -37,7 +37,7 @@ export function useMobileMoney(options: UseMobileMoneyOptions = {}) {
     const isLoading = ref(false)
     const isProcessing = ref(false)
     const transaction = ref<MobileMoneyTransaction | null>(null)
-    const paymentStatus = ref<PaymentStatus>(PaymentStatus.PENDING)
+    const paymentStatus = ref(PAYMENT_STATUS.PENDING)
     const countdown = ref<number>(0)
     const error = ref<string | null>(null)
     const pollTimer = ref<NodeJS.Timeout | null>(null)
@@ -162,20 +162,20 @@ export function useMobileMoney(options: UseMobileMoneyOptions = {}) {
 
                 // Gérer les différents statuts
                 switch (updatedTransaction.status) {
-                    case PaymentStatus.COMPLETED:
+                    case PAYMENT_STATUS.COMPLETED:
                         stopPolling()
                         showSuccess(t('payments.mobileMoney.completed'))
                         onSuccess?.(updatedTransaction)
                         break
 
-                    case PaymentStatus.FAILED:
-                    case PaymentStatus.CANCELLED:
+                    case PAYMENT_STATUS.FAILED:
+                    case PAYMENT_STATUS.CANCELLED:
                         stopPolling()
                         showError(t('payments.mobileMoney.failed'))
                         onError?.(new Error(updatedTransaction.status))
                         break
 
-                    case PaymentStatus.PENDING:
+                    case PAYMENT_STATUS.PENDING:
                         if (updatedTransaction.expiresIn !== undefined) {
                             countdown.value = updatedTransaction.expiresIn
                         }
@@ -203,7 +203,7 @@ export function useMobileMoney(options: UseMobileMoneyOptions = {}) {
             const response = await cameroonPaymentService.cancelPayment(transactionId)
 
             if (response.success) {
-                paymentStatus.value = PaymentStatus.CANCELLED
+                paymentStatus.value = PAYMENT_STATUS.CANCELLED
                 stopPolling()
                 showWarning(t('payments.mobileMoney.cancelled'))
                 return true
@@ -224,7 +224,7 @@ export function useMobileMoney(options: UseMobileMoneyOptions = {}) {
      */
     const simulatePayment = async (
         transactionId: string,
-        simulateStatus: PaymentStatus = PaymentStatus.COMPLETED
+        simulateStatus = PAYMENT_STATUS.COMPLETED
     ): Promise<boolean> => {
         try {
             const response = await cameroonPaymentService.simulatePayment(transactionId, simulateStatus)
@@ -287,7 +287,7 @@ export function useMobileMoney(options: UseMobileMoneyOptions = {}) {
             } else {
                 // Temps écoulé, arrêter le polling
                 stopPolling()
-                paymentStatus.value = PaymentStatus.EXPIRED
+                paymentStatus.value = PAYMENT_STATUS.EXPIRED
                 showError(t('payments.mobileMoney.expired'))
                 return
             }
@@ -319,7 +319,7 @@ export function useMobileMoney(options: UseMobileMoneyOptions = {}) {
      * Vérifie si un paiement est encore valide (non expiré)
      */
     const isPaymentValid = computed(() => {
-        return paymentStatus.value === PaymentStatus.PENDING && countdown.value > 0
+        return paymentStatus.value === PAYMENT_STATUS.PENDING && countdown.value > 0
     })
 
     /**
@@ -328,7 +328,7 @@ export function useMobileMoney(options: UseMobileMoneyOptions = {}) {
     const reset = () => {
         stopPolling()
         transaction.value = null
-        paymentStatus.value = PaymentStatus.PENDING
+        paymentStatus.value = PAYMENT_STATUS.PENDING
         countdown.value = 0
         error.value = null
         isLoading.value = false

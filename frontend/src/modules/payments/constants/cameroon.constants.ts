@@ -38,8 +38,8 @@ export const COUNTRY_INFO = {
     CODE_ISO: 'CM',
     CODE_OMC: 'CMR',
     CODE_FIPS: 'CM',
-    PIB_NOMINAL: 45000000000, // USD
-    PIB_PAR_HABITANT: 1607, // USD
+    PIB_NOMINAL: 27000000000000, // XAF (approx.)
+    PIB_PAR_HABITANT: 964200, // XAF (approx.)
     MONNAIE: 'Franc CFA (XAF)',
     SYMBOLE_MONNAIE: 'FCFA'
 } as const;

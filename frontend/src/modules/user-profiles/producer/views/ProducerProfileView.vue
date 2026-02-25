@@ -25,7 +25,17 @@
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
-                        <button @click="toggleEditMode"
+                        <router-link to="/producer/settings"
+                            class="px-5 py-2.5 bg-white text-forest-700 border border-forest-200 rounded-xl shadow-sm hover:shadow-md hover:bg-forest-50 active:scale-95 transition-all duration-300 ease-organic flex items-center space-x-2">
+                            <span>⚙️</span>
+                            <span>Paramètres</span>
+                        </router-link>
+                        <button v-if="isEditMode" @click="cancelEditMode"
+                            class="px-5 py-2.5 bg-white text-forest-700 border border-forest-200 rounded-xl shadow-sm hover:shadow-md hover:bg-forest-50 active:scale-95 transition-all duration-300 ease-organic flex items-center space-x-2">
+                            <span>✖️</span>
+                            <span>Annuler</span>
+                        </button>
+                        <button @click="handlePrimaryAction"
                             class="px-5 py-2.5 bg-gradient-to-r from-forest-500 to-forest-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 ease-organic flex items-center space-x-2">
                             <span>{{ isEditMode ? '💾' : '✏️' }}</span>
                             <span>{{ isEditMode ? 'Sauvegarder' : 'Modifier le profil' }}</span>
@@ -42,6 +52,8 @@
                     <!-- Photo de couverture -->
                     <div
                         class="h-48 lg:h-64 bg-gradient-to-r from-forest-400/20 via-forest-300/30 to-terracotta-300/20 relative">
+                        <img v-if="profile.banner_url" :src="profile.banner_url" alt="Photo de couverture"
+                            class="absolute inset-0 w-full h-full object-cover" />
                         <div class="absolute inset-0 bg-farm-scene opacity-10"></div>
                         <div v-if="!isEditMode" class="absolute bottom-4 right-4">
                             <button @click="changeCoverPhoto"
@@ -78,10 +90,11 @@
                                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                                     <div>
                                         <h1 class="text-2xl lg:text-3xl font-serif font-bold text-forest-800">
-                                            {{ profile.business_name }}
+                                            {{ profile.business_name || 'Profil producteur' }}
                                         </h1>
                                         <p class="text-terracotta-600 mt-1">
-                                            Producteur {{ profile.production_type }} • {{ profile.farm_size }} hectares
+                                            Producteur {{ productionTypeLabel }}
+                                            <span v-if="profile.farm_size > 0">• {{ profile.farm_size }} hectares</span>
                                         </p>
                                     </div>
                                     <div class="flex items-center space-x-3">
@@ -120,9 +133,9 @@
                                     </span>
                                     <span
                                         class="px-3 py-1.5 bg-gradient-to-r from-terracotta-100 to-terracotta-50 text-terracotta-700 rounded-full text-sm font-medium border border-terracotta-200">
-                                        🌱 {{ profile.production_type }}
+                                        🌱 {{ productionTypeLabel }}
                                     </span>
-                                    <span
+                                    <span v-if="profile.farm_size > 0"
                                         class="px-3 py-1.5 bg-gradient-to-r from-cream-100 to-cream-50 text-forest-700 rounded-full text-sm font-medium border border-cream-200">
                                         🏡 {{ profile.farm_size }} hectares
                                     </span>
@@ -411,10 +424,10 @@
                                 <div class="p-4 bg-white/70 rounded-xl border border-forest-100">
                                     <div class="flex items-center justify-between mb-2">
                                         <span class="font-medium text-forest-700">Profil complet</span>
-                                        <span class="text-lg">✅</span>
+                                        <span class="text-lg">{{ isProfileComplete ? '✅' : '⚠️' }}</span>
                                     </div>
                                     <div class="text-xs text-terracotta-600">
-                                        Toutes les informations sont renseignées
+                                        {{ isProfileComplete ? 'Toutes les informations principales sont renseignées' : 'Certaines informations sont encore manquantes' }}
                                     </div>
                                 </div>
 
@@ -446,10 +459,10 @@
                             <div class="mt-6 pt-6 border-t border-forest-100/50">
                                 <div class="text-center">
                                     <div class="text-sm text-forest-700 mb-2">Score de confiance</div>
-                                    <div class="text-3xl font-bold text-forest-800 mb-1">92%</div>
+                                    <div class="text-3xl font-bold text-forest-800 mb-1">{{ confidenceScore }}%</div>
                                     <div class="w-full h-2 bg-forest-100 rounded-full overflow-hidden">
                                         <div class="h-full bg-gradient-to-r from-forest-400 to-forest-500 rounded-full transition-all duration-1000 ease-organic"
-                                            style="width: 92%"></div>
+                                            :style="{ width: `${confidenceScore}%` }"></div>
                                     </div>
                                 </div>
                             </div>
@@ -500,10 +513,10 @@
                                             <span class="text-xl">📦</span>
                                             <div>
                                                 <div class="font-medium text-forest-700">Commandes ce mois</div>
-                                                <div class="text-xs text-terracotta-600">Décembre 2023</div>
+                                                <div class="text-xs text-terracotta-600">Période en cours</div>
                                             </div>
                                         </div>
-                                        <div class="text-xl font-bold text-forest-800">42</div>
+                                        <div class="text-xl font-bold text-forest-800">{{ ordersThisMonth }}</div>
                                     </div>
 
                                     <div class="flex items-center justify-between p-3 bg-forest-50/50 rounded-lg">
@@ -514,7 +527,7 @@
                                                 <div class="text-xs text-terracotta-600">Acheté 3+ fois</div>
                                             </div>
                                         </div>
-                                        <div class="text-xl font-bold text-forest-800">28</div>
+                                        <div class="text-xl font-bold text-forest-800">{{ loyalCustomers }}</div>
                                     </div>
                                 </div>
                             </div>
@@ -660,16 +673,58 @@
             enter-to-class="opacity-100 scale-100" leave-active-class="transition-all duration-500 ease-organic"
             leave-from-class="opacity-100 scale-100" leave-to-class="opacity-0 scale-95">
             <div v-if="showDocumentModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showDocumentModal = false"></div>
+                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeDocumentModal"></div>
                 <div class="relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-md p-6">
                     <h3 class="text-xl font-serif font-semibold text-forest-800 mb-4 flex items-center space-x-2">
                         <span>📄</span>
                         <span>Ajouter un document</span>
                     </h3>
-                    <!-- Contenu du modal... -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-forest-700 mb-2">Type de document</label>
+                            <select v-model="documentForm.type"
+                                class="w-full px-4 py-3 border border-forest-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-transparent transition-all duration-200">
+                                <option v-for="option in documentTypeOptions" :key="option.value" :value="option.value">
+                                    {{ option.label }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-forest-700 mb-2">Fichier</label>
+                            <div class="border-2 border-dashed border-forest-200 rounded-xl p-4 bg-forest-25/60">
+                                <div class="text-sm text-forest-700">
+                                    {{ documentForm.file ? documentForm.file.name : 'Aucun fichier sélectionné' }}
+                                </div>
+                                <div class="text-xs text-terracotta-600 mt-1">
+                                    Formats supportés : PDF, JPG, PNG (max selon backend)
+                                </div>
+                                <button @click="triggerDocumentSelection"
+                                    class="mt-3 px-4 py-2 bg-forest-100 text-forest-700 rounded-lg hover:bg-forest-200 transition-all duration-300 ease-organic">
+                                    Choisir un fichier
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 mt-6 pt-6 border-t border-forest-100">
+                        <button @click="closeDocumentModal"
+                            class="px-4 py-2 text-forest-700 hover:bg-forest-50 rounded-lg transition-all duration-300 ease-organic">
+                            Annuler
+                        </button>
+                        <button @click="submitDocumentModal"
+                            class="px-5 py-2 bg-gradient-to-r from-forest-500 to-forest-600 text-white rounded-lg hover:shadow-md transition-all duration-300 ease-organic">
+                            Téléverser
+                        </button>
+                    </div>
                 </div>
             </div>
         </transition>
+
+        <input ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarFileSelected" />
+        <input ref="coverInputRef" type="file" accept="image/*" class="hidden" @change="onCoverFileSelected" />
+        <input ref="documentInputRef" type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
+            @change="onDocumentFileSelected" />
 
         <!-- Toast de succès -->
         <transition enter-active-class="transition-all duration-500 ease-organic"
@@ -683,8 +738,8 @@
                         <span class="text-xl">✅</span>
                     </div>
                     <div>
-                        <p class="font-medium text-forest-700">Profil mis à jour !</p>
-                        <p class="text-sm text-terracotta-600">Les modifications ont été sauvegardées</p>
+                        <p class="font-medium text-forest-700">{{ toastTitle }}</p>
+                        <p class="text-sm text-terracotta-600">{{ toastDescription }}</p>
                     </div>
                     <button @click="showSuccessToast = false" class="ml-4 p-1 hover:bg-forest-50 rounded">
                         <span>✖️</span>
@@ -698,8 +753,12 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useProducerStore } from '../stores/useProducerStore'
+import { ProducerDocumentService } from '../services'
+import { getErrorMessage } from '@/shared/utils/error-handler'
 
 const router = useRouter()
+const store = useProducerStore()
 
 // État de l'interface
 const isEditMode = ref(false)
@@ -708,51 +767,325 @@ const showDocumentModal = ref(false)
 const newCertification = ref('')
 const showProducts = ref(false)
 const showReviews = ref(false)
+const toastTitle = ref('Mise à jour effectuée')
+const toastDescription = ref('Vos modifications ont été appliquées.')
 
-// Données du profil
-const profile = reactive({
-    business_name: 'Ferme du Soleil Levant 🌅',
-    bio: `Bienvenue à la Ferme du Soleil Levant ! 🌱\n\nDepuis trois générations, notre famille cultive avec passion et respect de la terre. Nous pratiquons l'agriculture biologique sur nos 25 hectares de terres fertiles, sans pesticides ni produits chimiques.\n\nNotre philosophie ? Produire des aliments savoureux, sains et respectueux de l'environnement. Chaque légume est récolté à maturité, chaque fruit cueilli avec soin.\n\nVenez découvrir nos tomates anciennes, nos salades croquantes et nos herbes aromatiques cultivées au rythme des saisons. Nous sommes fiers de nourrir notre région avec des produits frais, locaux et pleins de saveurs !`,
-    certifications: ['Agriculture Biologique', 'Label Rouge', 'Producteur Local'],
-    siret: '123 456 789 00012',
-    tva_number: 'FR76 123456789',
-    iban: 'FR76 3000 1000 0100 0000 0000 999',
-    farm_size: 25,
-    production_type: 'organic',
-    verification_status: 'verified',
-    rating: 4.7,
-    reviews: 142,
-    products_count: 24,
-    avatar: null
+const avatarInputRef = ref<HTMLInputElement | null>(null)
+const coverInputRef = ref<HTMLInputElement | null>(null)
+const documentInputRef = ref<HTMLInputElement | null>(null)
+type SupportedDocumentType = 'kbis' | 'insurance' | 'certification'
+const pendingDocumentType = ref<SupportedDocumentType>('kbis')
+const documentForm = reactive({
+    type: 'kbis' as SupportedDocumentType,
+    file: null as File | null
+})
+const documentTypeOptions: Array<{ value: SupportedDocumentType; label: string }> = [
+    { value: 'kbis', label: 'Extrait K-bis / immatriculation' },
+    { value: 'insurance', label: 'Attestation d’assurance' },
+    { value: 'certification', label: 'Certification / label' }
+]
+
+type ProfileVM = {
+    business_name: string
+    bio: string
+    certifications: string[]
+    siret: string
+    tva_number: string
+    iban: string
+    farm_size: number
+    production_type: string
+    verification_status: string
+    rating: number
+    reviews: number
+    products_count: number
+    avatar: string | null
+    banner_url: string | null
+}
+
+type DocumentVM = {
+    id: string
+    type: string
+    title: string
+    verified: boolean
+    uploaded_at: string
+    size: string
+    file_path?: string | null
+}
+
+const createEmptyProfile = (): ProfileVM => ({
+    business_name: '',
+    bio: '',
+    certifications: [],
+    siret: '',
+    tva_number: '',
+    iban: '',
+    farm_size: 0,
+    production_type: '',
+    verification_status: 'pending',
+    rating: 0,
+    reviews: 0,
+    products_count: 0,
+    avatar: null,
+    banner_url: null
 })
 
+// Données du profil
+const profile = reactive<ProfileVM>(createEmptyProfile())
+
 // Copie éditable pour le mode édition
-const editableProfile = reactive({ ...profile })
+const editableProfile = reactive<ProfileVM>(createEmptyProfile())
 
 // Documents
-const documents = ref([
-    { id: 1, type: 'kbis', title: 'Extrait K-bis', verified: true, uploaded_at: '12/11/2023', size: '1.2 MB' },
-    { id: 2, type: 'insurance', title: 'Assurance responsabilité', verified: true, uploaded_at: '15/10/2023', size: '850 KB' },
-    { id: 3, type: 'certification', title: 'Certificat bio', verified: true, uploaded_at: '05/09/2023', size: '2.1 MB' },
-    { id: 4, type: 'certification', title: 'Label Rouge', verified: false, uploaded_at: '20/12/2023', size: '1.5 MB' }
-])
+const documents = ref<DocumentVM[]>([])
 
 // Computed
 const documentsCount = computed(() => documents.value.length)
-const documentsVerified = computed(() => documents.value.every(doc => doc.verified))
+const documentsVerified = computed(() => documents.value.length > 0 && documents.value.every(doc => doc.verified))
+
+const productionTypeLabels: Record<string, string> = {
+    organic: 'Agriculture biologique',
+    conventional: 'Agriculture conventionnelle',
+    biodynamic: 'Biodynamique',
+    permaculture: 'Permaculture',
+    hydroponic: 'Hydroponie',
+    urban: 'Agriculture urbaine',
+    family: 'Ferme familiale',
+    cooperative: 'Coopérative',
+    specialty: 'Production spécialisée'
+}
+
+const productionTypeLabel = computed(() => {
+    if (!profile.production_type) return 'Type non renseigné'
+    return productionTypeLabels[profile.production_type] || profile.production_type
+})
+
+const isProfileComplete = computed(() => {
+    return Boolean(
+        profile.business_name.trim() &&
+        profile.bio.trim() &&
+        profile.siret.trim() &&
+        profile.iban.trim() &&
+        profile.production_type &&
+        profile.farm_size > 0
+    )
+})
+
+const confidenceScore = computed(() => {
+    let points = 0
+    const max = 7
+
+    if (profile.business_name.trim()) points += 1
+    if (profile.bio.trim()) points += 1
+    if (profile.siret.trim()) points += 1
+    if (profile.iban.trim()) points += 1
+    if (profile.production_type) points += 1
+    if (profile.farm_size > 0) points += 1
+    if (documents.value.length > 0) points += 1
+
+    return Math.round((points / max) * 100)
+})
+
+const ordersThisMonth = computed(() => 0)
+const loyalCustomers = computed(() => 0)
+
+const certificationLabels: Record<string, string> = {
+    ab: 'Agriculture Biologique',
+    eu_organic: 'Bio Européen',
+    demeter: 'Demeter',
+    nature_progres: 'Nature & Progrès',
+    hve: 'Haute Valeur Environnementale',
+    fairtrade: 'Commerce Équitable',
+    local: 'Producteur Local',
+    aop: 'AOP',
+    aoc: 'AOC',
+    igp: 'IGP',
+    label_rouge: 'Label Rouge'
+}
+
+const documentTitles: Record<string, string> = {
+    kbis: 'Extrait K-bis',
+    insurance: 'Attestation d’assurance',
+    certification: 'Certificat',
+    identity: 'Pièce d’identité',
+    siret: 'Justificatif SIRET',
+    tva: 'Numéro TVA',
+    iban: 'RIB / IBAN',
+    hygiene: 'Certificat d’hygiène',
+    quality: 'Certification qualité',
+    other: 'Document'
+}
+
+const formatCertification = (value: string) => {
+    return certificationLabels[value] || value.replace(/_/g, ' ')
+}
+
+const formatFileSize = (sizeInBytes: number) => {
+    if (!Number.isFinite(sizeInBytes) || sizeInBytes <= 0) return '0 KB'
+    const kb = sizeInBytes / 1024
+    if (kb < 1024) return `${kb.toFixed(0)} KB`
+    return `${(kb / 1024).toFixed(1)} MB`
+}
+
+const formatDate = (value?: string) => {
+    if (!value) return 'Date inconnue'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleDateString('fr-FR')
+}
+
+const normalizeDocumentType = (value: string): SupportedDocumentType => {
+    if (value === 'kbis' || value === 'insurance' || value === 'certification') {
+        return value
+    }
+    if (value === 'identity' || value === 'siret' || value === 'tva' || value === 'iban') {
+        return 'kbis'
+    }
+    return 'certification'
+}
+
+const syncEditableProfile = () => {
+    Object.assign(editableProfile, profile)
+}
+
+const applyRemoteProfile = (remote: any | null) => {
+    if (!remote) {
+        Object.assign(profile, createEmptyProfile())
+        syncEditableProfile()
+        return
+    }
+
+    const productionTypeValue = Array.isArray(remote.production_type)
+        ? (remote.production_type[0] || '')
+        : (remote.production_type || '')
+
+    Object.assign(profile, {
+        business_name: remote.business_name || '',
+        bio: remote.bio || '',
+        certifications: Array.isArray(remote.certifications)
+            ? remote.certifications.map((cert: string) => formatCertification(cert))
+            : [],
+        siret: remote.siret || '',
+        tva_number: remote.tva_number || '',
+        iban: remote.iban || '',
+        farm_size: Number(remote.farm_size || 0),
+        production_type: productionTypeValue,
+        verification_status: remote.verification_status || 'pending',
+        rating: Number(remote.rating || 0),
+        reviews: Number(remote.review_count || 0),
+        products_count: Number(remote.product_count || 0),
+        avatar: remote.avatar || remote.logo_url || null,
+        banner_url: remote.cover_image || remote.banner_url || null
+    })
+
+    syncEditableProfile()
+}
+
+const applyRemoteDocuments = (remoteDocuments: any[]) => {
+    documents.value = remoteDocuments.map((doc: any) => ({
+        id: String(doc.id),
+        type: doc.type || 'other',
+        title: documentTitles[doc.type] || doc.file_name || 'Document',
+        verified: Boolean(doc.verified),
+        uploaded_at: formatDate(doc.uploaded_at),
+        size: formatFileSize(Number(doc.file_size || 0)),
+        file_path: doc.file_path || null
+    }))
+}
+
+const showToast = (title: string, description: string) => {
+    toastTitle.value = title
+    toastDescription.value = description
+    showSuccessToast.value = true
+    setTimeout(() => {
+        showSuccessToast.value = false
+    }, 3000)
+}
+
+const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+    })
+}
+
+const clearFileInput = (inputRef: HTMLInputElement | null) => {
+    if (inputRef) inputRef.value = ''
+}
+
+const refreshData = async () => {
+    try {
+        await store.fetchProfile()
+        applyRemoteProfile(store.profile as any)
+    } catch (error) {
+        applyRemoteProfile(null)
+        console.warn('Profil producteur introuvable ou non configuré:', error)
+    }
+
+    try {
+        await store.fetchDocuments()
+        applyRemoteDocuments(store.documents as any[])
+    } catch (error) {
+        documents.value = []
+        console.warn('Impossible de charger les documents producteur:', error)
+    }
+}
 
 // Méthodes
-const toggleEditMode = async () => {
-    if (isEditMode.value) {
-        // Sauvegarder les modifications
-        Object.assign(profile, editableProfile)
-        showSuccessToast.value = true
-        setTimeout(() => {
-            showSuccessToast.value = false
-        }, 3000)
-        console.log('Profil sauvegardé:', profile)
+const beginEditMode = () => {
+    syncEditableProfile()
+    isEditMode.value = true
+}
+
+const cancelEditMode = () => {
+    syncEditableProfile()
+    isEditMode.value = false
+    showToast('Modification annulée', 'Le profil est revenu aux dernières données sauvegardées.')
+}
+
+const saveProfile = async () => {
+    try {
+        if (!editableProfile.business_name.trim()) {
+            showToast('Champ requis', 'Le nom de l’exploitation est obligatoire.')
+            return
+        }
+
+        const payload: any = {
+            business_name: editableProfile.business_name,
+            bio: editableProfile.bio,
+            certifications: editableProfile.certifications,
+            siret: editableProfile.siret,
+            tva_number: editableProfile.tva_number,
+            iban: editableProfile.iban,
+            farm_size: editableProfile.farm_size,
+            production_type: editableProfile.production_type
+                ? [editableProfile.production_type]
+                : undefined,
+            avatar: editableProfile.avatar || undefined,
+            cover_image: editableProfile.banner_url || undefined
+        }
+
+        if (store.profile) {
+            await store.updateProfile(payload)
+        } else {
+            await store.createProfile(payload)
+        }
+
+        await refreshData()
+        isEditMode.value = false
+        showToast('Profil mis à jour', 'Les informations ont été sauvegardées.')
+    } catch (error: unknown) {
+        showToast('Échec de sauvegarde', getErrorMessage(error))
     }
-    isEditMode.value = !isEditMode.value
+}
+
+const handlePrimaryAction = () => {
+    if (isEditMode.value) {
+        void saveProfile()
+        return
+    }
+    beginEditMode()
 }
 
 const generateBio = () => {
@@ -776,16 +1109,78 @@ const removeCertification = (index: number) => {
 }
 
 const changeCoverPhoto = () => {
-    console.log('Changer photo de couverture')
+    coverInputRef.value?.click()
 }
 
 const changeAvatar = () => {
-    console.log('Changer avatar')
+    avatarInputRef.value?.click()
 }
 
-const shareProfile = () => {
-    console.log('Partager profil')
-    // Implémenter le partage
+const onAvatarFileSelected = async (event: Event) => {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    try {
+        const base64 = await fileToBase64(file)
+        profile.avatar = base64
+        editableProfile.avatar = base64
+
+        if (store.profile) {
+            await store.updateProfile({ avatar: base64 } as any)
+            await refreshData()
+        }
+
+        showToast('Photo mise à jour', 'La photo de profil a été appliquée.')
+    } catch (error: unknown) {
+        showToast('Erreur photo', getErrorMessage(error))
+    } finally {
+        clearFileInput(input)
+    }
+}
+
+const onCoverFileSelected = async (event: Event) => {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    try {
+        const base64 = await fileToBase64(file)
+        profile.banner_url = base64
+        editableProfile.banner_url = base64
+
+        if (store.profile) {
+            await store.updateProfile({ cover_image: base64 } as any)
+            await refreshData()
+        }
+
+        showToast('Couverture mise à jour', 'La photo de couverture a été appliquée.')
+    } catch (error: unknown) {
+        showToast('Erreur couverture', getErrorMessage(error))
+    } finally {
+        clearFileInput(input)
+    }
+}
+
+const shareProfile = async () => {
+    const url = window.location.href
+    const title = profile.business_name || 'Profil producteur'
+    const text = profile.business_name
+        ? `Découvrez ${profile.business_name} sur Marché Local`
+        : 'Découvrez ce profil producteur sur Marché Local'
+
+    try {
+        if (navigator.share) {
+            await navigator.share({ title, text, url })
+            showToast('Partage effectué', 'Le profil a été partagé.')
+            return
+        }
+
+        await navigator.clipboard.writeText(url)
+        showToast('Lien copié', 'Le lien du profil a été copié dans le presse-papiers.')
+    } catch (error: unknown) {
+        showToast('Partage indisponible', getErrorMessage(error))
+    }
 }
 
 const goToVerification = () => {
@@ -797,28 +1192,110 @@ const addProducts = () => {
 }
 
 const inviteReviews = () => {
-    console.log('Inviter aux avis')
+    showToast('Fonction à venir', 'L’invitation aux avis sera disponible prochainement.')
 }
 
 const downloadReport = () => {
-    console.log('Télécharger rapport')
+    showToast('Fonction à venir', 'Le rapport producteur sera disponible prochainement.')
+}
+
+const resetDocumentModal = () => {
+    documentForm.type = 'kbis'
+    documentForm.file = null
 }
 
 const addDocument = () => {
+    resetDocumentModal()
     showDocumentModal.value = true
+}
+
+const closeDocumentModal = () => {
+    resetDocumentModal()
+    showDocumentModal.value = false
+}
+
+const triggerDocumentSelection = () => {
+    pendingDocumentType.value = documentForm.type
+    documentInputRef.value?.click()
+}
+
+const uploadSelectedDocument = async (file: File, type: SupportedDocumentType) => {
+    await store.uploadDocument({
+        type,
+        file
+    } as any)
+
+    await store.fetchDocuments()
+    applyRemoteDocuments(store.documents as any[])
+
+    showToast('Document téléversé', `Le document "${file.name}" a bien été ajouté.`)
 }
 
 const viewDocument = (doc: any) => {
-    console.log('Voir document:', doc)
+    if (!doc?.id) {
+        showToast('Document invalide', 'Aucun identifiant de document trouvé.')
+        return
+    }
+
+    ProducerDocumentService.getDocumentPreview(doc.id)
+        .then((result) => {
+            if (result?.preview_url) {
+                window.open(result.preview_url, '_blank', 'noopener,noreferrer')
+                return
+            }
+            showToast('Prévisualisation indisponible', 'Impossible d’ouvrir ce document.')
+        })
+        .catch(async () => {
+            try {
+                const blob = await ProducerDocumentService.downloadDocument(doc.id)
+                const blobUrl = URL.createObjectURL(blob)
+                window.open(blobUrl, '_blank', 'noopener,noreferrer')
+            } catch (error: unknown) {
+                showToast('Erreur document', getErrorMessage(error))
+            }
+        })
 }
 
 const uploadDocument = (type: string) => {
-    console.log('Uploader document:', type)
-    showDocumentModal.value = true
+    pendingDocumentType.value = normalizeDocumentType(type)
+    documentInputRef.value?.click()
+}
+
+const onDocumentFileSelected = async (event: Event) => {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    try {
+        if (showDocumentModal.value) {
+            documentForm.file = file
+            return
+        }
+
+        await uploadSelectedDocument(file, pendingDocumentType.value)
+    } catch (error: unknown) {
+        showToast('Erreur de téléversement', getErrorMessage(error))
+    } finally {
+        clearFileInput(input)
+    }
+}
+
+const submitDocumentModal = async () => {
+    if (!documentForm.file) {
+        showToast('Fichier manquant', 'Sélectionnez un document PDF/JPG/PNG avant de téléverser.')
+        return
+    }
+
+    try {
+        await uploadSelectedDocument(documentForm.file, documentForm.type)
+        closeDocumentModal()
+    } catch (error: unknown) {
+        showToast('Erreur de téléversement', getErrorMessage(error))
+    }
 }
 
 onMounted(() => {
-    console.log('ProducerProfileView monté')
+    refreshData()
 })
 </script>
 

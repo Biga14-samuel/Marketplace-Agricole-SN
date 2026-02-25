@@ -861,10 +861,10 @@ export default {
     // Méthodes utilitaires
     const formatPrice = (price) => {
       if (typeof price !== 'number') return price
-      return new Intl.NumberFormat('fr-FR', {
+      return new Intl.NumberFormat('fr-CM', {
         style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 2
+        currency: 'XAF',
+        maximumFractionDigits: 0
       }).format(price)
     }
     
@@ -1096,3 +1096,4 @@ export default {
   transform: translateX(-10px);
 }
 </style>
+

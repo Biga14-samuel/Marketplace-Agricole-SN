@@ -64,11 +64,36 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     /**
+     * Nettoie les données UI non critiques qui peuvent rester d'un autre compte.
+     */
+    const clearUserUiStorage = () => {
+        const keysToRemove = [
+            'favoriteProducts',
+            'productListViewMode',
+            'wishlist'
+        ]
+
+        keysToRemove.forEach((key) => localStorage.removeItem(key))
+
+        const prefixedKeys = ['favorite_', 'wishlist_']
+        const toDelete: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (!key) continue
+            if (prefixedKeys.some(prefix => key.startsWith(prefix))) {
+                toDelete.push(key)
+            }
+        }
+        toDelete.forEach((key) => localStorage.removeItem(key))
+    }
+
+    /**
      * Efface l'état d'authentification
      */
     const clearAuth = () => {
         user.value = null
         authService.clearTokens()
+        clearUserUiStorage()
         error.value = null
     }
 
@@ -101,6 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
         error.value = null
         try {
             const response = await authService.login(credentials)
+            clearUserUiStorage()
             user.value = response.user
             return response
         } catch (err: any) {
@@ -166,6 +192,26 @@ export const useAuthStore = defineStore('auth', () => {
             const errorMessage = err.response?.data?.detail || 
                                err.response?.data?.message || 
                                'Erreur lors de la vérification de l\'email'
+            setError(errorMessage)
+            throw err
+        } finally {
+            isLoading.value = false
+        }
+    }
+
+    /**
+     * Renvoyer l'email de vérification.
+     */
+    const resendVerificationEmail = async (email: string) => {
+        isLoading.value = true
+        error.value = null
+        try {
+            const response = await authService.resendVerificationEmail({ email })
+            return response
+        } catch (err: any) {
+            const errorMessage = err.response?.data?.detail ||
+                err.response?.data?.message ||
+                'Erreur lors du renvoi de l\'email de vérification'
             setError(errorMessage)
             throw err
         } finally {
@@ -295,6 +341,7 @@ export const useAuthStore = defineStore('auth', () => {
         fetchUserProfile,
         fetchCurrentUser,
         verifyEmail,
+        resendVerificationEmail,
         requestPasswordReset,
         confirmPasswordReset,
         changePassword,

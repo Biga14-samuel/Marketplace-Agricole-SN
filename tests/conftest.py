@@ -191,8 +191,8 @@ def auth_user_with_profile(client: TestClient, auth_headers: dict) -> dict:
         dict: Informations du profil créé
     """
     profile_data = {
-        "first_name": "Jean",
-        "last_name": "Dupont",
+        "first_name": "Aubin",
+        "last_name": "Biga",
         "preferences": {}
     }
     

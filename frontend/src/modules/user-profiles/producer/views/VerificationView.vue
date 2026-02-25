@@ -24,18 +24,25 @@
                             </p>
                         </div>
                     </div>
-                    <button v-if="verificationStatus === 'pending' && allDocumentsUploaded" @click="submitVerification"
-                        :disabled="isSubmitting"
-                        class="px-6 py-3 bg-gradient-to-r from-forest-500 to-forest-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 ease-organic flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span v-if="isSubmitting" class="flex items-center space-x-2">
-                            <span class="animate-spin">🔄</span>
-                            <span>Soumission...</span>
-                        </span>
-                        <span v-else class="flex items-center space-x-2">
-                            <span>📤</span>
-                            <span>Soumettre à vérification</span>
-                        </span>
-                    </button>
+                    <div class="flex items-center space-x-3">
+                        <router-link to="/producer/settings"
+                            class="px-4 py-3 bg-white text-forest-700 border border-forest-200 rounded-xl shadow-sm hover:shadow-md hover:bg-forest-50 transition-all duration-300 ease-organic flex items-center space-x-2">
+                            <span>⚙️</span>
+                            <span class="hidden sm:inline">Paramètres</span>
+                        </router-link>
+                        <button v-if="verificationStatus === 'pending' && allDocumentsUploaded" @click="submitVerification"
+                            :disabled="isSubmitting"
+                            class="px-6 py-3 bg-gradient-to-r from-forest-500 to-forest-600 text-white rounded-xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 ease-organic flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span v-if="isSubmitting" class="flex items-center space-x-2">
+                                <span class="animate-spin">🔄</span>
+                                <span>Soumission...</span>
+                            </span>
+                            <span v-else class="flex items-center space-x-2">
+                                <span>📤</span>
+                                <span>Soumettre à vérification</span>
+                            </span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -398,18 +405,7 @@
                             </div>
                             <div class="p-6">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label class="block text-sm font-medium text-forest-700 mb-2">
-                                            <span class="inline-flex items-center space-x-1">
-                                                <span>📅</span>
-                                                <span>Date de début d'activité</span>
-                                            </span>
-                                        </label>
-                                        <input v-model="additionalInfo.startDate" type="date"
-                                            class="w-full px-4 py-3 border border-forest-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-transparent transition-all duration-200" />
-                                    </div>
-
-                                    <div>
+                                    <div class="md:col-span-2">
                                         <label class="block text-sm font-medium text-forest-700 mb-2">
                                             <span class="inline-flex items-center space-x-1">
                                                 <span>👥</span>
@@ -418,28 +414,28 @@
                                         </label>
                                         <select v-model="additionalInfo.farmType"
                                             class="w-full px-4 py-3 border border-forest-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-transparent transition-all duration-200">
-                                            <option value="individual">Exploitation individuelle</option>
-                                            <option value="family">Exploitation familiale</option>
+                                            <option value="organic">Agriculture biologique</option>
+                                            <option value="conventional">Agriculture conventionnelle</option>
+                                            <option value="permaculture">Permaculture</option>
+                                            <option value="biodynamic">Biodynamique</option>
+                                            <option value="hydroponic">Hydroponie</option>
+                                            <option value="urban">Agriculture urbaine</option>
+                                            <option value="family">Ferme familiale</option>
                                             <option value="cooperative">Coopérative</option>
-                                            <option value="company">Société agricole</option>
+                                            <option value="specialty">Production spécialisée</option>
                                         </select>
-                                    </div>
-
-                                    <div class="md:col-span-2">
-                                        <label class="block text-sm font-medium text-forest-700 mb-2">
-                                            <span class="inline-flex items-center space-x-1">
-                                                <span>🏆</span>
-                                                <span>Récompenses et distinctions</span>
-                                            </span>
-                                            <span class="text-xs text-terracotta-600 ml-2">(Optionnel)</span>
-                                        </label>
-                                        <textarea v-model="additionalInfo.awards" rows="3"
-                                            class="w-full px-4 py-3 border border-forest-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-transparent transition-all duration-200 resize-none"
-                                            placeholder="Mentions particulières, prix, distinctions reçues..."></textarea>
+                                        <p class="mt-2 text-xs text-terracotta-600">
+                                            Ce champ est enregistré dans votre profil producteur.
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div class="mt-6 pt-6 border-t border-forest-100 flex justify-end">
+                                <div class="mt-6 pt-6 border-t border-forest-100 flex justify-end gap-3">
+                                    <button @click="resetAdditionalInfo"
+                                        class="px-5 py-2.5 bg-white border border-forest-200 text-forest-700 rounded-lg hover:bg-forest-50 transition-all duration-300 ease-organic flex items-center space-x-2">
+                                        <span>↩️</span>
+                                        <span>Annuler</span>
+                                    </button>
                                     <button @click="saveAdditionalInfo"
                                         class="px-5 py-2.5 bg-gradient-to-r from-forest-500 to-forest-600 text-white rounded-lg hover:shadow-md transition-all duration-300 ease-organic flex items-center space-x-2">
                                         <span>💾</span>
@@ -800,6 +796,9 @@
             </div>
         </transition>
 
+        <input ref="verificationFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png" class="hidden"
+            @change="handleVerificationFileUpload" />
+
         <!-- Toast de confirmation -->
         <transition enter-active-class="transition-all duration-500 ease-organic"
             enter-from-class="opacity-0 translate-y-4" enter-to-class="opacity-100 translate-y-0"
@@ -827,10 +826,15 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useProducerStore } from '../stores/useProducerStore'
+import { ProducerDocumentService } from '../services'
+import { getErrorMessage } from '@/shared/utils/error-handler'
 
 const router = useRouter()
+const store = useProducerStore()
 
-// État de l'interface
+type RequiredDocumentType = 'kbis' | 'insurance'
+
 const verificationStatus = ref<'pending' | 'verified' | 'rejected'>('pending')
 const isSubmitting = ref(false)
 const showCertificationModal = ref(false)
@@ -838,48 +842,41 @@ const showSuccessToast = ref(false)
 const toastMessage = ref('')
 const toastDescription = ref('')
 const certificationFileInput = ref<HTMLInputElement | null>(null)
+const verificationFileInput = ref<HTMLInputElement | null>(null)
 const editingCertification = ref<any>(null)
+const pendingUploadType = ref<RequiredDocumentType>('kbis')
 
-// Données de vérification
-const verificationItems = ref([
-    { id: 1, label: 'Profil complet', icon: '👤', completed: true },
-    { id: 2, label: 'KBIS téléversé', icon: '🏢', completed: true },
-    { id: 3, label: 'Assurance téléversée', icon: '🛡️', completed: true },
-    { id: 4, label: 'Documents vérifiés', icon: '✅', completed: false }
-])
-
-// Documents
-const documents = reactive({
+const documents = reactive<Record<RequiredDocumentType, {
+    id: string | null
+    uploaded: boolean
+    verified: boolean
+    fileName: string
+    uploadDate: string
+    fileSize: string
+}>>({
     kbis: {
-        uploaded: true,
+        id: null,
+        uploaded: false,
         verified: false,
-        fileName: 'KBIS_FermeSoleilLevant_2023.pdf',
-        uploadDate: '15/12/2023',
-        fileSize: '2.1 MB'
+        fileName: '',
+        uploadDate: '',
+        fileSize: ''
     },
     insurance: {
-        uploaded: true,
-        verified: true,
-        fileName: 'Assurance_RC_2024.pdf',
-        uploadDate: '10/12/2023',
-        fileSize: '1.8 MB'
+        id: null,
+        uploaded: false,
+        verified: false,
+        fileName: '',
+        uploadDate: '',
+        fileSize: ''
     }
 })
 
-// Certifications
-const certifications = ref([
-    { id: 1, type: 'bio', name: 'Agriculture Biologique', certificateNumber: 'FR-BIO-01', validUntil: '2024-12-31' },
-    { id: 2, type: 'label', name: 'Label Rouge Volaille', certificateNumber: 'LR-78945', validUntil: '2024-06-30' }
-])
-
-// Informations complémentaires
+const certifications = ref<any[]>([])
 const additionalInfo = reactive({
-    startDate: '2018-03-15',
-    farmType: 'family',
-    awards: 'Médaille d\'or du Concours Général Agricole 2022\nPrix de l\'innovation agricole 2021'
+    farmType: ''
 })
 
-// Formulaire de certification
 const certificationForm = reactive({
     type: 'bio',
     name: '',
@@ -888,27 +885,128 @@ const certificationForm = reactive({
     file: null as File | null
 })
 
-// Computed properties
+const formatDate = (value?: string) => {
+    if (!value) return ''
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toLocaleDateString('fr-FR')
+}
+
+const formatFileSize = (sizeInBytes: number) => {
+    if (!Number.isFinite(sizeInBytes) || sizeInBytes <= 0) return '0 KB'
+    const kb = sizeInBytes / 1024
+    if (kb < 1024) return `${kb.toFixed(0)} KB`
+    return `${(kb / 1024).toFixed(1)} MB`
+}
+
+const setDocumentState = (type: RequiredDocumentType, source: any | null) => {
+    const resolvedFileName = source?.file_name || source?.original_filename || source?.title || ''
+    const rawSize = Number(source?.file_size ?? source?.size ?? 0)
+    documents[type].id = source ? String(source.id) : null
+    documents[type].uploaded = Boolean(source)
+    documents[type].verified = Boolean(source?.verified)
+    documents[type].fileName = resolvedFileName
+    documents[type].uploadDate = source?.uploaded_at ? formatDate(source.uploaded_at) : ''
+    documents[type].fileSize = source
+        ? (rawSize > 0 ? formatFileSize(rawSize) : 'Taille inconnue')
+        : ''
+}
+
+const syncFromStore = () => {
+    const remoteDocs = (store.documents as any[]) || []
+    const kbisDoc = remoteDocs.find(doc => doc.type === 'kbis') || null
+    const insuranceDoc = remoteDocs.find(doc => doc.type === 'insurance') || null
+
+    setDocumentState('kbis', kbisDoc)
+    setDocumentState('insurance', insuranceDoc)
+
+    certifications.value = remoteDocs
+        .filter(doc => doc.type === 'certification')
+        .map((doc, index) => ({
+            id: doc.id || `cert-${index + 1}`,
+            type: 'certification',
+            name: doc.file_name || 'Certification',
+            certificateNumber: doc.document_number || (doc.metadata?.certificate_number ?? '-'),
+            validUntil: doc.expires_at ? formatDate(doc.expires_at) : '-',
+            verified: Boolean(doc.verified)
+        }))
+
+    const profile = store.profile as any
+    if (profile?.is_verified || profile?.verification_status === 'verified') {
+        verificationStatus.value = 'verified'
+    } else if (profile?.verification_status === 'rejected') {
+        verificationStatus.value = 'rejected'
+    } else {
+        verificationStatus.value = 'pending'
+    }
+
+    additionalInfo.farmType = Array.isArray(profile?.production_type)
+        ? (profile.production_type[0] || '')
+        : (profile?.production_type || '')
+}
+
+const refreshVerificationData = async () => {
+    try {
+        await store.fetchProfile()
+    } catch {
+        // Le profil peut ne pas encore exister pour un nouveau producteur.
+    }
+
+    try {
+        await store.fetchDocuments()
+    } catch {
+        // Les documents dépendent du profil: on garde l'UI fonctionnelle.
+    } finally {
+        syncFromStore()
+    }
+}
+
+const ensureProducerProfile = async () => {
+    if (store.profile) return
+
+    try {
+        await store.fetchProfile()
+        return
+    } catch {
+        // Tentative de création minimale pour débloquer le téléversement.
+    }
+
+    await store.createProfile({
+        business_name: 'Mon exploitation',
+        bio: ''
+    } as any)
+    await store.fetchProfile()
+}
+
+const verificationItems = computed(() => {
+    const profile = store.profile as any
+    const profileComplete = Boolean(profile?.business_name && profile?.bio)
+    const docsVerified = documents.kbis.verified && documents.insurance.verified
+
+    return [
+        { id: 1, label: 'Profil complet', icon: '👤', completed: profileComplete },
+        { id: 2, label: 'KBIS téléversé', icon: '🏢', completed: documents.kbis.uploaded },
+        { id: 3, label: 'Assurance téléversée', icon: '🛡️', completed: documents.insurance.uploaded },
+        { id: 4, label: 'Documents vérifiés', icon: '✅', completed: docsVerified }
+    ]
+})
+
 const verificationProgress = computed(() => {
     const totalItems = verificationItems.value.length
     const completedItems = verificationItems.value.filter(item => item.completed).length
     return Math.round((completedItems / totalItems) * 100)
 })
 
-const allDocumentsUploaded = computed(() => {
-    return documents.kbis.uploaded && documents.insurance.uploaded
-})
+const allDocumentsUploaded = computed(() => documents.kbis.uploaded && documents.insurance.uploaded)
 
 const completedDocuments = computed(() => {
     let count = 0
-    if (documents.kbis.uploaded) count++
-    if (documents.insurance.uploaded) count++
+    if (documents.kbis.uploaded) count += 1
+    if (documents.insurance.uploaded) count += 1
     return count
 })
 
-const totalDocuments = computed(() => {
-    return Object.keys(documents).length
-})
+const totalDocuments = computed(() => 2)
 
 const statusTitle = computed(() => {
     switch (verificationStatus.value) {
@@ -928,79 +1026,90 @@ const statusDescription = computed(() => {
     }
 })
 
-// Méthodes
 const submitVerification = async () => {
+    if (!allDocumentsUploaded.value) {
+        showToast('Documents manquants', 'Ajoutez KBIS et assurance avant soumission.')
+        return
+    }
+
     isSubmitting.value = true
     try {
-        // Simulation d'appel API
-        await new Promise(resolve => setTimeout(resolve, 2000))
-
-        verificationStatus.value = 'pending'
-        verificationItems.value[3].completed = true
-
+        await store.submitForVerification()
+        await refreshVerificationData()
         showToast(
-            'Demande soumise !',
+            'Demande soumise',
             'Votre dossier est en cours d\'examen. Vous recevrez une notification par email.'
         )
-    } catch (error) {
-        console.error('Erreur lors de la soumission:', error)
-        showToast(
-            'Erreur de soumission',
-            'Veuillez réessayer ou contacter le support'
-        )
+    } catch (error: unknown) {
+        showToast('Erreur de soumission', getErrorMessage(error))
     } finally {
         isSubmitting.value = false
     }
 }
 
-const uploadDocument = (type: 'kbis' | 'insurance') => {
-    console.log('Téléverser document:', type)
-    // Simuler l'upload
-    if (type === 'kbis') {
-        documents.kbis.uploaded = true
-        documents.kbis.verified = false
-        showToast(
-            'Document téléversé !',
-            'Votre KBIS a été téléversé et est en attente de vérification'
-        )
-    } else if (type === 'insurance') {
-        documents.insurance.uploaded = true
-        showToast(
-            'Assurance téléversée !',
-            'Votre attestation d\'assurance a été téléversée'
-        )
+const uploadDocument = (type: RequiredDocumentType) => {
+    pendingUploadType.value = type
+    verificationFileInput.value?.click()
+}
+
+const replaceDocument = (type: RequiredDocumentType) => {
+    pendingUploadType.value = type
+    verificationFileInput.value?.click()
+}
+
+const handleVerificationFileUpload = async (event: Event) => {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (!file) return
+
+    try {
+        await ensureProducerProfile()
+        await store.uploadDocument({
+            type: pendingUploadType.value as any,
+            file
+        } as any)
+        await refreshVerificationData()
+        showToast('Document téléversé', `Le document "${file.name}" a été ajouté.`)
+    } catch (error: unknown) {
+        showToast('Erreur de téléversement', getErrorMessage(error))
+    } finally {
+        input.value = ''
     }
 }
 
-const replaceDocument = (type: 'kbis' | 'insurance') => {
-    console.log('Remplacer document:', type)
-    // Ouvrir le sélecteur de fichier
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.pdf,.jpg,.png'
-    input.onchange = () => {
-        if (input.files && input.files[0]) {
-            const file = input.files[0]
-            showToast(
-                'Document remplacé !',
-                `Le fichier "${file.name}" a été téléversé`
-            )
+const viewDocument = async (type: RequiredDocumentType) => {
+    const documentId = documents[type].id
+    if (!documentId) {
+        showToast('Document indisponible', 'Ce document n\'est pas encore téléversé.')
+        return
+    }
+
+    try {
+        const preview = await ProducerDocumentService.getDocumentPreview(documentId)
+        if (preview?.preview_url) {
+            window.open(preview.preview_url, '_blank', 'noopener,noreferrer')
+            return
         }
+
+        const blob = await ProducerDocumentService.downloadDocument(documentId)
+        const blobUrl = URL.createObjectURL(blob)
+        window.open(blobUrl, '_blank', 'noopener,noreferrer')
+    } catch (error: unknown) {
+        showToast('Erreur document', getErrorMessage(error))
     }
-    input.click()
 }
-
-const viewDocument = (type: 'kbis' | 'insurance') => {
-    console.log('Voir document:', type)
-    // Ouvrir le document dans un nouvel onglet ou modal
-}
-
-const downloadTemplate = (type: 'kbis' | 'insurance') => {
-    console.log('Télécharger modèle pour:', type)
-    showToast(
-        'Modèle téléchargé',
-        'Le modèle de document a été téléchargé'
-    )
+const downloadTemplate = async (type: RequiredDocumentType) => {
+    try {
+        const requirements = await ProducerDocumentService.getDocumentRequirements()
+        const match = requirements.required_documents.find((doc: any) => doc.type === type)
+        if (match?.template_url) {
+            window.open(match.template_url, '_blank', 'noopener,noreferrer')
+            return
+        }
+        showToast('Modèle non disponible', 'Aucun modèle officiel n’est disponible pour ce type de document.')
+    } catch (error: unknown) {
+        showToast('Erreur modèle', getErrorMessage(error))
+    }
 }
 
 const addCertification = () => {
@@ -1018,17 +1127,34 @@ const addCertification = () => {
 const editCertification = (cert: any) => {
     editingCertification.value = cert
     Object.assign(certificationForm, {
-        type: cert.type,
-        name: cert.name,
-        certificateNumber: cert.certificateNumber,
-        validUntil: cert.validUntil,
+        type: cert.type || 'other',
+        name: cert.name || '',
+        certificateNumber: cert.certificateNumber || '',
+        validUntil: cert.validUntil || '',
         file: null
     })
     showCertificationModal.value = true
 }
 
-const viewCertification = (cert: any) => {
-    console.log('Voir certification:', cert)
+const viewCertification = async (cert: any) => {
+    if (!cert?.id) {
+        showToast('Document introuvable', 'Impossible de retrouver ce document de certification.')
+        return
+    }
+
+    try {
+        const preview = await ProducerDocumentService.getDocumentPreview(String(cert.id))
+        if (preview?.preview_url) {
+            window.open(preview.preview_url, '_blank', 'noopener,noreferrer')
+            return
+        }
+
+        const blob = await ProducerDocumentService.downloadDocument(String(cert.id))
+        const blobUrl = URL.createObjectURL(blob)
+        window.open(blobUrl, '_blank', 'noopener,noreferrer')
+    } catch (error: unknown) {
+        showToast('Erreur document', getErrorMessage(error))
+    }
 }
 
 const closeCertificationModal = () => {
@@ -1037,9 +1163,7 @@ const closeCertificationModal = () => {
 }
 
 const triggerCertificationFileUpload = () => {
-    if (certificationFileInput.value) {
-        certificationFileInput.value.click()
-    }
+    certificationFileInput.value?.click()
 }
 
 const handleCertificationFileUpload = (event: Event) => {
@@ -1050,73 +1174,71 @@ const handleCertificationFileUpload = (event: Event) => {
 }
 
 const saveCertification = () => {
-    if (!certificationForm.name.trim()) {
-        showToast(
-            'Champ manquant',
-            'Veuillez saisir le nom de la certification'
-        )
+    if (!certificationForm.file) {
+        showToast('Fichier manquant', 'Ajoutez un fichier PDF/JPG/PNG pour la certification.')
         return
     }
 
-    if (editingCertification.value) {
-        // Mettre à jour la certification existante
-        const index = certifications.value.findIndex(c => c.id === editingCertification.value.id)
-        if (index !== -1) {
-            certifications.value[index] = {
-                ...certifications.value[index],
-                type: certificationForm.type,
-                name: certificationForm.name,
-                certificateNumber: certificationForm.certificateNumber,
-                validUntil: certificationForm.validUntil
-            }
-        }
-        showToast(
-            'Certification mise à jour',
-            'Les modifications ont été enregistrées'
-        )
-    } else {
-        // Ajouter une nouvelle certification
-        const newCert = {
-            id: Math.max(...certifications.value.map(c => c.id)) + 1,
-            type: certificationForm.type,
-            name: certificationForm.name,
-            certificateNumber: certificationForm.certificateNumber,
-            validUntil: certificationForm.validUntil
-        }
-        certifications.value.push(newCert)
-        showToast(
-            'Certification ajoutée !',
-            'Votre certification a été ajoutée avec succès'
-        )
-    }
+    void (async () => {
+        try {
+            await ensureProducerProfile()
+            await store.uploadDocument({
+                type: 'certification' as any,
+                file: certificationForm.file as File
+            } as any)
 
-    closeCertificationModal()
+            if (editingCertification.value?.id) {
+                try {
+                    await store.deleteDocument(String(editingCertification.value.id))
+                } catch {
+                    // Le nouveau document est déjà téléversé : on ne bloque pas l'utilisateur.
+                }
+            }
+
+            await refreshVerificationData()
+            showToast('Certification enregistrée', 'La certification a été téléversée avec succès.')
+            closeCertificationModal()
+        } catch (error: unknown) {
+            showToast('Erreur de téléversement', getErrorMessage(error))
+        }
+    })()
 }
 
-const saveAdditionalInfo = () => {
-    console.log('Sauvegarder informations:', additionalInfo)
-    showToast(
-        'Informations sauvegardées',
-        'Vos informations complémentaires ont été mises à jour'
-    )
+const saveAdditionalInfo = async () => {
+    if (!additionalInfo.farmType) {
+        showToast('Champ manquant', 'Sélectionnez un type d’exploitation.')
+        return
+    }
+
+    try {
+        await ensureProducerProfile()
+        await store.updateProfile({
+            production_type: [additionalInfo.farmType]
+        } as any)
+        await refreshVerificationData()
+        showToast('Informations sauvegardées', 'Le type d’exploitation a été mis à jour.')
+    } catch (error: unknown) {
+        showToast('Erreur de sauvegarde', getErrorMessage(error))
+    }
+}
+
+const resetAdditionalInfo = () => {
+    const profile = store.profile as any
+    additionalInfo.farmType = Array.isArray(profile?.production_type)
+        ? (profile.production_type[0] || '')
+        : (profile?.production_type || '')
 }
 
 const openHelpModal = () => {
-    console.log('Ouvrir aide')
     router.push('/help/verification')
 }
 
 const contactSupport = () => {
-    console.log('Contacter le support')
     router.push('/contact/support')
 }
 
 const downloadChecklist = () => {
-    console.log('Télécharger checklist')
-    showToast(
-        'Checklist téléchargée',
-        'Le guide de vérification a été téléchargé'
-    )
+    showToast('Checklist', 'Le guide de vérification sera disponible prochainement.')
 }
 
 const showToast = (message: string, description: string) => {
@@ -1129,7 +1251,7 @@ const showToast = (message: string, description: string) => {
 }
 
 onMounted(() => {
-    console.log('VerificationView monté')
+    void refreshVerificationData()
 })
 </script>
 

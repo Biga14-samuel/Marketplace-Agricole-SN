@@ -61,19 +61,19 @@
                         <!-- Navigation rapide -->
                         <nav class="hidden md:flex items-center space-x-2 px-4 py-2 bg-white/60 rounded-full">
                             <router-link to="/producer/dashboard"
-                                class="text-nature-gray hover:text-forest-green transition-colors duration-300 text-sm px-4 py-2 rounded-full hover:bg-white/50">
+                                class="text-nature-gray hover:text-forest-green transition-colors duration-300 text-sm px-4 py-2 rounded-full hover:bg-white bg-opacity-50">
                                 Dashboard
                             </router-link>
                             <router-link to="/producer/products"
-                                class="text-nature-gray hover:text-forest-green transition-colors duration-300 text-sm px-4 py-2 rounded-full hover:bg-white/50">
+                                class="text-nature-gray hover:text-forest-green transition-colors duration-300 text-sm px-4 py-2 rounded-full hover:bg-white bg-opacity-50">
                                 Produits
                             </router-link>
                             <router-link to="/producer/inventory"
-                                class="bg-forest-green/10 text-forest-green font-medium text-sm px-4 py-2 rounded-full">
+                                class="bg-forest-green bg-opacity-10 text-forest-green font-medium text-sm px-4 py-2 rounded-full">
                                 Inventaire
                             </router-link>
                             <router-link to="/producer/orders"
-                                class="text-nature-gray hover:text-forest-green transition-colors duration-300 text-sm px-4 py-2 rounded-full hover:bg-white/50">
+                                class="text-nature-gray hover:text-forest-green transition-colors duration-300 text-sm px-4 py-2 rounded-full hover:bg-white bg-opacity-50">
                                 Commandes
                             </router-link>
                         </nav>
@@ -126,7 +126,7 @@
                             <div class="kpi-card kpi-total">
                                 <div class="kpi-icon">📦</div>
                                 <div class="kpi-content">
-                                    <div class="kpi-value">{{ totalStockValue.toLocaleString() }} €</div>
+                                    <div class="kpi-value">{{ formatCurrency(totalStockValue) }}</div>
                                     <div class="kpi-label">Valeur totale du stock</div>
                                     <div class="kpi-trend positive">
                                         <span>↗</span>
@@ -220,7 +220,7 @@
 
                     <!-- Barre de contrôle inventaire -->
                     <div class="mb-8 animate-slide-up" style="animation-delay: 0.2s">
-                        <div class="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10">
+                        <div class="bg-white bg-opacity-80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10">
                             <div
                                 class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
                                 <!-- Filtres rapides -->
@@ -392,9 +392,9 @@
                                             <!-- Cellule Valeur -->
                                             <td class="table-cell text-center">
                                                 <div class="value-display">
-                                                    <div class="value-amount">{{ item.stockValue.toLocaleString() }} €
+                                                    <div class="value-amount">{{ formatCurrency(item.stockValue) }}
                                                     </div>
-                                                    <div class="value-per-unit">{{ item.unitValue.toFixed(2) }} €/{{
+                                                    <div class="value-per-unit">{{ formatCurrency(item.unitValue) }}/{{
                                                         item.unit }}</div>
                                                 </div>
                                             </td>
@@ -494,8 +494,7 @@
                                         <div class="grid-card-footer">
                                             <div class="grid-card-value">
                                                 <span class="value-label">Valeur :</span>
-                                                <span class="value-amount">{{ item.stockValue.toLocaleString() }}
-                                                    €</span>
+                                                <span class="value-amount">{{ formatCurrency(item.stockValue) }}</span>
                                             </div>
                                             <div class="grid-card-actions">
                                                 <button @click="adjustStock(item)" class="grid-action-btn">
@@ -565,12 +564,12 @@
                                                 <div class="card-details">
                                                     <div class="detail-item">
                                                         <div class="detail-label">Valeur stock</div>
-                                                        <div class="detail-value">{{ item.stockValue.toLocaleString() }}
-                                                            €</div>
+                                                        <div class="detail-value">{{ formatCurrency(item.stockValue) }}
+                                                        </div>
                                                     </div>
                                                     <div class="detail-item">
                                                         <div class="detail-label">Valeur unitaire</div>
-                                                        <div class="detail-value">{{ item.unitValue.toFixed(2) }} €/{{
+                                                        <div class="detail-value">{{ formatCurrency(item.unitValue) }}/{{
                                                             item.unit }}</div>
                                                     </div>
                                                     <div v-if="item.expiryDate" class="detail-item">
@@ -1234,6 +1233,13 @@ export default {
             const date = new Date(dateString)
             return date.toLocaleDateString('fr-FR')
         },
+        formatCurrency(amount) {
+            return new Intl.NumberFormat('fr-CM', {
+                style: 'currency',
+                currency: 'XAF',
+                maximumFractionDigits: 0
+            }).format(Number(amount) || 0)
+        },
         getStockGaugeClass(item) {
             const ratio = item.currentStock / item.optimalStock
             if (ratio >= 0.8) return 'gauge-optimal'
@@ -1523,7 +1529,7 @@ export default {
 
 /* Cartes KPI */
 .kpi-card {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10 transition-all duration-500 hover:scale-105 hover:shadow-xl flex items-center space-x-4;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10 transition-all duration-500 hover:scale-105 hover:shadow-xl flex items-center space-x-4;
 }
 
 .kpi-total {
@@ -1576,7 +1582,7 @@ export default {
 
 /* Section d'alertes */
 .alerts-section {
-    @apply bg-gradient-to-br from-white/60 to-cream-light/30 backdrop-blur-sm rounded-3xl p-8 border border-forest-green/10;
+    @apply bg-gradient-to-br from-white to-cream-light backdrop-blur-sm rounded-3xl p-8 border border-forest-green border-opacity-10;
 }
 
 .section-title {
@@ -1616,7 +1622,7 @@ export default {
 }
 
 .alert-action {
-    @apply px-4 py-2 bg-white/80 backdrop-blur-sm rounded-xl text-forest-green font-medium text-sm transition-all duration-300 hover:bg-white hover:shadow-md;
+    @apply px-4 py-2 bg-white bg-opacity-80 backdrop-blur-sm rounded-xl text-forest-green font-medium text-sm transition-all duration-300 hover:bg-white hover:shadow-md;
 }
 
 /* Boutons de filtre d'inventaire */
@@ -1625,11 +1631,11 @@ export default {
 }
 
 .inventory-filter-active {
-    @apply bg-forest-green/20 text-forest-green border-forest-green/30;
+    @apply bg-forest-green bg-opacity-20 text-forest-green border-forest-green border-opacity-30;
 }
 
 .inventory-filter-inactive {
-    @apply bg-white/60 text-nature-gray border-forest-green/10 hover:bg-forest-green/5 hover:border-forest-green/20;
+    @apply bg-white bg-opacity-60 text-nature-gray border-forest-green border-opacity-10 hover:bg-forest-green hover:bg-opacity-5 hover:border-forest-green hover:border-opacity-20;
 }
 
 .inventory-filter-content {
@@ -1637,34 +1643,34 @@ export default {
 }
 
 .inventory-filter-count {
-    @apply ml-1 px-2 py-1 bg-forest-green/10 text-forest-green text-xs rounded-full;
+    @apply ml-1 px-2 py-1 bg-forest-green bg-opacity-10 text-forest-green text-xs rounded-full;
 }
 
 /* Champs de recherche */
 .inventory-search-input {
-    @apply bg-white/80 backdrop-blur-sm border border-forest-green/20 rounded-xl focus:outline-none focus:border-forest-green/40 focus:ring-4 focus:ring-forest-green/10 transition-all duration-300 w-64;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm border border-forest-green border-opacity-20 rounded-xl focus:outline-none focus:border-forest-green focus:border-opacity-40 focus:ring-4 focus:ring-forest-green focus:ring-opacity-10 transition-all duration-300 w-64;
 }
 
 /* Boutons de vue */
 .view-toggle-btn {
-    @apply px-4 py-2 rounded-xl border border-forest-green/20 text-sm font-medium transition-all duration-300;
+    @apply px-4 py-2 rounded-xl border border-forest-green border-opacity-20 text-sm font-medium transition-all duration-300;
 }
 
 .view-toggle-active {
-    @apply bg-forest-green/20 text-forest-green border-forest-green/40;
+    @apply bg-forest-green bg-opacity-20 text-forest-green border-forest-green border-opacity-40;
 }
 
 .view-toggle-btn:not(.view-toggle-active) {
-    @apply bg-white/60 text-nature-gray hover:bg-forest-green/5 hover:border-forest-green/30;
+    @apply bg-white bg-opacity-60 text-nature-gray hover:bg-forest-green hover:bg-opacity-5 hover:border-forest-green hover:border-opacity-30;
 }
 
 /* Sélecteurs de tri */
 .sort-select {
-    @apply bg-white/80 backdrop-blur-sm border border-forest-green/20 rounded-xl px-4 py-2 focus:outline-none focus:border-forest-green/40 focus:ring-4 focus:ring-forest-green/10 transition-all duration-300 text-sm;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm border border-forest-green border-opacity-20 rounded-xl px-4 py-2 focus:outline-none focus:border-forest-green focus:border-opacity-40 focus:ring-4 focus:ring-forest-green focus:ring-opacity-10 transition-all duration-300 text-sm;
 }
 
 .sort-direction-btn {
-    @apply w-10 h-10 rounded-xl bg-white/80 backdrop-blur-sm border border-forest-green/20 flex items-center justify-center text-forest-green transition-all duration-300 hover:bg-forest-green/5;
+    @apply w-10 h-10 rounded-xl bg-white bg-opacity-80 backdrop-blur-sm border border-forest-green border-opacity-20 flex items-center justify-center text-forest-green transition-all duration-300 hover:bg-forest-green hover:bg-opacity-10;
 }
 
 /* Boutons */
@@ -1674,13 +1680,13 @@ export default {
 }
 
 .btn-secondary {
-    @apply bg-gradient-to-r from-terracotta/10 to-terracotta/5 text-terracotta font-semibold rounded-xl border border-terracotta/20 transition-all duration-500 hover:border-terracotta/40 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply bg-terracotta bg-opacity-10 text-terracotta font-semibold rounded-xl border border-terracotta border-opacity-20 transition-all duration-500 hover:border-terracotta hover:border-opacity-40 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
     transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Table d'inventaire */
 .inventory-table-container {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden border border-forest-green/10;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm rounded-2xl overflow-hidden border border-forest-green border-opacity-10;
 }
 
 .inventory-table {
@@ -1688,15 +1694,15 @@ export default {
 }
 
 .table-header {
-    @apply bg-forest-green/5;
+    @apply bg-forest-green bg-opacity-5;
 }
 
 .table-header-cell {
-    @apply px-6 py-4 text-left text-sm font-semibold text-forest-green uppercase tracking-wider border-b border-forest-green/10;
+    @apply px-6 py-4 text-left text-sm font-semibold text-forest-green uppercase tracking-wider border-b border-forest-green border-opacity-10;
 }
 
 .table-row {
-    @apply border-b border-forest-green/10 transition-all duration-300 hover:bg-forest-green/5;
+    @apply border-b border-forest-green border-opacity-10 transition-all duration-300 hover:bg-forest-green bg-opacity-5;
 }
 
 .table-cell {
@@ -1738,7 +1744,7 @@ export default {
 
 /* Badges de catégorie */
 .category-badge {
-    @apply inline-block px-3 py-1 bg-forest-green/10 text-forest-green text-xs font-medium rounded-full;
+    @apply inline-block px-3 py-1 bg-forest-green bg-opacity-10 text-forest-green text-xs font-medium rounded-full;
 }
 
 /* Affichage de stock */
@@ -1801,7 +1807,7 @@ export default {
 
 /* Alerte de réapprovisionnement */
 .reorder-alert {
-    @apply inline-flex items-center space-x-1 text-xs text-forest-green mt-1 px-2 py-1 bg-forest-green/10 rounded-full;
+    @apply inline-flex items-center space-x-1 text-xs text-forest-green mt-1 px-2 py-1 bg-forest-green bg-opacity-10 rounded-full;
 }
 
 /* Affichage de péremption */
@@ -1876,7 +1882,7 @@ export default {
 }
 
 .transfer-btn {
-    @apply bg-forest-green/10 text-forest-green hover:bg-forest-green/20;
+    @apply bg-forest-green bg-opacity-10 text-forest-green hover:bg-forest-green bg-opacity-20;
 }
 
 .alert-btn {
@@ -1885,11 +1891,11 @@ export default {
 
 /* Grille d'inventaire */
 .inventory-grid {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10;
 }
 
 .inventory-grid-card {
-    @apply bg-white/90 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10 transition-all duration-500 hover:scale-105 hover:shadow-xl;
+    @apply bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10 transition-all duration-500 hover:scale-105 hover:shadow-xl;
 }
 
 .grid-card-header {
@@ -1979,7 +1985,7 @@ export default {
 
 /* Section péremption */
 .expiry-section {
-    @apply flex justify-between items-center p-3 bg-forest-green/5 rounded-xl;
+    @apply flex justify-between items-center p-3 bg-forest-green bg-opacity-5 rounded-xl;
 }
 
 .expiry-label {
@@ -1992,7 +1998,7 @@ export default {
 
 /* Pied de carte grille */
 .grid-card-footer {
-    @apply flex justify-between items-center mt-6 pt-6 border-t border-forest-green/10;
+    @apply flex justify-between items-center mt-6 pt-6 border-t border-forest-green border-opacity-10;
 }
 
 .grid-card-value {
@@ -2012,7 +2018,7 @@ export default {
 }
 
 .grid-action-btn {
-    @apply flex items-center space-x-2 px-4 py-2 bg-forest-green/10 text-forest-green rounded-xl transition-all duration-300 hover:bg-forest-green/20;
+    @apply flex items-center space-x-2 px-4 py-2 bg-forest-green bg-opacity-10 text-forest-green rounded-xl transition-all duration-300 hover:bg-forest-green bg-opacity-20;
 }
 
 .action-label {
@@ -2021,11 +2027,11 @@ export default {
 
 /* Cartes d'inventaire */
 .inventory-cards {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10;
 }
 
 .inventory-card {
-    @apply flex bg-white/90 backdrop-blur-sm rounded-2xl border border-forest-green/10 transition-all duration-500 hover:shadow-xl overflow-hidden;
+    @apply flex bg-white bg-opacity-90 backdrop-blur-sm rounded-2xl border border-forest-green border-opacity-10 transition-all duration-500 hover:shadow-xl overflow-hidden;
 }
 
 .card-sidebar {
@@ -2061,7 +2067,7 @@ export default {
 }
 
 .card-sku {
-    @apply text-xs text-nature-gray bg-forest-green/5 px-3 py-1 rounded-full;
+    @apply text-xs text-nature-gray bg-forest-green bg-opacity-5 px-3 py-1 rounded-full;
 }
 
 .card-body {
@@ -2075,7 +2081,7 @@ export default {
 .stock-current,
 .stock-optimal,
 .stock-reorder {
-    @apply p-4 bg-forest-green/5 rounded-xl;
+    @apply p-4 bg-forest-green bg-opacity-5 rounded-xl;
 }
 
 .stock-label {
@@ -2091,7 +2097,7 @@ export default {
 }
 
 .detail-item {
-    @apply p-4 bg-white/50 rounded-xl;
+    @apply p-4 bg-white bg-opacity-50 rounded-xl;
 }
 
 .detail-label {
@@ -2111,20 +2117,20 @@ export default {
 }
 
 .card-action-btn.primary {
-    @apply bg-forest-green text-white hover:bg-forest-green/90;
+    @apply bg-forest-green text-white hover:bg-forest-green bg-opacity-90;
 }
 
 .card-action-btn.secondary {
-    @apply bg-forest-green/10 text-forest-green hover:bg-forest-green/20;
+    @apply bg-forest-green bg-opacity-10 text-forest-green hover:bg-opacity-20;
 }
 
 .card-action-btn.tertiary {
-    @apply bg-terracotta/10 text-terracotta hover:bg-terracotta/20;
+    @apply bg-terracotta bg-opacity-10 text-terracotta hover:bg-terracotta hover:bg-opacity-20;
 }
 
 /* État vide */
 .empty-inventory {
-    @apply bg-gradient-to-br from-white/70 to-cream-light/30 backdrop-blur-sm rounded-3xl p-12 text-center border-2 border-dashed border-forest-green/20;
+    @apply bg-gradient-to-br from-white to-cream-light backdrop-blur-sm rounded-3xl p-12 text-center border-2 border-dashed border-forest-green border-opacity-20;
 }
 
 .empty-inventory-icon {
@@ -2145,11 +2151,11 @@ export default {
 
 /* Section tendances */
 .trends-section {
-    @apply bg-gradient-to-br from-white/60 to-cream-light/30 backdrop-blur-sm rounded-3xl p-8 border border-forest-green/10;
+    @apply bg-gradient-to-br from-white to-cream-light backdrop-blur-sm rounded-3xl p-8 border border-forest-green border-opacity-10;
 }
 
 .trend-card {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green/10;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm rounded-2xl p-6 border border-forest-green border-opacity-10;
 }
 
 .trend-card-header {
@@ -2161,7 +2167,7 @@ export default {
 }
 
 .trend-select {
-    @apply bg-white/80 backdrop-blur-sm border border-forest-green/20 rounded-xl px-3 py-1 text-sm focus:outline-none focus:border-forest-green/40;
+    @apply bg-white bg-opacity-80 backdrop-blur-sm border border-forest-green border-opacity-20 rounded-xl px-3 py-1 text-sm focus:outline-none focus:border-forest-green focus:border-opacity-40;
 }
 
 .trend-card-badge {
@@ -2182,11 +2188,11 @@ export default {
 }
 
 .chart-bar {
-    @apply relative w-8 bg-forest-green/20 rounded-t-lg transition-all duration-500 hover:opacity-80;
+    @apply relative w-8 bg-forest-green bg-opacity-20 rounded-t-lg transition-all duration-500 hover:opacity-80;
 }
 
 .chart-bar-tooltip {
-    @apply absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap;
+    @apply absolute -top-10 left-1/2 transform -translate-x-1/2 bg-black bg-opacity-80 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap;
 }
 
 .chart-high {
@@ -2210,7 +2216,7 @@ export default {
 }
 
 .summary-item {
-    @apply p-4 bg-forest-green/5 rounded-xl;
+    @apply p-4 bg-forest-green bg-opacity-5 rounded-xl;
 }
 
 .summary-label {
@@ -2235,7 +2241,7 @@ export default {
 }
 
 .forecast-item {
-    @apply flex items-center justify-between p-4 bg-forest-green/5 rounded-xl hover:bg-forest-green/10 transition-colors duration-300;
+    @apply flex items-center justify-between p-4 bg-forest-green bg-opacity-5 rounded-xl hover:bg-forest-green hover:bg-opacity-10 transition-colors duration-300;
 }
 
 .forecast-product {
@@ -2275,7 +2281,7 @@ export default {
 }
 
 .forecast-action {
-    @apply px-4 py-2 bg-forest-green/10 text-forest-green rounded-xl hover:bg-forest-green/20 transition-colors duration-300;
+    @apply px-4 py-2 bg-forest-green bg-opacity-10 text-forest-green rounded-xl hover:bg-forest-green bg-opacity-20 transition-colors duration-300;
 }
 
 .forecast-empty {
@@ -2293,12 +2299,12 @@ export default {
 /* Modals */
 .stock-modal-content,
 .report-modal-content {
-    @apply relative bg-white/95 backdrop-blur-sm rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-auto shadow-2xl;
+    @apply relative bg-white bg-opacity-95 backdrop-blur-sm rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-auto shadow-2xl;
 }
 
 .stock-modal-header,
 .report-modal-header {
-    @apply flex justify-between items-center p-6 border-b border-forest-green/10 sticky top-0 bg-white/95 backdrop-blur-sm z-10;
+    @apply flex justify-between items-center p-6 border-b border-forest-green border-opacity-10 sticky top-0 bg-white bg-opacity-95 backdrop-blur-sm z-10;
 }
 
 .stock-modal-title,
@@ -2308,7 +2314,7 @@ export default {
 
 .stock-modal-close,
 .report-modal-close {
-    @apply w-10 h-10 rounded-full bg-forest-green/10 text-forest-green flex items-center justify-center hover:bg-forest-green/20 transition-colors duration-300;
+    @apply w-10 h-10 rounded-full bg-forest-green bg-opacity-10 text-forest-green flex items-center justify-center hover:bg-forest-green bg-opacity-20 transition-colors duration-300;
 }
 
 .stock-modal-body,
@@ -2333,7 +2339,7 @@ export default {
 
 /* Toast notification */
 .toast-notification {
-    @apply fixed bottom-6 right-6 z-50 bg-white/95 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-forest-green/10 flex items-center space-x-4 max-w-sm;
+    @apply fixed bottom-6 right-6 z-50 bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl p-4 shadow-2xl border border-forest-green border-opacity-10 flex items-center space-x-4 max-w-sm;
 }
 
 .toast-icon {
@@ -2353,7 +2359,7 @@ export default {
 }
 
 .toast-close {
-    @apply w-8 h-8 rounded-full bg-forest-green/10 text-forest-green flex items-center justify-center hover:bg-forest-green/20 transition-colors duration-300;
+    @apply w-8 h-8 rounded-full bg-forest-green bg-opacity-10 text-forest-green flex items-center justify-center hover:bg-forest-green bg-opacity-20 transition-colors duration-300;
 }
 
 .toast-enter-active,
@@ -2413,11 +2419,11 @@ export default {
 }
 
 ::-webkit-scrollbar-track {
-    @apply bg-forest-green/5 rounded-full;
+    @apply bg-forest-green bg-opacity-5 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply bg-forest-green/20 rounded-full hover:bg-forest-green/30 transition-colors duration-300;
+    @apply bg-forest-green bg-opacity-20 rounded-full hover:bg-forest-green bg-opacity-30 transition-colors duration-300;
 }
 </style>
 
@@ -2475,3 +2481,4 @@ body {
     color: var(--nature-gray);
 }
 </style>
+

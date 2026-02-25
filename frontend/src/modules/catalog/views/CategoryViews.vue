@@ -842,9 +842,9 @@ export default {
       return 'bg-gradient-to-r from-red-500 to-red-600'
     },
     formatCurrency(amount) {
-      return new Intl.NumberFormat('fr-FR', { 
+      return new Intl.NumberFormat('fr-CM', {
         style: 'currency', 
-        currency: 'EUR',
+        currency: 'XAF',
         minimumFractionDigits: 0
       }).format(amount)
     },
@@ -1220,3 +1220,4 @@ export default {
   }
 }
 </style>
+

@@ -1686,40 +1686,38 @@ watch(dropdownOpen, (newVal) => {
     }
 }
 
-/* Mode sombre */
-@media (prefers-color-scheme: dark) {
-    .gradient-layer {
-        background: linear-gradient(135deg,
-                #1a1a1a 0%,
-                #2d2d2d 25%,
-                #3a3a3a 50%,
-                #2d4a2d 75%,
-                #1b5e20 100%);
-    }
+/* Mode sombre piloté par le thème applicatif */
+:global(:root[data-theme='dark']) .gradient-layer {
+    background: linear-gradient(135deg,
+            #1a1a1a 0%,
+            #2d2d2d 25%,
+            #3a3a3a 50%,
+            #2d4a2d 75%,
+            #1b5e20 100%);
+}
 
-    .profile-card {
-        background: rgba(45, 45, 45, 0.95);
-        color: #e0e0e0;
-    }
+:global(:root[data-theme='dark']) .profile-card {
+    background: rgba(45, 45, 45, 0.95);
+    color: #e0e0e0;
+}
 
-    .back-link,
-    .nav-btn {
-        background: rgba(45, 45, 45, 0.9);
-        color: #a5d6a7;
-    }
+:global(:root[data-theme='dark']) .back-link,
+:global(:root[data-theme='dark']) .nav-btn {
+    background: rgba(45, 45, 45, 0.9);
+    color: #a5d6a7;
+}
 
-    .dropdown-menu {
-        background: rgba(45, 45, 45, 0.98);
-        color: #e0e0e0;
-    }
+:global(:root[data-theme='dark']) .dropdown-menu {
+    background: rgba(45, 45, 45, 0.98);
+    color: #e0e0e0;
+}
 
-    .profile-name {
-        color: #a5d6a7;
-    }
+:global(:root[data-theme='dark']) .profile-name {
+    color: #a5d6a7;
+}
 
-    .notifications-panel {
-        background: rgba(45, 45, 45, 0.98);
-        color: #e0e0e0;
-    }
+:global(:root[data-theme='dark']) .notifications-panel {
+    background: rgba(45, 45, 45, 0.98);
+    color: #e0e0e0;
 }
 </style>

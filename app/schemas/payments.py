@@ -68,8 +68,12 @@ class PaymentMethodBase(BaseModel):
 
 
 class PaymentMethodCreate(PaymentMethodBase):
-    """Schéma pour créer un nouveau moyen de paiement"""
-    user_id: int = Field(..., gt=0)
+    """
+    Schéma pour créer un nouveau moyen de paiement
+    ⚠️ SÉCURITÉ: user_id ne doit JAMAIS venir du body - il vient du JWT
+    """
+    # ❌ SUPPRIMÉ: user_id: int = Field(..., gt=0)  # FAILLE DE SÉCURITÉ
+    # ✅ Le user_id sera récupéré depuis current_user dans le router
     stripe_payment_method_id: Optional[str] = None
 
 

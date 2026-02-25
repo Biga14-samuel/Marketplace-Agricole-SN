@@ -375,7 +375,7 @@ export const defaultPaymentConfig: PaymentConfig = {
         merchantId: 'merchant_test_id',
         returnUrl: 'https://votredomaine.com/payment/success',
         cancelUrl: 'https://votredomaine.com/payment/cancel',
-        acceptedCurrencies: ['XAF', 'EUR', 'USD'],
+        acceptedCurrencies: ['XAF'],
         acceptedCardTypes: ['VISA', 'MASTERCARD'],
         enable3DSecure: true,
         enableCardSaving: false,
@@ -417,7 +417,7 @@ export const defaultPaymentConfig: PaymentConfig = {
                 publishableKey: 'pk_test_your_key',
                 secretKey: 'sk_test_your_secret',
                 webhookSecret: 'whsec_your_webhook_secret',
-                currency: 'usd',
+                currency: 'xaf',
             },
         },
     ],
@@ -844,49 +844,3 @@ export function calculatePaymentFees(amount: number, method: PaymentMethod) {
 export function validatePaymentAmount(amount: number, method: PaymentMethod) {
     return getPaymentConfigManager().validateAmountLimits(amount, method);
 }
-
-// Exemple d'utilisation
-export function demonstrateConfig(): void {
-    const manager = getPaymentConfigManager();
-
-    console.log('=== Configuration des paiements ===\n');
-
-    console.log(`Environnement: ${manager.getConfig().base.environment}`);
-    console.log(`Devise: ${manager.getConfig().base.defaultCurrency}`);
-    console.log(`Langue: ${manager.getConfig().base.defaultLanguage}`);
-
-    console.log('\n=== Méthodes disponibles ===');
-    const methods = manager.getAvailableMethods();
-    methods.forEach(method => {
-        console.log(`- ${method}`);
-    });
-
-    console.log('\n=== Exemple de calcul de frais ===');
-    const amount = 10000; // 10,000 XAF
-    const method = PaymentMethod.MTN_MOBILE_MONEY;
-
-    try {
-        const fees = manager.calculateFees(amount, method);
-        console.log(`Montant: ${amount} XAF`);
-        console.log(`Frais: ${fees.fees} XAF`);
-        console.log(`TVA: ${fees.vat} XAF`);
-        console.log(`Frais totaux: ${fees.totalFees} XAF`);
-        console.log(`Montant net: ${fees.netAmount} XAF`);
-        console.log(`Montant total: ${fees.totalAmount} XAF`);
-    } catch (error: unknown) {
-        console.error(`Erreur: ${getErrorMessage(error)}`);
-    }
-
-    console.log('\n=== Validation de montant ===');
-    const validation = manager.validateAmountLimits(5000000, method);
-    console.log(`Valide: ${validation.isValid}`);
-    if (!validation.isValid) {
-        console.log(`Erreurs: ${validation.errors.join(', ')}`);
-    }
-}
-
-// Exécuter la démonstration si le fichier est exécuté directement
-// Note: Cette fonctionnalité n'est pas disponible dans le navigateur
-// if (require.main === module) {
-//     demonstrateConfig();
-// }

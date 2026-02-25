@@ -195,7 +195,7 @@
                     </div>
                   </div>
                   <div class="text-right">
-                    <div class="font-bold text-forest-green">{{ item.total }} €</div>
+                    <div class="font-bold text-forest-green">{{ formatXaf(item.total) }}</div>
                     <div class="text-xs text-nature-gray">x{{ item.quantity }}</div>
                   </div>
                 </div>
@@ -216,7 +216,7 @@
                 <div class="flex items-center justify-between mb-4">
                   <div>
                     <p class="text-sm text-nature-gray">Total commande</p>
-                    <p class="text-xl font-bold text-forest-green">{{ order.total }} €</p>
+                    <p class="text-xl font-bold text-forest-green">{{ formatXaf(order.total) }}</p>
                   </div>
                   <div class="text-right">
                     <p class="text-sm text-nature-gray">Livraison</p>
@@ -389,262 +389,294 @@
   </div>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import gsap from 'gsap'
+import { useRouter } from 'vue-router'
+import { useOrdersStore } from '../stores/orders.store'
 
-export default {
-  name: 'ProducerOrders',
-  
-  setup() {
-    const activeFilter = ref('all')
-    const showCancelModal = ref(null)
-    const cancelReason = ref('')
-    
-    const stats = ref({
-      today: 8,
-      pending: 3,
-      preparing: 5,
-      delivered: 42
-    })
-    
-    const filters = ref([
-      { id: 'all', label: 'Toutes', icon: 'fas fa-list', count: null },
-      { id: 'pending', label: 'En attente', icon: 'far fa-clock', count: 3 },
-      { id: 'accepted', label: 'Acceptées', icon: 'fas fa-check-circle', count: 5 },
-      { id: 'ready', label: 'Prêtes', icon: 'fas fa-box', count: 2 },
-      { id: 'delivered', label: 'Livrées', icon: 'fas fa-truck', count: 42 },
-      { id: 'cancelled', label: 'Annulées', icon: 'fas fa-times-circle', count: 2 }
-    ])
-    
-    // Données de démonstration
-    const orders = ref([
-      {
-        id: 'CMD-00145',
-        time: '2023-10-25T09:30:00',
-        status: 'pending',
-        customer: {
-          name: 'Marie Dubois',
-          avatar: null
-        },
-        distance: '3.2 km',
-        items: [
-          { id: 1, name: 'Tomates anciennes', variant: 'Bio - 500g', quantity: 2, price: 3.50, total: 7.00, image: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200' },
-          { id: 2, name: 'Salade verte', variant: 'Cueillie du jour', quantity: 1, price: 2.50, total: 2.50, image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200' }
-        ],
-        total: 9.50,
-        deliveryType: 'Livraison',
-        timeline: {
-          ordered: true,
-          accepted: false,
-          ready: false,
-          delivered: false
-        }
-      },
-      {
-        id: 'CMD-00144',
-        time: '2023-10-25T08:15:00',
-        status: 'accepted',
-        customer: {
-          name: 'Jean Martin',
-          avatar: null
-        },
-        distance: '5.7 km',
-        items: [
-          { id: 3, name: 'Fromage de chèvre', variant: 'Affiné 3 semaines', quantity: 3, price: 6.50, total: 19.50, image: 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=200' },
-          { id: 4, name: 'Œufs frais', variant: 'Plein air - 6 unités', quantity: 2, price: 4.20, total: 8.40, image: 'https://images.unsplash.com/photo-1587486913049-53fc88980f79?w=200' }
-        ],
-        total: 27.90,
-        deliveryType: 'Retrait',
-        timeline: {
-          ordered: true,
-          accepted: true,
-          ready: false,
-          delivered: false
-        }
-      },
-      {
-        id: 'CMD-00143',
-        time: '2023-10-24T16:45:00',
-        status: 'ready',
-        customer: {
-          name: 'Sophie Lambert',
-          avatar: null
-        },
-        distance: '2.1 km',
-        items: [
-          { id: 5, name: 'Pain au levain', variant: '800g', quantity: 1, price: 4.80, total: 4.80, image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200' },
-          { id: 6, name: 'Miel de lavande', variant: 'Pot 250g', quantity: 2, price: 8.90, total: 17.80, image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200' }
-        ],
-        total: 22.60,
-        deliveryType: 'Livraison',
-        timeline: {
-          ordered: true,
-          accepted: true,
-          ready: true,
-          delivered: false
-        }
-      }
-    ])
-    
-    const filteredOrders = computed(() => {
-      if (activeFilter.value === 'all') return orders.value
-      return orders.value.filter(order => order.status === activeFilter.value)
-    })
-    
-    const getStatusClass = (status) => {
-      const classes = {
-        pending: 'bg-warning-light text-warning-dark',
-        accepted: 'bg-info-light text-info-dark',
-        ready: 'bg-success-light text-success-dark',
-        delivered: 'bg-forest-green/10 text-forest-green',
-        cancelled: 'bg-error-light text-error-dark'
-      }
-      return classes[status] || 'bg-gray-100 text-gray-800'
-    }
-    
-    const getStatusText = (status) => {
-      const texts = {
-        pending: 'En attente',
-        accepted: 'Acceptée',
-        ready: 'Prête',
-        delivered: 'Livrée',
-        cancelled: 'Annulée'
-      }
-      return texts[status] || status
-    }
-    
-    const formatTime = (dateString) => {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffHours = Math.floor((now - date) / (1000 * 60 * 60))
-      
-      if (diffHours < 1) {
-        const diffMinutes = Math.floor((now - date) / (1000 * 60))
-        return `Il y a ${diffMinutes} min`
-      } else if (diffHours < 24) {
-        return `Il y a ${diffHours} h`
-      } else {
-        return date.toLocaleDateString('fr-FR', { 
-          day: 'numeric', 
-          month: 'short' 
-        })
-      }
-    }
-    
-    const getEmptyStateMessage = (filter) => {
-      const messages = {
-        all: 'Aucune commande n\'a été passée pour le moment.',
-        pending: 'Aucune commande en attente de traitement.',
-        accepted: 'Toutes les commandes sont en cours de préparation.',
-        ready: 'Aucune commande prête pour le moment.',
-        delivered: 'Aucune commande livrée récemment.',
-        cancelled: 'Aucune commande annulée.'
-      }
-      return messages[filter] || messages.all
-    }
-    
-    // Actions
-    const acceptOrder = (order) => {
-      order.status = 'accepted'
-      order.timeline.accepted = true
-      stats.value.pending--
-      stats.value.preparing++
-    }
-    
-    const markAsReady = (order) => {
-      order.status = 'ready'
-      order.timeline.ready = true
-      stats.value.preparing--
-    }
-    
-    const markAsDelivered = (order) => {
-      order.status = 'delivered'
-      order.timeline.delivered = true
-      stats.value.delivered++
-    }
-    
-    const contactCustomer = (order) => {
-      console.log('Contacter le client:', order.customer.name)
-    }
-    
-    const viewOrderDetails = (order) => {
-      console.log('Voir détails de la commande:', order.id)
-    }
-    
-    const toggleShowAll = (order) => {
-      console.log('Afficher tous les produits de:', order.id)
-    }
-    
-    const refreshOrders = () => {
-      console.log('Actualiser les commandes')
-    }
-    
-    const exportOrders = () => {
-      console.log('Exporter les commandes')
-    }
-    
-    const confirmCancelOrder = () => {
-      const order = orders.value.find(o => o.id === showCancelModal.value)
-      if (order) {
-        order.status = 'cancelled'
-        stats.value.pending--
-        showCancelModal.value = null
-        cancelReason.value = ''
-      }
-    }
-    
-    // Animations
-    const beforeStaggerEnter = (el) => {
-      el.style.opacity = 0
-      el.style.transform = 'translateY(20px) scale(0.95)'
-    }
-    
-    const staggerEnter = (el, done) => {
-      gsap.to(el, {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 0.6,
-        delay: el.dataset.index * 0.1,
-        ease: 'back.out(1.7)',
-        onComplete: done
-      })
-    }
-    
-    onMounted(() => {
-      // Initialiser les animations
-      document.querySelectorAll('.animate-fade-in-up').forEach((el, index) => {
-        el.style.animationDelay = `${index * 50}ms`
-      })
-    })
-    
-    return {
-      activeFilter,
-      showCancelModal,
-      cancelReason,
-      stats,
-      filters,
-      orders,
-      filteredOrders,
-      getStatusClass,
-      getStatusText,
-      formatTime,
-      getEmptyStateMessage,
-      acceptOrder,
-      markAsReady,
-      markAsDelivered,
-      contactCustomer,
-      viewOrderDetails,
-      toggleShowAll,
-      refreshOrders,
-      exportOrders,
-      confirmCancelOrder,
-      beforeStaggerEnter,
-      staggerEnter
-    }
+const router = useRouter()
+const ordersStore = useOrdersStore()
+
+const activeFilter = ref('all')
+const showCancelModal = ref<string | number | null>(null)
+const cancelReason = ref('')
+
+const stats = ref({
+  today: 0,
+  pending: 0,
+  preparing: 0,
+  delivered: 0
+})
+
+const filters = ref([
+  { id: 'all', label: 'Toutes', icon: 'fas fa-list', count: null as number | null },
+  { id: 'pending', label: 'En attente', icon: 'far fa-clock', count: 0 },
+  { id: 'accepted', label: 'Acceptées', icon: 'fas fa-check-circle', count: 0 },
+  { id: 'ready', label: 'Prêtes', icon: 'fas fa-box', count: 0 },
+  { id: 'delivered', label: 'Livrées', icon: 'fas fa-truck', count: 0 },
+  { id: 'cancelled', label: 'Annulées', icon: 'fas fa-times-circle', count: 0 }
+])
+
+type UiOrder = {
+  id: string | number
+  time: string
+  status: 'pending' | 'accepted' | 'ready' | 'delivered' | 'cancelled'
+  customer: { name: string; avatar: string | null }
+  distance: string
+  items: Array<{ id: string | number; name: string; variant: string; quantity: number; total: number; image: string }>
+  total: number
+  deliveryType: string
+  timeline: { ordered: boolean; accepted: boolean; ready: boolean; delivered: boolean }
+}
+
+const orders = ref<UiOrder[]>([])
+
+const mapBackendStatusToUi = (status: string): UiOrder['status'] => {
+  if (status === 'confirmed' || status === 'preparing') return 'accepted'
+  if (status === 'ready') return 'ready'
+  if (status === 'completed') return 'delivered'
+  if (status === 'cancelled') return 'cancelled'
+  return 'pending'
+}
+
+const buildTimeline = (status: UiOrder['status']) => ({
+  ordered: true,
+  accepted: status === 'accepted' || status === 'ready' || status === 'delivered',
+  ready: status === 'ready' || status === 'delivered',
+  delivered: status === 'delivered'
+})
+
+const mapOrder = (order: any): UiOrder => {
+  const status = mapBackendStatusToUi(order?.status || '')
+  const items = Array.isArray(order?.items)
+    ? order.items.map((item: any, idx: number) => ({
+        id: item?.id ?? `${order?.id ?? 'order'}-${idx}`,
+        name: item?.productSnapshot?.name || item?.product?.name || 'Produit',
+        variant: item?.productSnapshot?.unit || 'Unité',
+        quantity: Number(item?.quantity || 0),
+        total: Number(item?.subtotal || 0),
+        image: item?.productSnapshot?.images?.[0] || item?.product?.images?.[0] || ''
+      }))
+    : []
+
+  return {
+    id: order?.id ?? order?.orderNumber ?? `ORD-${Date.now()}`,
+    time: order?.createdAt || new Date().toISOString(),
+    status,
+    customer: {
+      name: order?.customer?.name || 'Client',
+      avatar: null
+    },
+    distance: order?.deliveryAddress?.city ? `${order.deliveryAddress.city}, Cameroun` : 'Cameroun',
+    items,
+    total: Number(order?.totalAmount || 0),
+    deliveryType: order?.deliveryType === 'pickup' ? 'Retrait' : 'Livraison',
+    timeline: buildTimeline(status)
   }
 }
+
+const refreshStatsAndCounts = () => {
+  const todayIso = new Date().toISOString().slice(0, 10)
+  const pending = orders.value.filter(o => o.status === 'pending').length
+  const accepted = orders.value.filter(o => o.status === 'accepted').length
+  const ready = orders.value.filter(o => o.status === 'ready').length
+  const delivered = orders.value.filter(o => o.status === 'delivered').length
+  const cancelled = orders.value.filter(o => o.status === 'cancelled').length
+  const today = orders.value.filter(o => (o.time || '').slice(0, 10) === todayIso).length
+
+  stats.value = {
+    today,
+    pending,
+    preparing: accepted,
+    delivered
+  }
+
+  filters.value = filters.value.map((filter) => {
+    if (filter.id === 'all') return { ...filter, count: null }
+    if (filter.id === 'pending') return { ...filter, count: pending }
+    if (filter.id === 'accepted') return { ...filter, count: accepted }
+    if (filter.id === 'ready') return { ...filter, count: ready }
+    if (filter.id === 'delivered') return { ...filter, count: delivered }
+    if (filter.id === 'cancelled') return { ...filter, count: cancelled }
+    return filter
+  })
+}
+
+const loadProducerOrders = async () => {
+  try {
+    await ordersStore.fetchProducerOrders({ limit: 100 })
+    orders.value = (ordersStore.producerOrders || []).map(mapOrder)
+  } catch (error) {
+    console.error('Erreur chargement commandes producteur:', error)
+    orders.value = []
+  } finally {
+    refreshStatsAndCounts()
+  }
+}
+
+const filteredOrders = computed(() => {
+  if (activeFilter.value === 'all') return orders.value
+  return orders.value.filter(order => order.status === activeFilter.value)
+})
+
+const getStatusClass = (status: UiOrder['status']) => {
+  const classes: Record<UiOrder['status'], string> = {
+    pending: 'bg-warning-light text-warning-dark',
+    accepted: 'bg-info-light text-info-dark',
+    ready: 'bg-success-light text-success-dark',
+    delivered: 'bg-forest-green/10 text-forest-green',
+    cancelled: 'bg-error-light text-error-dark'
+  }
+  return classes[status] || 'bg-gray-100 text-gray-800'
+}
+
+const getStatusText = (status: UiOrder['status']) => {
+  const texts: Record<UiOrder['status'], string> = {
+    pending: 'En attente',
+    accepted: 'Acceptée',
+    ready: 'Prête',
+    delivered: 'Livrée',
+    cancelled: 'Annulée'
+  }
+  return texts[status] || status
+}
+
+const formatTime = (dateString: string) => {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60))
+
+  if (diffHours < 1) {
+    const diffMinutes = Math.max(1, Math.floor((now.getTime() - date.getTime()) / (1000 * 60)))
+    return `Il y a ${diffMinutes} min`
+  }
+  if (diffHours < 24) {
+    return `Il y a ${diffHours} h`
+  }
+  return date.toLocaleDateString('fr-CM', {
+    day: 'numeric',
+    month: 'short'
+  })
+}
+
+const formatXaf = (amount: number) => {
+  return new Intl.NumberFormat('fr-CM', {
+    style: 'currency',
+    currency: 'XAF',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(Number(amount || 0))
+}
+
+const getEmptyStateMessage = (filter: string) => {
+  const messages: Record<string, string> = {
+    all: 'Aucune commande n\'a été passée pour le moment.',
+    pending: 'Aucune commande en attente de traitement.',
+    accepted: 'Aucune commande confirmée en cours.',
+    ready: 'Aucune commande prête pour le moment.',
+    delivered: 'Aucune commande livrée récemment.',
+    cancelled: 'Aucune commande annulée.'
+  }
+  return messages[filter] || messages.all
+}
+
+const acceptOrder = async (order: UiOrder) => {
+  order.status = 'accepted'
+  order.timeline = buildTimeline(order.status)
+  refreshStatsAndCounts()
+  try {
+    await ordersStore.updateOrderStatus(order.id, 'confirmed' as any)
+  } catch (error) {
+    console.error('Impossible de confirmer la commande:', error)
+  }
+}
+
+const markAsReady = async (order: UiOrder) => {
+  order.status = 'ready'
+  order.timeline = buildTimeline(order.status)
+  refreshStatsAndCounts()
+  try {
+    await ordersStore.updateOrderStatus(order.id, 'ready' as any)
+  } catch (error) {
+    console.error('Impossible de marquer la commande prête:', error)
+  }
+}
+
+const markAsDelivered = async (order: UiOrder) => {
+  order.status = 'delivered'
+  order.timeline = buildTimeline(order.status)
+  refreshStatsAndCounts()
+  try {
+    await ordersStore.updateOrderStatus(order.id, 'completed' as any)
+  } catch (error) {
+    console.error('Impossible de clôturer la commande:', error)
+  }
+}
+
+const contactCustomer = (order: UiOrder) => {
+  console.log('Contacter le client:', order.customer.name)
+}
+
+const viewOrderDetails = (order: UiOrder) => {
+  router.push(`/producer/orders/${order.id}`)
+}
+
+const toggleShowAll = (order: UiOrder) => {
+  console.log('Afficher tous les produits de:', order.id)
+}
+
+const refreshOrders = () => {
+  void loadProducerOrders()
+}
+
+const exportOrders = () => {
+  const rows = orders.value.map((order) => ({
+    order_id: order.id,
+    status: order.status,
+    total_xaf: order.total,
+    delivery_type: order.deliveryType,
+    created_at: order.time
+  }))
+  console.log('Export commandes (CSV/JSON):', rows)
+}
+
+const confirmCancelOrder = async () => {
+  const order = orders.value.find(o => o.id === showCancelModal.value)
+  if (!order) return
+  order.status = 'cancelled'
+  order.timeline = buildTimeline(order.status)
+  refreshStatsAndCounts()
+  try {
+    await ordersStore.cancelOrder(order.id, cancelReason.value || undefined)
+  } catch (error) {
+    console.error('Impossible d\'annuler la commande:', error)
+  } finally {
+    showCancelModal.value = null
+    cancelReason.value = ''
+  }
+}
+
+const beforeStaggerEnter = (el: any) => {
+  el.style.opacity = 0
+  el.style.transform = 'translateY(20px) scale(0.95)'
+}
+
+const staggerEnter = (el: any, done: any) => {
+  const delayMs = Number(el?.dataset?.index || 0) * 100
+  window.setTimeout(() => {
+    el.style.transition = 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
+    el.style.opacity = '1'
+    el.style.transform = 'translateY(0) scale(1)'
+    window.setTimeout(() => done(), 460)
+  }, delayMs)
+}
+
+onMounted(() => {
+  document.querySelectorAll('.animate-fade-in-up').forEach((el, index) => {
+    ;(el as HTMLElement).style.animationDelay = `${index * 50}ms`
+  })
+  void loadProducerOrders()
+})
 </script>
 
 <style scoped>
@@ -739,27 +771,25 @@ export default {
 }
 
 /* Styles spécifiques pour les couleurs */
-:deep() {
-  .bg-forest-green { background-color: #2E7D32; }
-  .text-forest-green { color: #2E7D32; }
-  .bg-soft-green { background-color: #A5D6A7; }
-  .text-soft-green { color: #A5D6A7; }
-  .bg-cream-light { background-color: #FFF8E1; }
-  .text-cream-light { color: #FFF8E1; }
-  .bg-earth-brown { background-color: #A1887F; }
-  .text-earth-brown { color: #A1887F; }
-  .text-nature-gray { color: #666; }
-  
-  /* Status colors */
-  .bg-success-light { background-color: #C8E6C9; }
-  .text-success-dark { color: #2E7D32; }
-  .bg-warning-light { background-color: #FFF9C4; }
-  .text-warning-dark { color: #F57F17; }
-  .bg-info-light { background-color: #B3E5FC; }
-  .text-info-dark { color: #0288D1; }
-  .bg-error-light { background-color: #FFCDD2; }
-  .text-error-dark { color: #C62828; }
-}
+.bg-forest-green { background-color: #2E7D32; }
+.text-forest-green { color: #2E7D32; }
+.bg-soft-green { background-color: #A5D6A7; }
+.text-soft-green { color: #A5D6A7; }
+.bg-cream-light { background-color: #FFF8E1; }
+.text-cream-light { color: #FFF8E1; }
+.bg-earth-brown { background-color: #A1887F; }
+.text-earth-brown { color: #A1887F; }
+.text-nature-gray { color: #666; }
+
+/* Status colors */
+.bg-success-light { background-color: #C8E6C9; }
+.text-success-dark { color: #2E7D32; }
+.bg-warning-light { background-color: #FFF9C4; }
+.text-warning-dark { color: #F57F17; }
+.bg-info-light { background-color: #B3E5FC; }
+.text-info-dark { color: #0288D1; }
+.bg-error-light { background-color: #FFCDD2; }
+.text-error-dark { color: #C62828; }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
@@ -780,3 +810,4 @@ export default {
   background: #2E7D32;
 }
 </style>
+

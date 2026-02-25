@@ -1172,33 +1172,6 @@ export interface ProductFormComponentProps {
 }
 
 // ============================================
-// Types pour les tests
-// ============================================
-
-/**
- * Données de test pour un produit
- */
-export interface TestProduct {
-    id: string;
-    name: string;
-    sku: string;
-    price: number;
-    stock_quantity: number;
-    category_id?: string;
-    is_active: boolean;
-}
-
-/**
- * Configuration des tests de produits
- */
-export interface ProductTestConfig {
-    create_mock_products: (count: number) => TestProduct[];
-    create_mock_product_with_variants: (variantCount: number) => TestProduct & { variants: any[] };
-    validate_product_structure: (product: Product) => boolean;
-    validate_product_form: (formData: ProductFormData) => string[];
-}
-
-// ============================================
 // Types pour les endpoints spécifiques
 // ============================================
 

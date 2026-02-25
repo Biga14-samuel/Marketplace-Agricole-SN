@@ -4,6 +4,16 @@ import type {
     CreateCategoryRequest, UpdateCategoryRequest
 } from '../api/categories.api';
 
+const slugifyCategory = (value: string): string =>
+    (
+        value
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'categorie'
+    );
+
 export class Category {
     id: string;
     name: string;
@@ -53,21 +63,31 @@ export class Category {
 
     // Convertir en format de requête pour l'API (création)
     toCreateRequest(): CreateCategoryRequest {
+        const slugValue = slugifyCategory(this.slug || this.name);
         return {
             name: this.name,
+            slug: slugValue,
             description: this.description,
+            icon: this.icon,
             parent_id: this.parent_id,
             order: this.order,
+            position: this.order,
+            is_active: this.is_active,
         };
     }
 
     // Convertir en format de requête pour l'API (mise à jour)
     toUpdateRequest(): UpdateCategoryRequest {
+        const slugValue = this.slug ? slugifyCategory(this.slug) : undefined;
         return {
             name: this.name,
+            slug: slugValue,
             description: this.description,
+            icon: this.icon,
             parent_id: this.parent_id,
             order: this.order,
+            position: this.order,
+            is_active: this.is_active,
         };
     }
 
@@ -138,8 +158,9 @@ export class CategoryTree extends Category {
 
     // Factory method pour créer un arbre de catégories à partir des données de l'API
     static fromApiData(data: any): CategoryTree {
-        const children = data.children
-            ? data.children.map((child: any) => CategoryTree.fromApiData(child))
+        const rawChildren = data.children ?? data.subcategories;
+        const children = Array.isArray(rawChildren)
+            ? rawChildren.map((child: any) => CategoryTree.fromApiData(child))
             : [];
 
         return new CategoryTree({

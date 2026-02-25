@@ -124,45 +124,12 @@
             class="group relative bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 text-center hover:shadow-xl transform hover:-translate-y-2 transition-all duration-500 ease-out-expo cursor-pointer border border-gray-200">
             <div
               class="bg-gradient-to-br from-green-100 to-amber-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-500">
-              <component :is="product.icon" class="w-8 h-8 text-green-800" />
+              <div v-html="product.icon" class="w-8 h-8" style="color: #166534;"></div>
             </div>
             <h3 class="font-semibold text-gray-800 mb-2">{{ product.name }}</h3>
             <p class="text-sm text-gray-600">{{ product.description }}</p>
             <div class="mt-4 inline-block px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
               {{ product.region }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Témoignages camerounais -->
-    <section class="py-16 bg-gradient-to-r from-gray-50/40 to-amber-50/40">
-      <div class="container mx-auto px-4">
-        <h2
-          class="text-3xl md:text-4xl font-bold text-center mb-12 text-transparent bg-clip-text bg-gradient-to-r from-green-800 to-amber-800">
-          Ce que disent nos clients
-        </h2>
-        <div class="grid md:grid-cols-3 gap-8">
-          <div v-for="testimonial in testimonials" :key="testimonial.id"
-            class="bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-500 ease-out-expo border border-gray-200">
-            <div class="flex items-center mb-6">
-              <div
-                class="w-12 h-12 rounded-full bg-gradient-to-r from-green-200 to-amber-200 flex items-center justify-center">
-                <span class="text-green-900 font-bold">{{ testimonial.initials }}</span>
-              </div>
-              <div class="ml-4">
-                <h4 class="font-semibold text-gray-800">{{ testimonial.name }}</h4>
-                <p class="text-sm text-gray-600">{{ testimonial.role }}</p>
-                <p class="text-xs text-gray-500">{{ testimonial.location }}</p>
-              </div>
-            </div>
-            <p class="text-gray-700 italic">"{{ testimonial.comment }}"</p>
-            <div class="flex mt-4 text-amber-500">
-              <svg v-for="star in 5" :key="star" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
             </div>
           </div>
         </div>
@@ -186,7 +153,7 @@
               class="bg-gradient-to-b from-gray-50 to-white rounded-2xl p-8 pt-12 border-t-4 border-green-700 shadow-lg">
               <div
                 class="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mx-auto mb-6 border border-gray-200">
-                <component :is="step.icon" class="w-8 h-8 text-green-800" />
+                <div v-html="step.icon" class="w-8 h-8" style="color: #166534;"></div>
               </div>
               <h3 class="text-xl font-semibold mb-4 text-gray-800">{{ step.title }}</h3>
               <p class="text-gray-600">{{ step.description }}</p>
@@ -231,57 +198,45 @@ const featuredProducts = ref([
     name: 'Plantain',
     description: 'Banane plantain fraîche',
     region: 'Ouest',
-    icon: 'PlantainIcon'
+    icon: `<svg fill="currentColor" viewBox="0 0 24 24" width="100%" height="100%">
+      <path d="M12 2C10.5 2 9 3 9 5v1c0 1.5-.5 2-2 2H6c-1 0-2 1-2 2v8c0 1 1 2 2 2h1c1.5 0 2 .5 2 2v1c0 2 1.5 3 3 3s3-1 3-3v-1c0-1.5.5-2 2-2h1c1 0 2-1 2-2v-8c0-1-1-2-2-2h-1c-1.5 0-2-.5-2-2V5c0-2-1.5-3-3-3zm0 2c.5 0 1 .5 1 1v1c0 2 1 3 3 3h1v8h-1c-2 0-3 1-3 3v1c0 .5-.5 1-1 1s-1-.5-1-1v-1c0-2-1-3-3-3H6v-8h1c2 0 3-1 3-3V5c0-.5.5-1 1-1z"/>
+    </svg>`
   },
   {
     id: 2,
     name: 'Cacao',
     description: 'Fèves de cacao premium',
     region: 'Sud',
-    icon: 'CocoaIcon'
+    icon: `<svg fill="currentColor" viewBox="0 0 24 24" width="100%" height="100%">
+      <circle cx="12" cy="12" r="2"/>
+      <circle cx="8" cy="10" r="1.5"/>
+      <circle cx="16" cy="10" r="1.5"/>
+      <circle cx="10" cy="15" r="1.5"/>
+      <circle cx="14" cy="15" r="1.5"/>
+      <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8z"/>
+    </svg>`
   },
   {
     id: 3,
     name: 'Café Arabica',
     description: 'Café de montagne',
     region: 'Ouest',
-    icon: 'CoffeeIcon'
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="100%" height="100%">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13h14M5 13c0 3.866 3.134 7 7 7s7-3.134 7-7M5 13V9a2 2 0 012-2h10a2 2 0 012 2v4M8 20h8"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 9h2a2 2 0 012 2v1a2 2 0 01-2 2h-2"/>
+    </svg>`
   },
   {
     id: 4,
     name: 'Huile de Palme',
     description: 'Huile rouge naturelle',
     region: 'Littoral',
-    icon: 'PalmOilIcon'
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="100%" height="100%">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 2v20M12 2L8 6m4-4l4 4M12 22l-4-4m4 4l4-4"/>
+      <ellipse cx="12" cy="12" rx="3" ry="8" stroke-width="1.5"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 8c-1-1-2-1-3 0M15 8c1-1 2-1 3 0M9 16c-1 1-2 1-3 0M15 16c1 1 2 1 3 0"/>
+    </svg>`
   },
-])
-
-// Témoignages camerounais
-const testimonials = ref([
-  {
-    id: 1,
-    name: 'Mballa Ladouce',
-    role: 'Restauratrice',
-    location: 'Douala',
-    initials: 'ML',
-    comment: 'La qualité des produits est exceptionnelle. Mes clients adorent la fraîcheur des légumes !'
-  },
-  {
-    id: 2,
-    name: 'Frank Yomi',
-    role: 'Agriculteur',
-    location: 'Bafoussam',
-    initials: 'FY',
-    comment: 'MarketFraîche m\'a permis d\'écouler ma production directement aux consommateurs.'
-  },
-  {
-    id: 3,
-    name: 'Hermine Honglah',
-    role: 'Ménagère',
-    location: 'Yaoundé',
-    initials: 'HH',
-    comment: 'Je fais toutes mes courses ici. Les prix sont justes et les produits sont frais.'
-  }
 ])
 
 // Étapes du fonctionnement
@@ -289,78 +244,29 @@ const steps = ref([
   {
     title: 'Choisissez vos produits',
     description: 'Parcourez notre catalogue et sélectionnez les produits bios de votre région.',
-    icon: 'SearchIcon'
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="100%" height="100%">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>`
   },
   {
     title: 'Commandez en ligne',
     description: 'Validez votre panier en quelques clics. Livraison ou retrait chez le producteur.',
-    icon: 'CartIcon'
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="100%" height="100%">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>`
   },
   {
     title: 'Recevez et dégustez',
     description: 'Profitez de produits ultra-frais livrés directement de la ferme à votre table.',
-    icon: 'DeliveryIcon'
+    icon: `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="100%" height="100%">
+      <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+    </svg>`
   }
 ])
 
-// Icônes SVG inline pour produits camerounais
-const PlantainIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-    </svg>
-  `
-}
-
-const CocoaIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
-  `
-}
-
-const CoffeeIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-    </svg>
-  `
-}
-
-const PalmOilIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-      <circle cx="12" cy="10" r="3" stroke-width="1.5" />
-    </svg>
-  `
-}
-
-const SearchIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-    </svg>
-  `
-}
-
-const CartIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-  `
-}
-
-const DeliveryIcon = {
-  template: `
-    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-    </svg>
-  `
-}
+// ⚠️ DEPRECATED: Anciens composants icônes (non utilisés)
+// Conservés pour référence mais remplacés par du SVG inline
 </script>
 
 <style scoped>

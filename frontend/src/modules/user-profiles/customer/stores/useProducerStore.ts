@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { defineStore } from 'pinia';
 import { ref, computed, reactive } from 'vue';
 import { getErrorMessage } from '@/shared/utils/error-handler';

@@ -179,7 +179,7 @@ export class CameroonPaymentUtils {
             maxAmount: 500000,
             feesPercentage: 0.3,
             processingTime: 'Instantané',
-            supportedCurrencies: ['XAF', 'EUR', 'USD']
+            supportedCurrencies: ['XAF']
         },
         {
             method: PaymentMethod.CINETPAY,
@@ -191,7 +191,7 @@ export class CameroonPaymentUtils {
             maxAmount: 2000000,
             feesPercentage: 1.0,
             processingTime: '2-5 minutes',
-            supportedCurrencies: ['XAF', 'XOF', 'EUR', 'USD']
+            supportedCurrencies: ['XAF']
         },
         {
             method: PaymentMethod.BANK_TRANSFER,
@@ -203,7 +203,7 @@ export class CameroonPaymentUtils {
             maxAmount: 10000000,
             feesPercentage: 0.1,
             processingTime: '24-48 heures',
-            supportedCurrencies: ['XAF', 'EUR', 'USD']
+            supportedCurrencies: ['XAF']
         },
         {
             method: PaymentMethod.CREDIT_CARD,
@@ -215,7 +215,7 @@ export class CameroonPaymentUtils {
             maxAmount: 5000000,
             feesPercentage: 2.0,
             processingTime: 'Instantané',
-            supportedCurrencies: ['XAF', 'EUR', 'USD']
+            supportedCurrencies: ['XAF']
         }
     ];
 
@@ -701,45 +701,4 @@ export function generatePaymentRef(prefix?: string): string {
 export function calculateFees(amount: number, method: PaymentMethod) {
     const utils = new CameroonPaymentUtils();
     return utils.calculateTransactionFees(amount, method);
-}
-
-// Exemple d'utilisation
-export function demonstratePaymentUtils(): void {
-    const paymentUtils = new CameroonPaymentUtils();
-
-    console.log('=== Validation numéros de téléphone ===');
-
-    const testNumbers = ['677123456', '237677123456', '771234567', '651234567', '123456789'];
-
-    testNumbers.forEach(phone => {
-        const validation = paymentUtils.validatePhoneNumber(phone);
-        console.log(`${phone}: ${validation.isValid ? `Valid (${validation.operator})` : 'Invalid'}`);
-    });
-
-    console.log('\n=== Calcul des frais de transaction ===');
-
-    const testAmounts = [5000, 25000, 100000, 500000];
-
-    testAmounts.forEach(amount => {
-        const fees = paymentUtils.calculateTransactionFees(amount, PaymentMethod.MTN_MOBILE_MONEY);
-        console.log(`${formatAsXAF(amount)}: Frais = ${formatAsXAF(fees.fees)}, Net = ${formatAsXAF(fees.netAmount)}`);
-    });
-
-    console.log('\n=== Méthodes de paiement disponibles ===');
-
-    const methods = paymentUtils.getAllPaymentMethods();
-    methods.forEach(method => {
-        console.log(`${method.name}: ${method.description}`);
-        console.log(`  Montant: ${formatAsXAF(method.minAmount)} - ${formatAsXAF(method.maxAmount)}`);
-        console.log(`  Frais: ${method.feesPercentage}%, Délai: ${method.processingTime}`);
-    });
-
-    console.log('\n=== Génération référence de paiement ===');
-    console.log(`Référence: ${paymentUtils.generatePaymentReference()}`);
-    console.log(`Référence: ${paymentUtils.generatePaymentReference('INV')}`);
-}
-
-// Exécuter la démonstration si le fichier est exécuté directement
-if (require.main === module) {
-    demonstratePaymentUtils();
 }

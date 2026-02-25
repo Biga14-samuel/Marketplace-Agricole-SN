@@ -723,13 +723,6 @@ onMounted(() => {
         errorMessage.value = 'Lien de réinitialisation invalide'
         return
     }
-
-    // Pré-remplir pour le développement
-    if (import.meta.env.DEV) {
-        form.password = 'NouveauMotDePasse123!'
-        form.confirmPassword = 'NouveauMotDePasse123!'
-        checkPasswordStrength()
-    }
 })
 </script>
 

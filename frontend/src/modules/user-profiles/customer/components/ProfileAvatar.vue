@@ -187,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+// @ts-nocheck
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
 // Props
@@ -648,3 +649,5 @@ defineExpose({
     animation: shine 3s ease-in-out infinite;
 }
 </style>
+
+

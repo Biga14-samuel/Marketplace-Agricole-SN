@@ -1,6 +1,7 @@
 // @ts-nocheck
 // frontend/src/modules/payments/services/paymentMethodService.ts
-import axios, { AxiosResponse } from 'axios'
+import axios from 'axios'
+import type { AxiosResponse } from 'axios'
 import type {
     PaymentMethod,
     CreatePaymentMethodDto,
@@ -14,7 +15,7 @@ import type {
 } from '../types/payment-method.types'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { formatCurrencyXAF } from '../utils/currencyFormatter'
-import { PAYMENT_METHODS, PAYMENT_METHOD_STATUS } from '../constants/payment.constants'
+import { PAYMENT_METHODS } from '../constants/payment.constants'
 import { validatePhoneNumber } from '../utils/paymentValidators'
 
 // Client axios partagé
@@ -614,8 +615,8 @@ class PaymentMethodService {
             createdAt: new Date(method.createdAt),
             updatedAt: new Date(method.updatedAt),
             lastUsedAt: method.lastUsedAt ? new Date(method.lastUsedAt) : undefined,
-            status: method.status as PAYMENT_METHOD_STATUS,
-            type: method.type as PAYMENT_METHODS
+            status: method.status,
+            type: method.type
         }
     }
 

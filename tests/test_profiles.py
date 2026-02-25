@@ -103,8 +103,8 @@ class TestCustomerProfile:
         Vérifie que l'utilisateur peut modifier ses informations.
         """
         update_data = {
-            "first_name": "Jean-Updated",
-            "last_name": "Dupont-Updated",
+            "first_name": "Aubin-Updated",
+            "last_name": "Biga-Updated",
             "preferences": {"notifications": False}
         }
         

@@ -109,3 +109,4 @@ const getStockStatus = (item: InventoryItem) => {
   @apply bg-gray-50 rounded-lg p-4;
 }
 </style>
+

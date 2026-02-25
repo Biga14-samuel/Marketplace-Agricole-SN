@@ -874,41 +874,30 @@ const getComparisonValue = (row: any, variant: any) => {
 
 const isBestInRow = (row: any, variant: any) => {
   if (!comparedVariants.value.length) return false
-  
-  const values = comparedVariants.value.map(v => {
-    const val = getComparisonValue(row, v)
-    if (row.key === 'price' || row.key === 'price_modifier') {
-      const num = parseFloat(val.replace(/[^0-9.-]+/g, ''))
-      return isNaN(num) ? Infinity : num
-    }
-    if (row.key === 'stock' || row.key === 'value') {
-      const num = parseFloat(val.replace(/[^0-9.-]+/g, ''))
-      return isNaN(num) ? 0 : num
-    }
-    return val
-  })
-  
+
+  const parseComparableNumber = (value: string, fallback: number): number => {
+    const parsed = Number.parseFloat(value.replace(/[^0-9.-]+/g, ''))
+    return Number.isNaN(parsed) ? fallback : parsed
+  }
+
   const currentValue = getComparisonValue(row, variant)
-  let currentNum = currentValue
-  
+
   if (row.key === 'price' || row.key === 'price_modifier') {
-    currentNum = parseFloat(currentValue.replace(/[^0-9.-]+/g, ''))
-    if (isNaN(currentNum)) currentNum = Infinity
-  }
-  
-  if (row.key === 'stock' || row.key === 'value') {
-    currentNum = parseFloat(currentValue.replace(/[^0-9.-]+/g, ''))
-    if (isNaN(currentNum)) currentNum = 0
-  }
-  
-  if (row.key === 'price' || row.key === 'price_modifier') {
+    const values = comparedVariants.value.map(v =>
+      parseComparableNumber(getComparisonValue(row, v), Number.POSITIVE_INFINITY)
+    )
+    const currentNum = parseComparableNumber(currentValue, Number.POSITIVE_INFINITY)
     return currentNum === Math.min(...values)
   }
-  
+
   if (row.key === 'stock' || row.key === 'value') {
+    const values = comparedVariants.value.map(v =>
+      parseComparableNumber(getComparisonValue(row, v), 0)
+    )
+    const currentNum = parseComparableNumber(currentValue, 0)
     return currentNum === Math.max(...values)
   }
-  
+
   return currentValue === 'Disponible'
 }
 
@@ -1580,3 +1569,7 @@ watch(() => props.variants, () => {
   }
 }
 </style>
+
+
+
+

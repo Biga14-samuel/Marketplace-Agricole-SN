@@ -828,36 +828,34 @@ const animateButton = (event: MouseEvent) => {
     }
 }
 
-/* Mode sombre */
-@media (prefers-color-scheme: dark) {
-    .gradient-bg {
-        background: linear-gradient(135deg,
-                #1a1a1a 0%,
-                #2d2d2d 25%,
-                #3a3a3a 50%,
-                #2d4a2d 75%,
-                #1b5e20 100%);
-    }
+/* Mode sombre piloté par le thème applicatif */
+:global(:root[data-theme='dark']) .gradient-bg {
+    background: linear-gradient(135deg,
+            #1a1a1a 0%,
+            #2d2d2d 25%,
+            #3a3a3a 50%,
+            #2d4a2d 75%,
+            #1b5e20 100%);
+}
 
-    .card {
-        background: rgba(45, 45, 45, 0.95);
-        color: #e0e0e0;
-    }
+:global(:root[data-theme='dark']) .card {
+    background: rgba(45, 45, 45, 0.95);
+    color: #e0e0e0;
+}
 
-    .card-title {
-        color: #a5d6a7;
-    }
+:global(:root[data-theme='dark']) .card-title {
+    color: #a5d6a7;
+}
 
-    .card-description {
-        color: #81c784;
-    }
+:global(:root[data-theme='dark']) .card-description {
+    color: #81c784;
+}
 
-    .advantage-item {
-        color: #bdbdbd;
-    }
+:global(:root[data-theme='dark']) .advantage-item {
+    color: #bdbdbd;
+}
 
-    .info-text {
-        color: #81c784;
-    }
+:global(:root[data-theme='dark']) .info-text {
+    color: #81c784;
 }
 </style>

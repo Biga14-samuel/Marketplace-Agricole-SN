@@ -42,15 +42,6 @@ const authRoutes: RouteRecordRaw[] = [
                 }
             },
             {
-                path: 'test-verify-email',
-                name: 'TestVerifyEmail',
-                component: () => import('../views/TestVerifyEmail.vue'),
-                meta: {
-                    title: 'Test - Vérification d\'email',
-                    description: 'Page de test pour la vérification d\'email'
-                }
-            },
-            {
                 path: 'forgot-password',
                 name: 'ForgotPassword',
                 component: () => import('../views/ForgotPasswordView.vue'),

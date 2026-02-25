@@ -1,7 +1,7 @@
 // @ts-nocheck
 // frontend/src/modules/payments/router/paymentRoutes.ts
 import type { RouteRecordRaw } from 'vue-router'
-import { PaymentStatus } from '../constants/payment.constants'
+import { PAYMENT_STATUS } from '../constants/payment.constants'
 
 /**
  * Routes pour le module de paiement
@@ -200,7 +200,7 @@ const paymentRoutes: RouteRecordRaw[] = [
                 name: 'payment-failed',
                 component: () => import('../components/PaymentStatus.vue'),
                 props: () => ({
-                    status: PaymentStatus.FAILED
+                    status: PAYMENT_STATUS.FAILED
                 }),
                 meta: {
                     requiresAuth: true,
@@ -215,7 +215,7 @@ const paymentRoutes: RouteRecordRaw[] = [
                 name: 'payment-success',
                 component: () => import('../components/PaymentStatus.vue'),
                 props: () => ({
-                    status: PaymentStatus.COMPLETED
+                    status: PAYMENT_STATUS.COMPLETED
                 }),
                 meta: {
                     requiresAuth: true,
@@ -230,7 +230,7 @@ const paymentRoutes: RouteRecordRaw[] = [
                 name: 'payment-cancelled',
                 component: () => import('../components/PaymentStatus.vue'),
                 props: () => ({
-                    status: PaymentStatus.CANCELLED
+                    status: PAYMENT_STATUS.CANCELLED
                 }),
                 meta: {
                     requiresAuth: true,
