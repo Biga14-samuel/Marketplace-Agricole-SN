@@ -17,6 +17,11 @@ from app import models
 # access to the values within the .ini file in use.
 config = context.config
 
+# Prefer DATABASE_URL when provided (e.g. Docker/CI runtime).
+database_url = os.getenv("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+
 # Interpret the config file for Python logging.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

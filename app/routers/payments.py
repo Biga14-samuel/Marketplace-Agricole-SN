@@ -10,7 +10,8 @@ from app.core.deps import get_current_user, get_current_user_optional
 from app.services.payment_service import PaymentService
 from app.models.profiles import ProducerProfile
 from app.models.orders import Order
-from app.models.payments import Payment, Invoice, PaymentMethod
+from app.models.payments import Payment, Invoice
+from app.models.auth import User
 from app.schemas.payments import (
     PaymentCreate, PaymentResponse, PaymentStats,
     PaymentMethodCreate, PaymentMethodResponse,
@@ -177,7 +178,10 @@ def initiate_payment(
             currency=payload.currency,
             provider=provider,
             transaction_id=transaction_id,
-            metadata=payload.provider
+            additional_data={
+                "provider_payload": payload.provider,
+                "source": "initiate"
+            }
         )
     )
     return PaymentInitiateResponseBody(
@@ -399,14 +403,13 @@ def create_my_payment_method(
     """
     service = PaymentService(db)
     payload = PaymentMethodCreate(
-        user_id=current_user.id,
         type=payment_method_data.type,
         last4=payment_method_data.last4,
         brand=payment_method_data.brand,
         is_default=payment_method_data.is_default,
         stripe_payment_method_id=payment_method_data.stripe_payment_method_id
     )
-    return service.create_payment_method(payload)
+    return service.create_payment_method_for_user(payload, current_user.id)
 
 
 @router.get("/methods/{method_id}", response_model=PaymentMethodResponse)

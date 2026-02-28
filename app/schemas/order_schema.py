@@ -1,8 +1,8 @@
 """
 Schémas Pydantic pour les commandes et le panier
 """
-from pydantic import BaseModel, Field, ConfigDict, model_validator
-from typing import Optional, List
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator, AliasChoices
+from typing import Optional, List, Any
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -30,8 +30,13 @@ class DeliveryType(str, Enum):
 # ============= Cart Schemas =============
 
 class CartItemBase(BaseModel):
-    product_id: int
-    variant_id: Optional[int] = None
+    model_config = ConfigDict(populate_by_name=True)
+
+    product_id: int = Field(validation_alias=AliasChoices("product_id", "productId"))
+    variant_id: Optional[int] = Field(
+        default=None,
+        validation_alias=AliasChoices("variant_id", "variantId")
+    )
     quantity: int = Field(gt=0, description="Quantité doit être positive")
 
 class CartItemCreate(CartItemBase):
@@ -44,12 +49,61 @@ class ProductSnapshot(BaseModel):
     """Snapshot du produit pour les items de commande"""
     id: int
     name: str
-    sku: str
+    sku: Optional[str] = None
     description: Optional[str] = None
     price: Decimal
     images: List[str] = []
     category: Optional[str] = None
     unit: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("images", mode="before")
+    @classmethod
+    def normalize_images(cls, value: Any) -> List[str]:
+        if value in (None, ""):
+            return []
+
+        raw_items = value if isinstance(value, (list, tuple, set)) else [value]
+        normalized: List[str] = []
+
+        for item in raw_items:
+            if isinstance(item, str):
+                normalized.append(item)
+                continue
+            if isinstance(item, dict):
+                url = item.get("url") or item.get("path")
+                if url:
+                    normalized.append(str(url))
+                continue
+
+            url = getattr(item, "url", None)
+            if url:
+                normalized.append(str(url))
+
+        return normalized
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def normalize_category(cls, value: Any) -> Optional[str]:
+        if value is None or isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            name = value.get("name")
+            return str(name) if name is not None else None
+        name = getattr(value, "name", None)
+        return str(name) if name is not None else None
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def normalize_unit(cls, value: Any) -> Optional[str]:
+        if value is None or isinstance(value, str):
+            return value
+        if isinstance(value, dict):
+            label = value.get("abbreviation") or value.get("name")
+            return str(label) if label is not None else None
+        label = getattr(value, "abbreviation", None) or getattr(value, "name", None)
+        return str(label) if label is not None else None
 
 class CartItemResponse(BaseModel):
     id: int

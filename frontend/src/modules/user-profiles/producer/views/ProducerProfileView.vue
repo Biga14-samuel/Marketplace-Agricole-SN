@@ -299,6 +299,25 @@
                             </div>
                             <div class="p-6">
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <!-- Nom de l'exploitation -->
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-forest-700 mb-2">
+                                            <span class="inline-flex items-center space-x-1">
+                                                <span>🏪</span>
+                                                <span>Nom de l'exploitation *</span>
+                                            </span>
+                                        </label>
+                                        <div v-if="!isEditMode"
+                                            class="p-3 bg-forest-50 rounded-lg border border-forest-100">
+                                            <div class="text-forest-800">
+                                                {{ profile.business_name || 'Nom non renseigné' }}
+                                            </div>
+                                        </div>
+                                        <input v-else v-model="editableProfile.business_name" type="text"
+                                            class="w-full px-4 py-3 border border-forest-200 rounded-lg focus:ring-2 focus:ring-forest-500 focus:border-transparent transition-all duration-200"
+                                            placeholder="Ex: Ferme du Soleil Levant" />
+                                    </div>
+
                                     <!-- Type de production -->
                                     <div>
                                         <label class="block text-sm font-medium text-forest-700 mb-2">
@@ -699,7 +718,7 @@
                                 <div class="text-xs text-terracotta-600 mt-1">
                                     Formats supportés : PDF, JPG, PNG (max selon backend)
                                 </div>
-                                <button @click="triggerDocumentSelection"
+                                <button type="button" @click="triggerDocumentSelection"
                                     class="mt-3 px-4 py-2 bg-forest-100 text-forest-700 rounded-lg hover:bg-forest-200 transition-all duration-300 ease-organic">
                                     Choisir un fichier
                                 </button>
@@ -708,11 +727,11 @@
                     </div>
 
                     <div class="flex justify-end gap-3 mt-6 pt-6 border-t border-forest-100">
-                        <button @click="closeDocumentModal"
+                        <button type="button" @click="closeDocumentModal"
                             class="px-4 py-2 text-forest-700 hover:bg-forest-50 rounded-lg transition-all duration-300 ease-organic">
                             Annuler
                         </button>
-                        <button @click="submitDocumentModal"
+                        <button type="button" @click="submitDocumentModal"
                             class="px-5 py-2 bg-gradient-to-r from-forest-500 to-forest-600 text-white rounded-lg hover:shadow-md transition-all duration-300 ease-organic">
                             Téléverser
                         </button>
@@ -1001,15 +1020,6 @@ const showToast = (title: string, description: string) => {
     }, 3000)
 }
 
-const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result || ''))
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-    })
-}
-
 const clearFileInput = (inputRef: HTMLInputElement | null) => {
     if (inputRef) inputRef.value = ''
 }
@@ -1046,24 +1056,62 @@ const cancelEditMode = () => {
 
 const saveProfile = async () => {
     try {
-        if (!editableProfile.business_name.trim()) {
+        const normalizedBusinessName = editableProfile.business_name.trim()
+        if (normalizedBusinessName.length < 2) {
             showToast('Champ requis', 'Le nom de l’exploitation est obligatoire.')
             return
         }
 
         const payload: any = {
-            business_name: editableProfile.business_name,
-            bio: editableProfile.bio,
-            certifications: editableProfile.certifications,
-            siret: editableProfile.siret,
-            tva_number: editableProfile.tva_number,
-            iban: editableProfile.iban,
-            farm_size: editableProfile.farm_size,
-            production_type: editableProfile.production_type
-                ? [editableProfile.production_type]
-                : undefined,
-            avatar: editableProfile.avatar || undefined,
-            cover_image: editableProfile.banner_url || undefined
+            business_name: normalizedBusinessName
+        }
+
+        const normalizedBio = editableProfile.bio?.trim() || ''
+        payload.bio = normalizedBio || null
+
+        const normalizedCertifications = (editableProfile.certifications || [])
+            .map(cert => String(cert || '').trim())
+            .filter(Boolean)
+        payload.certifications = normalizedCertifications.length > 0 ? normalizedCertifications : null
+
+        const normalizedSiret = String(editableProfile.siret || '')
+            .replace(/\s+/g, '')
+            .trim()
+        if (normalizedSiret && !/^\d{9}(\d{5})?$/.test(normalizedSiret)) {
+            showToast('SIRET invalide', 'Le SIRET doit contenir 9 ou 14 chiffres.')
+            return
+        }
+        payload.siret = normalizedSiret || null
+
+        const normalizedTva = String(editableProfile.tva_number || '')
+            .replace(/\s+/g, '')
+            .trim()
+            .toUpperCase()
+        payload.tva_number = normalizedTva || null
+
+        const normalizedIban = String(editableProfile.iban || '')
+            .replace(/\s+/g, '')
+            .trim()
+            .toUpperCase()
+        if (normalizedIban && (normalizedIban.length < 15 || normalizedIban.length > 34)) {
+            showToast('IBAN invalide', 'L’IBAN doit contenir entre 15 et 34 caractères.')
+            return
+        }
+        payload.iban = normalizedIban || null
+
+        payload.farm_size = Number.isFinite(editableProfile.farm_size) && editableProfile.farm_size > 0
+            ? editableProfile.farm_size
+            : null
+
+        const normalizedProductionType = editableProfile.production_type?.trim()
+        payload.production_type = normalizedProductionType ? [normalizedProductionType] : null
+
+        // Images de profil / couverture: champs backend uniquement.
+        if (editableProfile.avatar) {
+            payload.avatar = editableProfile.avatar
+        }
+        if (editableProfile.banner_url) {
+            payload.cover_image = editableProfile.banner_url
         }
 
         if (store.profile) {
@@ -1122,14 +1170,18 @@ const onAvatarFileSelected = async (event: Event) => {
     if (!file) return
 
     try {
-        const base64 = await fileToBase64(file)
-        profile.avatar = base64
-        editableProfile.avatar = base64
-
-        if (store.profile) {
-            await store.updateProfile({ avatar: base64 } as any)
-            await refreshData()
+        if (!file.type.startsWith('image/')) {
+            showToast('Format invalide', 'Veuillez sélectionner un fichier image (JPG, PNG, WEBP, GIF).')
+            return
         }
+        if (file.size > 8 * 1024 * 1024) {
+            showToast('Image trop volumineuse', 'La taille maximale autorisée est de 8MB.')
+            return
+        }
+
+        await ensureProducerProfile()
+        const updatedProfile = await store.uploadAvatar(file)
+        applyRemoteProfile(updatedProfile as any)
 
         showToast('Photo mise à jour', 'La photo de profil a été appliquée.')
     } catch (error: unknown) {
@@ -1145,14 +1197,18 @@ const onCoverFileSelected = async (event: Event) => {
     if (!file) return
 
     try {
-        const base64 = await fileToBase64(file)
-        profile.banner_url = base64
-        editableProfile.banner_url = base64
-
-        if (store.profile) {
-            await store.updateProfile({ cover_image: base64 } as any)
-            await refreshData()
+        if (!file.type.startsWith('image/')) {
+            showToast('Format invalide', 'Veuillez sélectionner un fichier image (JPG, PNG, WEBP, GIF).')
+            return
         }
+        if (file.size > 8 * 1024 * 1024) {
+            showToast('Image trop volumineuse', 'La taille maximale autorisée est de 8MB.')
+            return
+        }
+
+        await ensureProducerProfile()
+        const updatedProfile = await store.uploadCoverImage(file)
+        applyRemoteProfile(updatedProfile as any)
 
         showToast('Couverture mise à jour', 'La photo de couverture a été appliquée.')
     } catch (error: unknown) {
@@ -1204,6 +1260,35 @@ const resetDocumentModal = () => {
     documentForm.file = null
 }
 
+const resolveFallbackBusinessName = () => {
+    const fromEditable = editableProfile.business_name?.trim()
+    if (fromEditable && fromEditable.length >= 2) return fromEditable
+
+    const fromProfile = profile.business_name?.trim()
+    if (fromProfile && fromProfile.length >= 2) return fromProfile
+
+    return 'Mon exploitation'
+}
+
+const ensureProducerProfile = async () => {
+    if (store.profile) return
+
+    try {
+        await store.fetchProfile()
+        if (store.profile) return
+    } catch {
+        // Profil absent: création minimale pour débloquer le téléversement.
+    }
+
+    await store.createProfile({
+        business_name: resolveFallbackBusinessName(),
+        bio: (editableProfile.bio || profile.bio || '').trim()
+    } as any)
+
+    await store.fetchProfile()
+    applyRemoteProfile(store.profile as any)
+}
+
 const addDocument = () => {
     resetDocumentModal()
     showDocumentModal.value = true
@@ -1220,6 +1305,8 @@ const triggerDocumentSelection = () => {
 }
 
 const uploadSelectedDocument = async (file: File, type: SupportedDocumentType) => {
+    await ensureProducerProfile()
+
     await store.uploadDocument({
         type,
         file

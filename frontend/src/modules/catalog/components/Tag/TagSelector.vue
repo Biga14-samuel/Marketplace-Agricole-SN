@@ -99,7 +99,17 @@ const emit = defineEmits<{
 
 const tagStore = useTagStore()
 const searchQuery = ref('')
-const selectedIds = ref<string[]>([...props.modelValue])
+
+// Liste des IDs sélectionnés, reliée directement au parent via v-model
+// pour éviter les boucles de mises à jour récursives.
+const selectedIds = computed<string[]>({
+  get: () => (Array.isArray(props.modelValue) ? props.modelValue : []),
+  set: (value: string[]) => {
+    const normalized = Array.isArray(value) ? [...value] : []
+    emit('update:modelValue', normalized)
+    emit('change', normalized)
+  }
+})
 
 const filteredTags = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
@@ -123,22 +133,6 @@ const removeTag = (tagId: string) => {
   if (props.disabled) return
   selectedIds.value = selectedIds.value.filter(id => id !== tagId)
 }
-
-watch(
-  () => props.modelValue,
-  value => {
-    selectedIds.value = Array.isArray(value) ? [...value] : []
-  }
-)
-
-watch(
-  () => selectedIds.value,
-  value => {
-    emit('update:modelValue', value)
-    emit('change', value)
-  },
-  { deep: true }
-)
 
 onMounted(async () => {
   if (tagStore.tags.length === 0) {

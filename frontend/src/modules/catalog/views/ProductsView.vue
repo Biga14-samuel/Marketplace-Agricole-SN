@@ -46,11 +46,11 @@
       >
         <div class="product-image">
           <img
-            :src="product.images?.[0]?.url || '/images/placeholder.jpg'"
+            :src="getProductImage(product)"
             :alt="product.name"
           />
-          <span v-if="product.tags?.includes('bio')" class="badge bio">Bio</span>
-          <span v-if="product.tags?.includes('local')" class="badge local">Local</span>
+          <span v-if="hasTag(product, 'bio')" class="badge bio">Bio</span>
+          <span v-if="hasTag(product, 'local')" class="badge local">Local</span>
         </div>
 
         <div class="product-info">
@@ -75,9 +75,10 @@
           <button
             v-if="product.stock_quantity > 0"
             class="btn-reserve"
+            :disabled="isReserving(product.id)"
             @click.stop="reserveProduct(product)"
           >
-            Réserver
+            {{ isReserving(product.id) ? 'Réservation...' : 'Réserver' }}
           </button>
         </div>
       </div>
@@ -94,15 +95,17 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useProductStore } from '../store/modules/product.store'
 import { useCategoryStore } from '../store/modules/category.store'
+import { ordersService } from '@/modules/orders/services/orders.service'
 
 const router = useRouter()
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
 
 const searchQuery = ref('')
-const selectedCategory = ref<string | null>(null)
+const selectedCategory = ref<string | number | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const reservingById = ref<Record<string, boolean>>({})
 
 const products = computed(() => productStore.products)
 const categories = computed(() => categoryStore.categories)
@@ -120,7 +123,7 @@ const filteredProducts = computed(() => {
   }
 
   if (selectedCategory.value) {
-    result = result.filter((p) => p.category_id === selectedCategory.value)
+    result = result.filter((p: any) => String(p.category_id) === String(selectedCategory.value))
   }
 
   return result
@@ -130,17 +133,55 @@ const handleSearch = () => {
   // La recherche est réactive via computed
 }
 
-const filterByCategory = (categoryId: string) => {
+const filterByCategory = (categoryId: string | number) => {
   selectedCategory.value = selectedCategory.value === categoryId ? null : categoryId
 }
 
 const goToProduct = (productId: string) => {
-  router.push({ name: 'catalog-product-detail', params: { id: productId } })
+  router.push(`/catalog/products/${productId}`)
 }
 
-const reserveProduct = (product: any) => {
-  // TODO: Implémenter la logique de réservation
-  console.log('Réserver:', product)
+const hasTag = (product: any, slug: string): boolean => {
+  if (!Array.isArray(product?.tags)) return false
+  return product.tags.some((tag: any) => {
+    if (typeof tag === 'string') return tag === slug
+    return tag?.slug === slug || tag?.type === slug || tag?.name?.toLowerCase() === slug
+  })
+}
+
+const getProductImage = (product: any): string => {
+  if (Array.isArray(product?.images) && product.images.length > 0) {
+    const primary = product.images.find((img: any) => img?.is_primary || img?.is_main)
+    return primary?.url || product.images[0]?.url || '/images/placeholder.jpg'
+  }
+  return product?.image || '/images/placeholder.jpg'
+}
+
+const isReserving = (productId: string | number) => Boolean(reservingById.value[String(productId)])
+
+const reserveProduct = async (product: any) => {
+  const productId = product?.id
+  if (!productId || isReserving(productId)) return
+
+  const key = String(productId)
+  reservingById.value[key] = true
+  error.value = null
+
+  try {
+    const minOrder = Number(product?.min_order ?? 1)
+    const quantity = Number.isFinite(minOrder) && minOrder > 0 ? minOrder : 1
+
+    await ordersService.addToCart({
+      productId: key,
+      quantity
+    })
+
+    await router.push('/cart')
+  } catch (err: any) {
+    error.value = err?.message || "Impossible de réserver ce produit"
+  } finally {
+    reservingById.value[key] = false
+  }
 }
 
 const formatPrice = (price: number) => {
@@ -153,8 +194,10 @@ const formatPrice = (price: number) => {
 onMounted(async () => {
   loading.value = true
   try {
+    // Évite de garder des filtres obsolètes d'une navigation précédente.
+    productStore.resetFilters()
     await Promise.all([
-      productStore.searchProducts(),
+      productStore.searchProducts({ page: 1, limit: 20 }),
       categoryStore.fetchAllCategories()
     ])
   } catch (err: any) {
@@ -354,6 +397,11 @@ onMounted(async () => {
 
 .btn-reserve:hover {
   background: #1e4620;
+}
+
+.btn-reserve:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .loading,

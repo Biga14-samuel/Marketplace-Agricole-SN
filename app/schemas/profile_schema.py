@@ -170,6 +170,30 @@ class ProducerProfileUpdate(BaseModel):
     avatar: Optional[str] = None
     cover_image: Optional[str] = None
 
+    @field_validator('siret')
+    @classmethod
+    def validate_siret(cls, v):
+        if v is None:
+            return v
+        normalized = v.replace(' ', '').strip()
+        if normalized == '':
+            return None
+        if len(normalized) not in [9, 14]:
+            raise ValueError('Le SIRET doit contenir 9 ou 14 chiffres')
+        return normalized
+
+    @field_validator('iban')
+    @classmethod
+    def validate_iban(cls, v):
+        if v is None:
+            return v
+        normalized = v.replace(' ', '').strip().upper()
+        if normalized == '':
+            return None
+        if len(normalized) < 15 or len(normalized) > 34:
+            raise ValueError('IBAN invalide (longueur incorrecte)')
+        return normalized
+
 
 class ProducerProfileResponse(ProducerProfileBase):
     """Schéma de réponse pour un profil producteur"""

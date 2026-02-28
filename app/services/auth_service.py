@@ -128,6 +128,28 @@ class AuthService:
                         last_name=user_data.last_name
                     )
 
+            # Pré-créer le profil producteur pour éviter le blocage à la
+            # première création de produit.
+            if effective_role_name.strip().lower() == "producer":
+                from app.repositories.profile_repository import ProducerProfileRepository
+
+                producer_repo = ProducerProfileRepository(self.db)
+                existing_producer_profile = producer_repo.get_by_user_id(user.id)
+                if not existing_producer_profile:
+                    derived_business_name = " ".join(
+                        [part for part in [user_data.first_name, user_data.last_name] if part]
+                    ).strip()
+                    if not derived_business_name:
+                        derived_business_name = (user_data.email.split("@")[0] if user_data.email else "").strip()
+                    if not derived_business_name:
+                        derived_business_name = f"Producteur {user.id}"
+
+                    producer_repo.create(
+                        user_id=user.id,
+                        business_name=derived_business_name[:255],
+                        is_verified=bool(settings.SKIP_EMAIL_VERIFICATION)
+                    )
+
             # Créer un token de vérification d'email (même en mode skip pour les logs)
             verification_token = generate_verification_token()
             expires_at = datetime.now(timezone.utc) + timedelta(hours=48)  # 48h pour plus de confort

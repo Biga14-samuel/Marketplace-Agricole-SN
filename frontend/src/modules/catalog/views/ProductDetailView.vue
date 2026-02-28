@@ -123,11 +123,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useProductStore } from '../store/modules/product.store'
 import { ordersService } from '@/modules/orders/services/orders.service'
 
 const route = useRoute()
+const router = useRouter()
 const productStore = useProductStore()
 
 const loading = ref(true)
@@ -136,7 +137,7 @@ const quantity = ref(1)
 const errorMessage = ref('')
 const isInWishlist = ref(false)
 
-const product = computed(() => productStore.currentProduct)
+const product = computed(() => productStore.completeProduct || productStore.currentProduct)
 
 const stockQuantity = computed(() => Number(product.value?.stock_quantity ?? product.value?.stock ?? 0))
 const minOrder = computed(() => Math.max(1, Number(product.value?.min_order ?? 1)))
@@ -147,9 +148,11 @@ const producerName = computed(() => product.value?.producer?.business_name || pr
 const producerLocation = computed(() => product.value?.origin || product.value?.producer?.location || 'Cameroun')
 
 const mainImage = computed(() => {
-  const storeMain = productStore.currentProductImages?.find?.((img: any) => img?.is_main)?.url
+  const storeMain = productStore.currentProductImages?.find?.((img: any) => img?.is_main || img?.is_primary)?.url
   const firstStore = productStore.currentProductImages?.[0]?.url
-  return storeMain || firstStore || product.value?.image || ''
+  const inlinePrimary = product.value?.images?.find?.((img: any) => img?.is_main || img?.is_primary)?.url
+  const inlineFirst = product.value?.images?.[0]?.url
+  return storeMain || firstStore || inlinePrimary || inlineFirst || product.value?.image || ''
 })
 
 const formatCurrency = (amount: number) =>
@@ -183,8 +186,7 @@ const loadProduct = async () => {
     if (!productId) {
       return
     }
-    await productStore.getProductById(productId, true)
-    await productStore.getProductImages(productId)
+    await productStore.getCompleteProduct(productId, true)
     quantity.value = minOrder.value
     normalizeQuantity()
   } catch (error: any) {
@@ -207,6 +209,7 @@ const addToCart = async () => {
       productId: String(product.value.id),
       quantity: quantity.value
     })
+    await router.push('/cart')
   } catch (error: any) {
     errorMessage.value = error?.message || "Impossible d'ajouter le produit au panier."
   } finally {

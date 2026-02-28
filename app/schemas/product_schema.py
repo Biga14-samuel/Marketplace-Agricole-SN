@@ -226,6 +226,7 @@ class ProductResponse(ProductBase):
     category: Optional[CategoryResponse] = None
     unit: Optional[UnitResponse] = None
     tags: List[TagResponse] = []
+    images: List['ProductImageResponse'] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -434,3 +435,5 @@ class ProductSearchFilters(BaseModel):
 
 # Mise à jour de la référence circulaire
 CategoryTree.model_rebuild()
+ProductResponse.model_rebuild()
+ProductComplete.model_rebuild()

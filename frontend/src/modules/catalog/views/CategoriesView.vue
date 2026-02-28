@@ -36,64 +36,38 @@
   </div>
 </template>
 
-<script>
-export default {
-  name: 'CategoriesView',
-  data() {
-    return {
-      categories: [
-        {
-          id: 1,
-          name: 'Fruits frais',
-          description: 'Des fruits cueillis à maturité et riches en goût.',
-          badge: 'Saison',
-          icon: '🍓',
-          slug: 'fruits-frais'
-        },
-        {
-          id: 2,
-          name: 'Légumes gourmands',
-          description: 'Une palette de légumes locaux et bio.',
-          badge: 'Bio',
-          icon: '🥕',
-          slug: 'legumes-gourmands'
-        },
-        {
-          id: 3,
-          name: 'Épicerie artisanale',
-          description: 'Produits raffinés et faits main.',
-          badge: 'Artisanal',
-          icon: '🫙',
-          slug: 'epicerie-artisanale'
-        },
-        {
-          id: 4,
-          name: 'Laitiers',
-          description: 'Fromages, yaourts et lait fermier.',
-          badge: 'Fermier',
-          icon: '🥛',
-          slug: 'laitiers'
-        },
-        {
-          id: 5,
-          name: 'Viandes & volailles',
-          description: 'Traçabilité et élevage responsable.',
-          badge: 'Local',
-          icon: '🍗',
-          slug: 'viandes-volailles'
-        },
-        {
-          id: 6,
-          name: 'Boissons naturelles',
-          description: 'Jus pressés, infusions, kombucha.',
-          badge: 'Naturel',
-          icon: '🍹',
-          slug: 'boissons-naturelles'
-        }
-      ]
-    }
-  }
-}
+<script setup lang="ts">
+import { computed, onMounted } from 'vue'
+import { useCategoryStore } from '../store/modules/category.store'
+
+const categoryStore = useCategoryStore()
+
+const slugify = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+const fallbackIcons = ['🥕', '🍓', '🧺', '🌽', '🍠', '🫛', '🍯', '🐟', '🥜', '🌿']
+
+const categories = computed(() =>
+  categoryStore.allCategories
+    .filter((item: any) => item?.is_active !== false)
+    .map((item: any, index: number) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description || 'Produits frais directement des producteurs locaux.',
+      badge: `${Number(item.product_count || 0)} produit(s)`,
+      icon: item.icon || fallbackIcons[index % fallbackIcons.length],
+      slug: item.slug || slugify(item.name || '') || String(item.id)
+    }))
+)
+
+onMounted(async () => {
+  await categoryStore.fetchAllCategories(true)
+})
 </script>
 
 <style scoped>

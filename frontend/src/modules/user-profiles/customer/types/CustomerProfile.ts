@@ -19,6 +19,7 @@ export interface CustomerProfile {
     email: string;
     phone: string;
     avatar?: string;
+    coverImage?: string;
     birthDate?: string;
     preferences: CustomerPreferences;
     createdAt: string;

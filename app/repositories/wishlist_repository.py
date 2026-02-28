@@ -41,7 +41,7 @@ class WishlistRepository:
         return db.query(Wishlist).filter(
             and_(
                 Wishlist.slug == slug,
-                Wishlist.is_public
+                Wishlist.is_public == True
             )
         ).first()
     
@@ -58,7 +58,7 @@ class WishlistRepository:
         query = db.query(Wishlist).filter(Wishlist.user_id == user_id)
         
         if include_public_only:
-            query = query.filter(Wishlist.is_public)
+            query = query.filter(Wishlist.is_public == True)
         
         return query.order_by(Wishlist.sort_order, Wishlist.created_at.desc()).all()
     
@@ -99,7 +99,7 @@ class WishlistRepository:
         return db.query(Wishlist).filter(
             and_(
                 Wishlist.user_id == user_id,
-                Wishlist.is_public
+                Wishlist.is_public == True
             )
         ).count()
 
@@ -275,7 +275,7 @@ class ProductFollowRepository:
         query = db.query(ProductFollow).filter(ProductFollow.user_id == user_id)
         
         if active_only:
-            query = query.filter(ProductFollow.is_active)
+            query = query.filter(ProductFollow.is_active == True)
         
         if load_products:
             query = query.options(joinedload(ProductFollow.product))
@@ -291,7 +291,7 @@ class ProductFollowRepository:
         return db.query(ProductFollow).filter(
             and_(
                 ProductFollow.product_id == product_id,
-                ProductFollow.is_active
+                ProductFollow.is_active == True
             )
         ).all()
     
@@ -304,7 +304,7 @@ class ProductFollowRepository:
         return db.query(ProductFollow).filter(
             and_(
                 ProductFollow.product_id == product_id,
-                ProductFollow.is_active,
+                ProductFollow.is_active == True,
                 ProductFollow.notify_on_stock
             )
         ).all()
@@ -318,7 +318,7 @@ class ProductFollowRepository:
         return db.query(ProductFollow).filter(
             and_(
                 ProductFollow.product_id == product_id,
-                ProductFollow.is_active,
+                ProductFollow.is_active == True,
                 ProductFollow.notify_on_price_drop
             )
         ).all()
@@ -342,7 +342,7 @@ class ProductFollowRepository:
         return db.query(ProductFollow).filter(
             and_(
                 ProductFollow.user_id == user_id,
-                ProductFollow.is_active
+                ProductFollow.is_active == True
             )
         ).count()
 
@@ -397,7 +397,7 @@ class ProducerFollowRepository:
         query = db.query(ProducerFollow).filter(ProducerFollow.user_id == user_id)
         
         if active_only:
-            query = query.filter(ProducerFollow.is_active)
+            query = query.filter(ProducerFollow.is_active == True)
         
         if load_producers:
             query = query.options(joinedload(ProducerFollow.producer))
@@ -413,7 +413,7 @@ class ProducerFollowRepository:
         return db.query(ProducerFollow).filter(
             and_(
                 ProducerFollow.producer_id == producer_id,
-                ProducerFollow.is_active
+                ProducerFollow.is_active == True
             )
         ).all()
     
@@ -429,7 +429,7 @@ class ProducerFollowRepository:
         return db.query(ProducerFollow).filter(
             and_(
                 ProducerFollow.producer_id == producer_id,
-                ProducerFollow.is_active,
+                ProducerFollow.is_active == True,
                 ProducerFollow.notify_on_new_product
             )
         ).all()
@@ -453,7 +453,7 @@ class ProducerFollowRepository:
         return db.query(ProducerFollow).filter(
             and_(
                 ProducerFollow.user_id == user_id,
-                ProducerFollow.is_active
+                ProducerFollow.is_active == True
             )
         ).count()
     
@@ -466,6 +466,6 @@ class ProducerFollowRepository:
         return db.query(ProducerFollow).filter(
             and_(
                 ProducerFollow.producer_id == producer_id,
-                ProducerFollow.is_active
+                ProducerFollow.is_active == True
             )
         ).count()

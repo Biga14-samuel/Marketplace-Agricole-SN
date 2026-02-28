@@ -39,7 +39,7 @@ class DeliveryZoneRepository:
         query = db.query(DeliveryZone).filter(DeliveryZone.producer_id == producer_id)
         
         if active_only:
-            query = query.filter(DeliveryZone.is_active)
+            query = query.filter(DeliveryZone.is_active == True)
         
         return query.all()
     
@@ -66,7 +66,7 @@ class DeliveryZoneRepository:
     @staticmethod
     def get_all_active(db: Session) -> List[DeliveryZone]:
         """Récupère toutes les zones actives"""
-        return db.query(DeliveryZone).filter(DeliveryZone.is_active).all()
+        return db.query(DeliveryZone).filter(DeliveryZone.is_active == True).all()
 
 
 class DeliveryScheduleRepository:
@@ -101,7 +101,7 @@ class DeliveryScheduleRepository:
             query = query.filter(DeliverySchedule.day_of_week == day_of_week)
         
         if active_only:
-            query = query.filter(DeliverySchedule.is_active)
+            query = query.filter(DeliverySchedule.is_active == True)
         
         return query.order_by(
             DeliverySchedule.day_of_week,
@@ -386,8 +386,8 @@ class DeliveryDriverRepository:
         """Récupère les livreurs disponibles et vérifiés"""
         query = db.query(DeliveryDriver).filter(
             and_(
-                DeliveryDriver.is_available,
-                DeliveryDriver.is_verified
+                DeliveryDriver.is_available == True,
+                DeliveryDriver.is_verified == True
             )
         )
         
@@ -403,7 +403,7 @@ class DeliveryDriverRepository:
     def get_all_verified(db: Session) -> List[DeliveryDriver]:
         """Récupère tous les livreurs vérifiés"""
         return db.query(DeliveryDriver).filter(
-            DeliveryDriver.is_verified
+            DeliveryDriver.is_verified == True
         ).all()
     
     @staticmethod

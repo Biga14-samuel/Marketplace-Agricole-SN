@@ -49,20 +49,23 @@ class PaymentService {
     /**
      * Confirmer un paiement Mobile Money
      */
-    async confirmMobileMoneyPayment(paymentId: string, data: ConfirmMobileMoneyDto): Promise<Payment> {
+    async confirmMobileMoneyPayment(paymentId: string, data: ConfirmMobileMoneyDto | string): Promise<Payment> {
         try {
-            // Update payment status to completed with mobile money details
-            const response: AxiosResponse = await apiClient.patch(
-                `/payments/${paymentId}/status`,
-                {
-                    new_status: 'completed',
-                    transaction_id: data.transactionId,
-                    additional_data: {
-                        mobile_number: data.phoneNumber,
-                        provider: data.provider,
-                        confirmation_code: data.otpCode
-                    }
+            const payload = typeof data === 'string'
+                ? {
+                    phoneNumber: data,
+                    provider: 'mobile_money',
+                    transactionId: `MM-${paymentId}-${Date.now()}`
                 }
+                : data
+
+            const queryParams = new URLSearchParams({
+                new_status: 'completed',
+                transaction_id: payload.transactionId
+            })
+
+            const response: AxiosResponse = await apiClient.patch(
+                `/payments/${paymentId}/status?${queryParams.toString()}`
             )
             return PaymentAdapter.toFrontend(response.data)
         } catch (error: any) {
@@ -102,37 +105,32 @@ class PaymentService {
      */
     async getUserPayments(filters?: PaymentFiltersDto): Promise<Payment[]> {
         try {
-            const params = new URLSearchParams()
+            const role = (filters as any)?.role === 'producer' || filters?.producerId
+                ? 'producer'
+                : 'customer'
+            const url = `/payments/history?role=${role}`
+            const response: AxiosResponse = await apiClient.get(url)
+            let mapped = response.data.map((payment: any) => PaymentAdapter.toFrontend(payment))
 
-            if (filters) {
-                if (filters.status && filters.status !== 'all') {
-                    // Map frontend status to backend status
-                    const backendStatus = this.mapStatusToBackend(filters.status)
-                    if (backendStatus) params.append('status', backendStatus)
-                }
-                if (filters.startDate) {
-                    params.append('start_date', filters.startDate.toISOString())
-                }
-                if (filters.endDate) {
-                    params.append('end_date', filters.endDate.toISOString())
-                }
-                if (filters.minAmount !== undefined) {
-                    params.append('min_amount', filters.minAmount.toString())
-                }
-                if (filters.maxAmount !== undefined) {
-                    params.append('max_amount', filters.maxAmount.toString())
-                }
-                if (filters.search) {
-                    params.append('search', filters.search)
-                }
+            // Filtres complémentaires côté frontend (MVP)
+            if (filters?.status && filters.status !== 'all') {
+                const targetStatus = filters.status
+                mapped = mapped.filter((payment) => payment.status === targetStatus)
+            }
+            if (filters?.startDate) {
+                mapped = mapped.filter((payment) => new Date(payment.createdAt) >= filters.startDate!)
+            }
+            if (filters?.endDate) {
+                mapped = mapped.filter((payment) => new Date(payment.createdAt) <= filters.endDate!)
+            }
+            if (filters?.minAmount !== undefined) {
+                mapped = mapped.filter((payment) => payment.amount >= filters.minAmount!)
+            }
+            if (filters?.maxAmount !== undefined) {
+                mapped = mapped.filter((payment) => payment.amount <= filters.maxAmount!)
             }
 
-            // For now, we'll get all payments and filter client-side
-            // In a real implementation, you'd add user filtering to the backend
-            const url = `/payments${params.toString() ? `?${params.toString()}` : ''}`
-            const response: AxiosResponse = await apiClient.get(url)
-
-            return response.data.map((payment: any) => PaymentAdapter.toFrontend(payment))
+            return mapped
         } catch (error: any) {
             console.error('Erreur récupération paiements utilisateur:', error)
             throw new Error(error.response?.data?.detail || 'Erreur lors du chargement des paiements')
@@ -145,8 +143,7 @@ class PaymentService {
     async cancelPayment(paymentId: string): Promise<Payment> {
         try {
             const response: AxiosResponse = await apiClient.patch(
-                `/payments/${paymentId}/status`,
-                { new_status: 'failed' }
+                `/payments/${paymentId}/status?new_status=failed`
             )
             return PaymentAdapter.toFrontend(response.data)
         } catch (error: any) {
@@ -552,8 +549,7 @@ class PaymentService {
         try {
             const backendStatus = this.mapStatusToBackend(status) || 'pending'
             const response: AxiosResponse = await apiClient.patch(
-                `/payments/${paymentId}/status`,
-                { new_status: backendStatus }
+                `/payments/${paymentId}/status?new_status=${backendStatus}`
             )
             return PaymentAdapter.toFrontend(response.data)
         } catch (error: any) {

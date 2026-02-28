@@ -88,8 +88,11 @@ export const useProducerStore = defineStore('producer', () => {
     // ============================================
 
     // Profil
-    const isVerified = computed(() => profile.value?.verified || false);
-    const verificationStatus = computed(() => profile.value?.verification_status || 'pending');
+    const isVerified = computed(() => Boolean((profile.value as any)?.is_verified ?? (profile.value as any)?.verified ?? false));
+    const verificationStatus = computed(() =>
+        (profile.value as any)?.verification_status ||
+        ((profile.value as any)?.is_verified ? 'verified' : 'pending')
+    );
     const businessInfo = computed(() => ({
         name: profile.value?.business_name || '',
         siret: profile.value?.siret || '',
@@ -198,12 +201,14 @@ export const useProducerStore = defineStore('producer', () => {
             profileError.value = null;
 
             const response = await ProducerProfileService.getCompleteProfile();
-            profile.value = response.profile;
-            documents.value = response.documents || [];
-            pickupPoints.value = response.pickupPoints || [];
+            profile.value = (response as any)?.profile || (response as any) || null;
+            documents.value = Array.isArray((response as any)?.documents) ? (response as any).documents : [];
+            pickupPoints.value = Array.isArray((response as any)?.pickupPoints)
+                ? (response as any).pickupPoints
+                : (Array.isArray((response as any)?.pickup_points) ? (response as any).pickup_points : []);
 
             // Charger les créneaux pour tous les points de retrait
-            if (response.pickupPoints && response.pickupPoints.length > 0) {
+            if (pickupPoints.value.length > 0) {
                 await fetchAllSlots();
             }
 
@@ -249,6 +254,44 @@ export const useProducerStore = defineStore('producer', () => {
             profileError.value = null;
 
             profile.value = await ProducerProfileService.updateProfile(profileData);
+            return profile.value;
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+            profileError.value = errorMessage;
+            throw error;
+        } finally {
+            isProfileLoading.value = false;
+        }
+    }
+
+    /**
+     * Uploader l'avatar du producteur
+     */
+    async function uploadAvatar(file: File) {
+        try {
+            isProfileLoading.value = true;
+            profileError.value = null;
+
+            profile.value = await ProducerProfileService.uploadAvatar(file);
+            return profile.value;
+        } catch (error: unknown) {
+            const errorMessage = getErrorMessage(error);
+            profileError.value = errorMessage;
+            throw error;
+        } finally {
+            isProfileLoading.value = false;
+        }
+    }
+
+    /**
+     * Uploader la couverture du producteur
+     */
+    async function uploadCoverImage(file: File) {
+        try {
+            isProfileLoading.value = true;
+            profileError.value = null;
+
+            profile.value = await ProducerProfileService.uploadCoverImage(file);
             return profile.value;
         } catch (error: unknown) {
             const errorMessage = getErrorMessage(error);
@@ -1045,6 +1088,8 @@ export const useProducerStore = defineStore('producer', () => {
         fetchProfile,
         createProfile,
         updateProfile,
+        uploadAvatar,
+        uploadCoverImage,
         submitForVerification,
 
         // Actions - Documents

@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+import asyncio
+import os
 
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -49,14 +52,9 @@ app = FastAPI(
     description="Marketplace Agricole - Système de gestion et abonnements"
 )
 
-# Configuration des timeouts pour éviter les blocages
-import uvicorn
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-
 # Ajouter un middleware pour gérer les timeouts
 @app.middleware("http")
 async def timeout_middleware(request, call_next):
-    import asyncio
     try:
         # Timeout de 180 secondes (3 minutes) pour toutes les requêtes
         response = await asyncio.wait_for(call_next(request), timeout=180.0)
@@ -96,6 +94,17 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],  # Permet au frontend de lire tous les headers de réponse
 )
+
+# --- CONFIGURATION DES FICHIERS STATIQUES ---
+# Créer le dossier uploads s'il n'existe pas
+UPLOADS_DIR = "uploads"
+if not os.path.exists(UPLOADS_DIR):
+    os.makedirs(UPLOADS_DIR)
+    print(f"[startup] Dossier {UPLOADS_DIR} créé")
+
+# Monter le dossier uploads pour servir les fichiers statiques
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+print("[startup] Fichiers statiques montés sur /uploads")
 
 # --- INCLUSION DES ROUTERS ---
 def include_router_with_legacy_prefix(router_obj, suffix: str, tags: list[str]):

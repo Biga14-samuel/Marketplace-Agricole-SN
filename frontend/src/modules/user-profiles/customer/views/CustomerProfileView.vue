@@ -99,10 +99,22 @@
                         'animate-float': !loading
                     }">
 
-                            <!-- Dégradé d'en-tête -->
+                            <!-- Couverture -->
                             <div class="h-24 bg-gradient-to-r from-green-400/20 via-emerald-400/20 to-teal-400/20 
                          relative overflow-hidden">
+                                <img v-if="profile?.coverImage" :src="profile.coverImage" alt="Photo de couverture"
+                                    class="absolute inset-0 w-full h-full object-cover" />
+                                <div
+                                    class="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/10">
+                                </div>
                                 <div class="absolute inset-0 bg-dots-pattern opacity-5"></div>
+                                <button v-if="isEditing" type="button" @click="triggerCoverUpload" class="absolute inset-0 bg-black/35 text-white flex items-center justify-center 
+                             opacity-0 hover:opacity-100 transition-opacity duration-300">
+                                    <span class="inline-flex items-center space-x-2">
+                                        <CameraIcon class="w-5 h-5" />
+                                        <span class="text-sm font-medium">Modifier la couverture</span>
+                                    </span>
+                                </button>
                             </div>
 
                             <!-- Avatar -->
@@ -485,6 +497,7 @@
 
         <!-- Input fichier caché pour avatar -->
         <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="handleAvatarUpload" />
+        <input ref="coverInput" type="file" accept="image/*" class="hidden" @change="handleCoverUpload" />
 
         <!-- Toast notification -->
         <transition name="slide-up">
@@ -540,6 +553,7 @@ const isEditing = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
 const avatarInput = ref<HTMLInputElement | null>(null)
+const coverInput = ref<HTMLInputElement | null>(null)
 
 // Données
 const profile = ref<CustomerProfile | null>(null)
@@ -704,28 +718,70 @@ const triggerAvatarUpload = () => {
     avatarInput.value?.click()
 }
 
+const triggerCoverUpload = () => {
+    coverInput.value?.click()
+}
+
 const handleAvatarUpload = async (event: Event) => {
     const target = event.target as HTMLInputElement
     const file = target.files?.[0]
     if (!file) return
 
     try {
-        // Dans une vraie app : upload vers le serveur
-        const reader = new FileReader()
-        reader.onload = (e) => {
-            if (profile.value && e.target?.result) {
-                profile.value.avatar = e.target.result as string
-                showToastMessage('Photo de profil mise à jour')
-            }
+        if (!file.type.startsWith('image/')) {
+            showToastMessage('Format de fichier invalide', true)
+            return
         }
-        reader.readAsDataURL(file)
+        if (file.size > 8 * 1024 * 1024) {
+            showToastMessage('Image trop volumineuse (max 8MB)', true)
+            return
+        }
 
-        // Réinitialiser l'input
-        target.value = ''
+        const updated = await customerStore.uploadAvatar(file)
+        if (updated) {
+            profile.value = updated
+        } else if (customerStore.profile) {
+            profile.value = customerStore.profile
+        }
 
+        showToastMessage('Photo de profil mise à jour')
     } catch (error) {
         console.error('Erreur upload avatar:', error)
         showToastMessage('Erreur lors du téléchargement', true)
+    } finally {
+        // Réinitialiser l'input pour permettre un nouvel upload du même fichier
+        target.value = ''
+    }
+}
+
+const handleCoverUpload = async (event: Event) => {
+    const target = event.target as HTMLInputElement
+    const file = target.files?.[0]
+    if (!file) return
+
+    try {
+        if (!file.type.startsWith('image/')) {
+            showToastMessage('Format de fichier invalide', true)
+            return
+        }
+        if (file.size > 8 * 1024 * 1024) {
+            showToastMessage('Image trop volumineuse (max 8MB)', true)
+            return
+        }
+
+        const updated = await customerStore.uploadCoverImage(file)
+        if (updated) {
+            profile.value = updated
+        } else if (customerStore.profile) {
+            profile.value = customerStore.profile
+        }
+
+        showToastMessage('Photo de couverture mise à jour')
+    } catch (error) {
+        console.error('Erreur upload couverture:', error)
+        showToastMessage('Erreur lors du téléchargement', true)
+    } finally {
+        target.value = ''
     }
 }
 

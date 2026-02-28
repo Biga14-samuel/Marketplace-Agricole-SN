@@ -55,7 +55,7 @@ class ReviewRepository:
         query = self.db.query(Review).filter(Review.product_id == product_id)
         
         if approved_only:
-            query = query.filter(Review.is_approved)
+            query = query.filter(Review.is_approved == True)
         
         return query.order_by(desc(Review.created_at)).offset(skip).limit(limit).all()
     
@@ -119,7 +119,7 @@ class ReviewRepository:
         reviews = self.db.query(Review).filter(
             and_(
                 Review.product_id == product_id,
-                Review.is_approved
+                Review.is_approved == True
             )
         ).all()
         

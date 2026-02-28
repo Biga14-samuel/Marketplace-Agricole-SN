@@ -678,7 +678,7 @@ export default {
         },
         async loadMyProducts() {
             try {
-                const response = await catalogService.getMyProducts({ limit: 200 })
+                const response = await catalogService.getMyProducts({ limit: 100 })
                 this.products = Array.isArray(response?.products)
                     ? response.products.map((product) => this.normalizeProductFromApi(product))
                     : []

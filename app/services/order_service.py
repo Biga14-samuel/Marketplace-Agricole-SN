@@ -285,6 +285,7 @@ class OrderService:
         self.cart_service = CartService(db)
         self.cart_repo = CartRepository(db)
         self.product_repo = ProductRepository(db)
+        self.variant_repo = ProductVariantRepository(db)
         self.address_repo = AddressRepository(db)
         self.pickup_point_repo = PickupPointRepository(db)
         self.pickup_slot_repo = PickupSlotRepository(db)
@@ -345,6 +346,36 @@ class OrderService:
                         detail=f"Stock insuffisant pour {item.product.name}"
                     )
                 item.product.stock_quantity -= item.quantity
+
+    def _decrement_stock_for_cart_items(self, cart_items: List[CartItem]) -> None:
+        """Décrémente le stock à la création de commande (au checkout)."""
+        for item in cart_items:
+            if item.variant_id:
+                variant = item.variant or self.variant_repo.get_by_id(item.variant_id)
+                if not variant:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Variante introuvable pour un article du panier"
+                    )
+                if variant.stock < item.quantity:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Stock insuffisant pour la variante {variant.name}"
+                    )
+                variant.stock -= item.quantity
+            else:
+                product = item.product or self.product_repo.get_by_id(item.product_id)
+                if not product:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Produit introuvable pour un article du panier"
+                    )
+                if product.stock_quantity < item.quantity:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Stock insuffisant pour {product.name}"
+                    )
+                product.stock_quantity -= item.quantity
 
     def _restore_stock_for_order(self, order: Order) -> None:
         for item in order.items:
@@ -473,6 +504,9 @@ class OrderService:
         
         # Créer les OrderItems à partir des CartItems (utilise flush())
         self.order_item_repo.create_from_cart(order.id, cart.items)
+
+        # Déduire immédiatement le stock à la création de commande.
+        self._decrement_stock_for_cart_items(cart.items)
         
         # Créer l'entrée d'historique initiale (utilise flush())
         self.status_history_repo.create(
@@ -562,10 +596,8 @@ class OrderService:
         new_status = self._value_of(status_change.new_status)
         self._validate_status_transition(old_status, new_status)
 
-        if old_status == "confirmed" and new_status == "preparing":
-            self._decrement_stock_for_order(order)
         if new_status == "cancelled":
-            if old_status in {"preparing", "ready"}:
+            if old_status in {"pending", "confirmed", "preparing", "ready"}:
                 self._restore_stock_for_order(order)
             self._release_pickup_slot(order)
         
@@ -667,8 +699,8 @@ class OrderService:
             changed_by=user_id
         )
         
-        # Restaurer les stocks uniquement si déjà décrémentés.
-        if old_status in {"preparing", "ready"}:
+        # Restaurer les stocks: ils sont décrémentés dès la création.
+        if old_status in {"pending", "confirmed", "preparing", "ready"}:
             self._restore_stock_for_order(order)
 
         # Libérer la capacité du créneau de retrait si nécessaire.

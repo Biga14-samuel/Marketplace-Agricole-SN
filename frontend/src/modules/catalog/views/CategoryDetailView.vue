@@ -80,12 +80,17 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 
-const formatCurrency = (amount: number) =>
+const toNumber = (value: unknown): number => {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+const formatCurrency = (amount: unknown) =>
   new Intl.NumberFormat('fr-CM', {
     style: 'currency',
     currency: 'XAF',
     maximumFractionDigits: 0
-  }).format(Number.isFinite(amount) ? amount : 0)
+  }).format(toNumber(amount))
 
 const loadCategoryDetail = async () => {
   loading.value = true
@@ -95,10 +100,18 @@ const loadCategoryDetail = async () => {
   try {
     await categoryStore.fetchAllCategories(true)
 
-    const slugParam = String(route.params.slug || '').toLowerCase()
-    const foundCategory = categoryStore.allCategories.find((item: any) =>
-      item.id === slugParam || slugify(item.name || '') === slugParam
-    )
+    const rawRouteParam = route.params.slug ?? route.params.id
+    const slugParam = String(rawRouteParam || '').toLowerCase()
+    const foundCategory =
+      categoryStore.allCategories.find((item: any) =>
+        String(item.id || '').toLowerCase() === slugParam ||
+        String(item.slug || '').toLowerCase() === slugParam ||
+        slugify(item.name || '') === slugParam
+      ) ||
+      categoryStore.allCategories.find((item: any) => {
+        const itemSlug = String(item.slug || slugify(item.name || '')).toLowerCase()
+        return slugParam.includes(itemSlug) || itemSlug.includes(slugParam)
+      })
 
     category.value = foundCategory || null
 
@@ -132,7 +145,7 @@ const stats = computed(() => {
 
   const averagePrice = products.value.length
     ? Math.round(
-      products.value.reduce((total: number, item: any) => total + Number(item.price || 0), 0) /
+      products.value.reduce((total: number, item: any) => total + toNumber(item.price), 0) /
           products.value.length
     )
     : 0
@@ -144,7 +157,7 @@ const stats = computed(() => {
   ]
 })
 
-watch(() => route.params.slug, loadCategoryDetail)
+watch(() => [route.params.slug, route.params.id], loadCategoryDetail)
 onMounted(loadCategoryDetail)
 </script>
 

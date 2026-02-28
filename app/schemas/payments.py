@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 from decimal import Decimal
 
 from app.models.payments import (
@@ -19,7 +19,7 @@ class PaymentBase(BaseModel):
     amount: Decimal = Field(..., gt=0, description="Montant doit être positif")
     currency: str = Field(default="XAF", min_length=3, max_length=3)
     provider: Optional[PaymentProvider] = None
-    metadata: Optional[str] = None
+    additional_data: Optional[Dict[str, Any]] = None
 
 
 class PaymentCreate(PaymentBase):
@@ -40,7 +40,7 @@ class PaymentUpdate(BaseModel):
     """Schéma pour mettre à jour un paiement existant"""
     status: Optional[PaymentStatus] = None
     transaction_id: Optional[str] = None
-    metadata: Optional[str] = None
+    additional_data: Optional[Dict[str, Any]] = None
 
 
 class PaymentResponse(PaymentBase):

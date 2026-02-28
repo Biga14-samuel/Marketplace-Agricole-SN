@@ -216,7 +216,7 @@ const buildAlertFromProduct = (product: Product): StockAlert | null => {
 
 const loadAlerts = async () => {
   try {
-    const response = await productStore.getMyProducts({ page: 1, limit: 200 })
+    const response = await productStore.getMyProducts({ page: 1, limit: 100 })
     alerts.value = response.products
       .map(buildAlertFromProduct)
       .filter((alert): alert is StockAlert => Boolean(alert))

@@ -5,13 +5,25 @@ const apiClient = axios.create({
     baseURL: (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1',
     timeout: 120000, // 2 minutes pour les opérations lentes comme l'inscription
     headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
     },
 })
 
 // Intercepteur pour ajouter le token
 apiClient.interceptors.request.use(
     (config) => {
+        // Laisser le navigateur définir automatiquement le boundary multipart.
+        if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+            const headers = config.headers as any
+            if (headers && typeof headers.delete === 'function') {
+                headers.delete('Content-Type')
+                headers.delete('content-type')
+            } else if (headers) {
+                delete headers['Content-Type']
+                delete headers['content-type']
+            }
+        }
+
         const token = localStorage.getItem('access_token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`

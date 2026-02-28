@@ -141,6 +141,15 @@ function mapAddress(backend: BackendAddress, profile?: CustomerProfile): Address
 }
 
 function mapProfile(backend: BackendProfile, currentUser?: CurrentUser | null): CustomerProfile {
+  const coverImageFromPreferences =
+    typeof (backend.preferences as any)?.cover_image === 'string'
+      ? String((backend.preferences as any).cover_image)
+      : (
+          typeof (backend.preferences as any)?.coverImage === 'string'
+            ? String((backend.preferences as any).coverImage)
+            : undefined
+        )
+
   const preferences = {
     ...defaultPreferences,
     ...(backend.preferences || {}),
@@ -153,6 +162,7 @@ function mapProfile(backend: BackendProfile, currentUser?: CurrentUser | null): 
     email: currentUser?.email || '',
     phone: currentUser?.phone || '',
     avatar: backend.avatar || undefined,
+    coverImage: coverImageFromPreferences,
     preferences,
     createdAt: backend.created_at,
     updatedAt: backend.updated_at,
@@ -418,13 +428,34 @@ export class CustomerProfileService {
     return errors
   }
 
-  static async uploadAvatar(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(String(reader.result || ''))
-      reader.onerror = () => reject(new Error('Échec du chargement de l\'avatar'))
-      reader.readAsDataURL(file)
-    })
+  static async uploadAvatar(file: File): Promise<CustomerProfile> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const [response, currentUser] = await Promise.all([
+        apiClient.post<BackendProfile>(`${BASE_URL}/profile/avatar`, formData),
+        getCurrentUserSafe(),
+      ])
+      this.invalidateCache('profile')
+      return mapProfile(response.data, currentUser)
+    } catch (error) {
+      throw handleAxiosError(error)
+    }
+  }
+
+  static async uploadCoverImage(file: File): Promise<CustomerProfile> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const [response, currentUser] = await Promise.all([
+        apiClient.post<BackendProfile>(`${BASE_URL}/profile/cover-image`, formData),
+        getCurrentUserSafe(),
+      ])
+      this.invalidateCache('profile')
+      return mapProfile(response.data, currentUser)
+    } catch (error) {
+      throw handleAxiosError(error)
+    }
   }
 
   static async deleteAvatar(): Promise<void> {
@@ -516,6 +547,7 @@ export function useCustomerProfileService() {
     deleteAddress: CustomerProfileService.deleteAddress,
     setDefaultAddress: CustomerProfileService.setDefaultAddress,
     uploadAvatar: CustomerProfileService.uploadAvatar,
+    uploadCoverImage: CustomerProfileService.uploadCoverImage,
     deleteAvatar: CustomerProfileService.deleteAvatar,
     validateProfileFormData: CustomerProfileService.validateProfileFormData,
     validateAddressFormData: CustomerProfileService.validateAddressFormData,

@@ -186,7 +186,7 @@ class BannedUserRepository:
         return db.query(BannedUser).filter(
             and_(
                 BannedUser.user_id == user_id,
-                BannedUser.is_active
+                BannedUser.is_active == True
             )
         ).first()
     
@@ -199,7 +199,7 @@ class BannedUserRepository:
         return db.query(BannedUser).filter(
             and_(
                 BannedUser.user_id == user_id,
-                BannedUser.is_active
+                BannedUser.is_active == True
             )
         ).first() is not None
     
@@ -214,7 +214,7 @@ class BannedUserRepository:
         Utile pour afficher la liste des utilisateurs bannis dans l'interface admin.
         """
         return db.query(BannedUser).filter(
-            BannedUser.is_active
+            BannedUser.is_active == True
         ).order_by(BannedUser.created_at.desc()).offset(offset).limit(limit).all()
     
     @staticmethod
@@ -230,7 +230,7 @@ class BannedUserRepository:
         
         return db.query(BannedUser).filter(
             and_(
-                BannedUser.is_active,
+                BannedUser.is_active == True,
                 ~BannedUser.is_permanent,
                 BannedUser.banned_until <= expiry_threshold
             )
@@ -246,7 +246,7 @@ class BannedUserRepository:
         
         return db.query(BannedUser).filter(
             and_(
-                BannedUser.is_active,
+                BannedUser.is_active == True,
                 ~BannedUser.is_permanent,
                 BannedUser.banned_until <= now
             )
@@ -279,7 +279,7 @@ class BannedUserRepository:
     @staticmethod
     def count_active_bans(db: Session) -> int:
         """Compte le nombre total d'utilisateurs actuellement bannis"""
-        return db.query(BannedUser).filter(BannedUser.is_active).count()
+        return db.query(BannedUser).filter(BannedUser.is_active == True).count()
 
 
 class ContentModerationRepository:

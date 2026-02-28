@@ -177,7 +177,12 @@ class ProductRepository:
     
     def get_by_id(self, product_id: int) -> Optional[Product]:
         """Récupère un produit par son ID"""
-        return self.db.query(Product).filter(Product.id == product_id).first()
+        return self.db.query(Product).options(
+            joinedload(Product.category),
+            joinedload(Product.unit),
+            joinedload(Product.tags),
+            joinedload(Product.images),
+        ).filter(Product.id == product_id).first()
     
     def get_by_slug(self, slug: str) -> Optional[Product]:
         """Récupère un produit par son slug"""
@@ -199,12 +204,20 @@ class ProductRepository:
         producer_id: int,
         skip: int = 0,
         limit: int = 100,
-        active_only: bool = False
+        active_only: bool = False,
+        category_id: Optional[int] = None
     ) -> List[Product]:
         """Récupère les produits d'un producteur"""
-        query = self.db.query(Product).filter(Product.producer_id == producer_id)
+        query = self.db.query(Product).options(
+            joinedload(Product.category),
+            joinedload(Product.unit),
+            joinedload(Product.tags),
+            joinedload(Product.images),
+        ).filter(Product.producer_id == producer_id)
         if active_only:
             query = query.filter(Product.is_active)
+        if category_id:
+            query = query.filter(Product.category_id == category_id)
         return query.order_by(desc(Product.created_at)).offset(skip).limit(limit).all()
     
     def search_products(
@@ -221,7 +234,12 @@ class ProductRepository:
         limit: int = 100
     ) -> List[Product]:
         """Recherche de produits avec filtres"""
-        query = self.db.query(Product).filter(Product.is_active)
+        query = self.db.query(Product).options(
+            joinedload(Product.category),
+            joinedload(Product.unit),
+            joinedload(Product.tags),
+            joinedload(Product.images),
+        ).filter(Product.is_active)
         
         if category_id:
             query = query.filter(Product.category_id == category_id)

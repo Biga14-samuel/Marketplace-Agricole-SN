@@ -898,10 +898,15 @@ import { useRouter } from 'vue-router'
 import { useOrdersStore } from '../stores/orders.store'
 import { useCustomerStore } from '@/modules/user-profiles/customer/stores/useCustomerStore'
 import { DeliveryType, type CheckoutRequest } from '../types/orders.types'
+import { useAuthStore } from '@/modules/auth/stores/auth.store'
+import paymentService from '@/modules/payments/services/paymentService'
+import { PAYMENT_METHODS, PAYMENT_CURRENCIES } from '@/modules/payments/types/payment.types'
+import paymentsApi, { PaymentStatus as ApiPaymentStatus } from '@/modules/payments/services/api/payments.api'
 
 const router = useRouter()
 const ordersStore = useOrdersStore()
 const customerStore = useCustomerStore()
+const authStore = useAuthStore()
 
 // Accès aux données du store
 const cart = computed(() => ordersStore.cart)
@@ -1186,6 +1191,61 @@ const submitOrder = async () => {
 
     const createdOrder = await ordersStore.checkout(payload)
     orderNumber.value = createdOrder.orderNumber || String(createdOrder.id)
+
+    // Créer un enregistrement de paiement aligné avec le backend
+    try {
+      const currentUser: any = authStore.currentUser || {}
+      const mapPaymentMethodToEnum = (method: string) => {
+        switch (method) {
+          case 'mobile_money':
+            return PAYMENT_METHODS.MOBILE_MONEY
+          case 'card':
+            return PAYMENT_METHODS.CREDIT_CARD
+          case 'cash':
+            return PAYMENT_METHODS.CASH_ON_DELIVERY
+          default:
+            return PAYMENT_METHODS.CASH_ON_DELIVERY
+        }
+      }
+
+      const paymentMethodEnum = mapPaymentMethodToEnum(form.value.paymentMethod)
+
+      const payment = await paymentService.createPayment({
+        orderId: String(createdOrder.id),
+        amount: Number(createdOrder.totalAmount || cartTotal.value),
+        currency: PAYMENT_CURRENCIES.XAF,
+        method: paymentMethodEnum,
+        customerId: String(currentUser.id || ''),
+        customerEmail: currentUser.email,
+        customerName: `${currentUser.first_name || currentUser.firstName || ''} ${currentUser.last_name || currentUser.lastName || ''}`.trim() || currentUser.email,
+        customerPhone: currentUser.phone || currentUser.phone_number,
+        items: cartItems.value.map((item: any) => ({
+          id: String(item.id),
+          name: item.product?.name || 'Produit',
+          description: item.product?.sku,
+          quantity: Number(item.quantity || 0),
+          unitPrice: Number(item.unitPrice || 0),
+          totalPrice: Number(item.subtotal || 0),
+          productId: String(item.productId)
+        })),
+        metadata: {
+          ui_payment_method: form.value.paymentMethod,
+          delivery_type: form.value.deliveryType
+        },
+        description: `Paiement pour la commande #${createdOrder.orderNumber || createdOrder.id}`
+      })
+
+      // Pour les paiements autres que "paiement à la livraison",
+      // marquer immédiatement le paiement comme complété côté backend
+      if (form.value.paymentMethod !== 'cash' && payment?.id) {
+        await paymentsApi.updatePaymentStatus(parseInt(payment.id, 10), ApiPaymentStatus.COMPLETED)
+      }
+    } catch (paymentError) {
+      // Ne pas bloquer la commande si l'enregistrement du paiement échoue,
+      // mais logguer l'erreur pour diagnostic
+      console.error('Erreur lors de la création du paiement pour la commande:', paymentError)
+    }
+
     showSuccessModal.value = true
 
   } catch (err: any) {

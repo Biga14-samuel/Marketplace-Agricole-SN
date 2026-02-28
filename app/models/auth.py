@@ -116,8 +116,10 @@ class User(Base):
         return "Customer"
     
     def has_role(self, role_name: str) -> bool:
-        """Vérifie si l'utilisateur a un rôle spécifique"""
-        expected = (role_name or "").strip().lower()
+        """Vérifie si l'utilisateur a un rôle spécifique (case-insensitive)"""
+        if not role_name:
+            return False
+        expected = role_name.strip().lower()
         return any((role.name or "").strip().lower() == expected for role in self.roles)
     
     def __repr__(self):

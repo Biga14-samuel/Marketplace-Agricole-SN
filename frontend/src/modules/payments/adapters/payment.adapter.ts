@@ -220,12 +220,17 @@ export class PaymentAdapter {
      * Convert frontend create payment DTO to backend format
      */
     static toBackendCreate(frontendDto: CreatePaymentDto): any {
+        const rawProvider = frontendDto.metadata?.provider
+        const normalizedProvider = rawProvider === 'stripe' || rawProvider === 'paypal'
+            ? rawProvider
+            : undefined
+
         return {
             order_id: parseInt(frontendDto.orderId),
             payment_method: FRONTEND_TO_BACKEND_METHOD[frontendDto.method],
             amount: frontendDto.amount.toString(),
             currency: frontendDto.currency || 'XAF',
-            provider: frontendDto.metadata?.provider,
+            provider: normalizedProvider,
             additional_data: {
                 customer_id: frontendDto.customerId,
                 customer_email: frontendDto.customerEmail,
@@ -233,6 +238,7 @@ export class PaymentAdapter {
                 customer_phone: frontendDto.customerPhone,
                 description: frontendDto.description,
                 items: frontendDto.items,
+                provider: rawProvider,
                 ...frontendDto.metadata
             }
         }

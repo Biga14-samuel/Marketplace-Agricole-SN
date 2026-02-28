@@ -7,11 +7,39 @@
  */
 export function getErrorMessage(error: unknown): string {
     if (error instanceof Error) {
-        return getErrorMessage(error);
+        return error.message || 'Une erreur inconnue s\'est produite';
     }
     
     if (typeof error === 'string') {
         return error;
+    }
+
+    // Gestion des erreurs HTTP (ex: Axios/FastAPI)
+    if (error && typeof error === 'object') {
+        const maybeResponse = (error as { response?: unknown }).response as
+            | { data?: unknown; status?: number }
+            | undefined;
+
+        const responseData = maybeResponse?.data as
+            | { detail?: unknown; message?: unknown }
+            | undefined;
+
+        if (responseData) {
+            if (typeof responseData.detail === 'string') {
+                return responseData.detail;
+            }
+
+            if (Array.isArray(responseData.detail) && responseData.detail.length > 0) {
+                const first = responseData.detail[0] as { msg?: unknown };
+                if (first && typeof first.msg === 'string') {
+                    return first.msg;
+                }
+            }
+
+            if (typeof responseData.message === 'string') {
+                return responseData.message;
+            }
+        }
     }
     
     if (error && typeof error === 'object' && 'message' in error) {

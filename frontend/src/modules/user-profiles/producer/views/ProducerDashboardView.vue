@@ -553,7 +553,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/stores/auth.store'
 import { useOrdersStore } from '@/modules/orders/stores/orders.store'
-import { CustomerProfileService } from '@/modules/user-profiles/customer/services'
 import { ProducerProfileService } from '@/modules/user-profiles/producer/services'
 import catalogService from '@/modules/catalog/services/catalog.service'
 
@@ -710,15 +709,13 @@ const resolveProducerName = async (): Promise<string> => {
     if (authFullName) return authFullName
 
     try {
-        const customerProfile = await CustomerProfileService.getProfile()
-        const customerName = buildFullName(customerProfile?.firstName, customerProfile?.lastName)
-        if (customerName) return customerName
-    } catch {
-        // Un producteur peut ne pas avoir de profil client.
-    }
-
-    try {
         const producerProfile: any = await ProducerProfileService.getProfile()
+        const profileFullName = buildFullName(
+            producerProfile?.first_name ?? producerProfile?.firstName,
+            producerProfile?.last_name ?? producerProfile?.lastName
+        )
+        if (profileFullName) return profileFullName
+
         const legalName = normalizeNamePart(producerProfile?.legal_name ?? producerProfile?.legalName)
         if (legalName) return legalName
 
@@ -727,6 +724,9 @@ const resolveProducerName = async (): Promise<string> => {
     } catch {
         // Profil producteur non encore configuré.
     }
+
+    const authDisplayName = normalizeNamePart(authUser?.name)
+    if (authDisplayName) return authDisplayName
 
     return 'Producteur'
 }
@@ -814,7 +814,7 @@ onMounted(() => {
         }
 
         try {
-            const response = await catalogService.getMyProducts({ limit: 200 })
+            const response = await catalogService.getMyProducts({ limit: 100 })
             const products = Array.isArray(response?.products) ? response.products : []
             productsTotal.value = products.length
             productsAvailable.value = products.filter((product: any) => Number(product?.stock_quantity || 0) > 0).length

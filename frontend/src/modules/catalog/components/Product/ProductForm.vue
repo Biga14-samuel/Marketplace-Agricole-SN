@@ -513,8 +513,19 @@
                     <div class="space-y-8">
                         <!-- Uploader d'images -->
                         <div class="image-uploader-wrapper">
-                            <ProductImageUploader v-model="formData.images" :max-images="5" :product-id="productId ? Number(productId) : undefined"
-                                @primary-selected="setPrimaryImage" @image-removed="removeImage" />
+                            <ProductImageUploader
+                                v-model="formData.images"
+                                :max-images="5"
+                                :product-id="props.productId ? Number(props.productId) : undefined"
+                                @primary-selected="setPrimaryImage"
+                                @image-removed="removeImage"
+                                @save="handleImageUploaderSave"
+                                @error="handleImageUploaderError" />
+                            <transition name="fade">
+                                <div v-if="errors.images" class="error-message mt-3">
+                                    {{ errors.images }}
+                                </div>
+                            </transition>
                             <div class="uploader-tips">
                                 <div class="tip-item">
                                     <span class="tip-icon">📸</span>
@@ -754,7 +765,9 @@ const errors = reactive({
     price: '',
     category_id: '',
     unit_id: '',
-    stock_quantity: ''
+    stock_quantity: '',
+    max_order: '',
+    images: ''
 })
 
 // États supplémentaires
@@ -771,7 +784,7 @@ const stockAlerts = reactive({
 
 // Données de sélection
 const selectedCategory = computed(() => {
-    return categoryStore.categories.find(c => c.id === formData.category_id) || null
+    return categoryStore.categories.find(c => String(c.id) === String(formData.category_id)) || null
 })
 
 const availableUnits = computed(() => {
@@ -791,7 +804,7 @@ const selectedUnit = computed(() => {
 })
 
 const selectedTags = computed(() => {
-    return tagStore.tags.filter(t => formData.tags.includes(t.id))
+    return tagStore.tags.filter((t) => formData.tags.includes(String(t.id)))
 })
 
 // Étapes du formulaire
@@ -862,9 +875,9 @@ const autoSaveMessages = {
 const isStepValid = computed(() => {
     switch (currentStep.value) {
         case 0:
-            return formData.name.trim().length >= 3 && formData.category_id !== null
+            return formData.name.trim().length >= 3 && !!formData.category_id
         case 1:
-            return formData.price > 0 && formData.unit_id !== null
+            return formData.price > 0 && !!formData.unit_id
         case 2:
             return formData.stock_quantity >= 0
         case 3:
@@ -876,9 +889,9 @@ const isStepValid = computed(() => {
 
 const isFormValid = computed(() => {
     return formData.name.trim().length >= 3 &&
-        formData.category_id !== null &&
+        !!formData.category_id &&
         formData.price > 0 &&
-        formData.unit_id !== null &&
+        !!formData.unit_id &&
         formData.stock_quantity >= 0
 })
 
@@ -902,13 +915,48 @@ const generateSlug = () => {
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^\w\s-]/g, '')
+        // Garder uniquement les lettres minuscules, chiffres, espaces et tirets
+        .replace(/[^a-z0-9\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/--+/g, '-')
         .trim()
         .slice(0, 100)
 
     formData.slug = slug
+}
+
+const buildSlugWithSuffix = (baseSlug: string, suffixNumber: number) => {
+    const normalizedBase = (baseSlug || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/--+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .replace(/-\d+$/, '')
+
+    const suffix = `-${suffixNumber}`
+    const maxBaseLength = Math.max(1, 100 - suffix.length)
+    const truncatedBase = normalizedBase.slice(0, maxBaseLength).replace(/-+$/g, '')
+    return `${truncatedBase}${suffix}`
+}
+
+const isSlugConflictError = (error: any) => {
+    const detail = error?.response?.data?.detail
+
+    if (typeof detail === 'string') {
+        return detail.toLowerCase().includes('slug')
+    }
+
+    if (Array.isArray(detail)) {
+        return detail.some((validationError: any) => {
+            const lastLoc = Array.isArray(validationError?.loc)
+                ? String(validationError.loc[validationError.loc.length - 1] || '').toLowerCase()
+                : ''
+            const message = String(validationError?.msg || '').toLowerCase()
+            return lastLoc === 'slug' || message.includes('slug')
+        })
+    }
+
+    return false
 }
 
 const onCategoryChange = (category: any) => {
@@ -928,7 +976,8 @@ const onNativeUnitChange = (event: Event) => {
 }
 
 const onTagsChange = (tags: any[]) => {
-    console.log('Tags sélectionnés:', tags)
+    if (!Array.isArray(tags)) return
+    formData.tags = tags.map((tag: any) => String(tag?.id ?? tag)).filter(Boolean)
 }
 
 const getSeasonClass = (month: string) => {
@@ -1006,35 +1055,246 @@ const submitForm = async () => {
     isSubmitting.value = true
 
     try {
-        const productData = {
-            ...formData,
-            producer_id: 1, // À remplacer par l'ID du producteur connecté
-            availability: {
-                months: availability.months,
-                delivery_days: availability.deliveryDays
-            },
-            stock_alerts: stockAlerts
+        // (Re)générer un slug propre si besoin
+        if (!formData.slug) {
+            generateSlug()
         }
 
+        // Réinitialiser les erreurs spécifiques
+        errors.slug = ''
+        errors.max_order = ''
+        errors.images = ''
+
+        // Validation du slug côté client (alignée avec le backend)
+        if (!formData.slug || !/^[a-z0-9-]+$/.test(formData.slug)) {
+            errors.slug = 'Le lien doit contenir uniquement des lettres minuscules, chiffres et tirets'
+            isSubmitting.value = false
+            return
+        }
+
+        // Validation min/max commande (alignée avec le backend)
+        if (formData.max_order !== null && formData.max_order !== undefined) {
+            if (formData.max_order < 1) {
+                errors.max_order = 'La quantité maximum doit être au moins 1'
+                isSubmitting.value = false
+                return
+            }
+            if (formData.max_order < formData.min_order) {
+                errors.max_order = 'La quantité maximum doit être supérieure ou égale à la quantité minimum'
+                isSubmitting.value = false
+                return
+            }
+        }
+
+        const tagIds = (formData.tags || [])
+            .map((tagId) => Number(tagId))
+            .filter((tagId) => Number.isInteger(tagId) && tagId > 0)
+
+        // Préparer les données du produit (sans les images)
+        let productData = {
+            name: formData.name,
+            slug: formData.slug,
+            description: formData.description,
+            price: formData.price,
+            category_id: formData.category_id || undefined,
+            unit_id: formData.unit_id || undefined,
+            stock_quantity: formData.stock_quantity,
+            min_order: formData.min_order,
+            max_order: formData.max_order,
+            is_active: formData.is_active,
+            is_featured: formData.is_featured,
+            origin: formData.origin,
+            // Ne pas envoyer de chaîne vide pour éviter les 422 côté backend
+            harvest_date: formData.harvest_date || undefined,
+            tag_ids: tagIds
+        }
+
+        let productId: string
+
         if (isEditMode.value && props.productId) {
+            // Mode édition
             await productStore.updateProduct(props.productId, productData)
+            productId = props.productId
         } else {
-            await productStore.createProduct(productData)
+            // Mode création
+            let createdProduct: any = null
+            let createError: any = null
+            const baseSlug = String(productData.slug)
+
+            for (let attempt = 0; attempt < 5; attempt++) {
+                const candidateSlug = attempt === 0
+                    ? baseSlug
+                    : buildSlugWithSuffix(baseSlug, attempt + 1)
+
+                productData = {
+                    ...productData,
+                    slug: candidateSlug
+                }
+                formData.slug = candidateSlug
+
+                try {
+                    createdProduct = await productStore.createProduct(productData)
+                    createError = null
+                    break
+                } catch (error) {
+                    createError = error
+                    if (!isSlugConflictError(error)) {
+                        throw error
+                    }
+                }
+            }
+
+            if (!createdProduct) {
+                throw createError || new Error('Impossible de générer un slug unique pour ce produit')
+            }
+
+            productId = createdProduct.id
+        }
+
+        // Uploader les images après la création/mise à jour du produit
+        const pendingImages = (formData.images || []).filter((image) => image?.file instanceof File)
+        if (pendingImages.length > 0) {
+            const uploadFailures: string[] = []
+
+            for (const image of pendingImages) {
+                try {
+                    await productStore.addProductImageFile(
+                        productId,
+                        {
+                            file: image.file,
+                            alt_text: image.alt_text || formData.name,
+                            is_primary: image.is_primary || false,
+                            position: Number.isInteger(image.position)
+                                ? image.position
+                                : formData.images.indexOf(image)
+                        }
+                    )
+                } catch (imageError: any) {
+                    const backendDetail = imageError?.response?.data?.detail
+                    const message = typeof backendDetail === 'string'
+                        ? backendDetail
+                        : "Erreur lors de l'enregistrement d'une image"
+                    uploadFailures.push(message)
+                }
+            }
+
+            if (uploadFailures.length > 0) {
+                const uniqueFailures = Array.from(new Set(uploadFailures))
+                errors.images = `Certaines images n'ont pas été sauvegardées: ${uniqueFailures.join(' ; ')}`
+                currentStep.value = 3
+                throw new Error(errors.images)
+            }
+
+            if (!isEditMode.value) {
+                try {
+                    const persistedImages = await productStore.getProductImages(productId)
+                    if (!Array.isArray(persistedImages) || persistedImages.length === 0) {
+                        errors.images = "Le produit a été créé, mais aucune image n'a été confirmée en base."
+                        currentStep.value = 3
+                        throw new Error(errors.images)
+                    }
+                } catch (verificationError) {
+                    if (!errors.images) {
+                        errors.images = "Le produit a été créé, mais la vérification des images a échoué."
+                        currentStep.value = 3
+                    }
+                    throw verificationError
+                }
+            }
         }
 
         emit('success')
 
         // Redirection ou message de succès
         setTimeout(() => {
-            router.push('/catalog/products/my')
+            router.push('/catalog/my-products')
         }, 1500)
 
     } catch (error) {
+        const responseDetail = (error as any)?.response?.data?.detail
+
+        if (typeof responseDetail === 'string') {
+            const detailLower = responseDetail.toLowerCase()
+
+            if (detailLower.includes('slug')) {
+                errors.slug = responseDetail
+                currentStep.value = 0
+            } else if (detailLower.includes('quantité maximum')) {
+                errors.max_order = responseDetail
+                currentStep.value = 1
+            }
+
+            console.error('Erreur lors de la soumission:', responseDetail)
+            return
+        }
+
+        if (Array.isArray(responseDetail) && responseDetail.length > 0) {
+            const firstValidationError = responseDetail[0]
+            const field = Array.isArray(firstValidationError?.loc)
+                ? String(firstValidationError.loc[firstValidationError.loc.length - 1] || '')
+                : ''
+            const message = firstValidationError?.msg || 'Données invalides'
+
+            if (field === 'slug') {
+                errors.slug = message
+                currentStep.value = 0
+            } else if (field === 'max_order') {
+                errors.max_order = message
+                currentStep.value = 1
+            } else if (field === 'category_id') {
+                errors.category_id = message
+                currentStep.value = 0
+            } else if (field === 'unit_id') {
+                errors.unit_id = message
+                currentStep.value = 1
+            } else if (field === 'price') {
+                errors.price = message
+                currentStep.value = 1
+            } else {
+                console.error('Erreur validation lors de la soumission:', responseDetail)
+            }
+            return
+        }
+
         console.error('Erreur lors de la soumission:', error)
-        // Gérer les erreurs de validation
     } finally {
         isSubmitting.value = false
     }
+}
+
+const setTransientAutoSaveStatus = (status: 'saved' | 'error', durationMs = 3000) => {
+    autoSaveStatus.value = status
+    setTimeout(() => {
+        if (autoSaveStatus.value === status) {
+            autoSaveStatus.value = null
+        }
+    }, durationMs)
+}
+
+const handleImageUploaderSave = (payload?: { images?: any[]; productId?: number }) => {
+    const currentProductId = payload?.productId ?? (props.productId ? Number(props.productId) : undefined)
+
+    if (!currentProductId) {
+        // En création, les fichiers seront envoyés au moment de "Publier le produit".
+        return
+    }
+
+    const hasUploadError = Array.isArray(payload?.images)
+        ? payload.images.some((image: any) => Boolean(image?.error))
+        : false
+
+    errors.images = hasUploadError ? errors.images || "Au moins une image n'a pas été sauvegardée." : ''
+    setTransientAutoSaveStatus(hasUploadError ? 'error' : 'saved')
+}
+
+const handleImageUploaderError = (uploaderErrors: Array<{ fileName: string; message: string }>) => {
+    if (Array.isArray(uploaderErrors) && uploaderErrors.length > 0) {
+        console.error('Erreurs upload images:', uploaderErrors)
+        errors.images = uploaderErrors
+            .map((errorItem) => `${errorItem.fileName}: ${errorItem.message}`)
+            .join(' ; ')
+    }
+    setTransientAutoSaveStatus('error')
 }
 
 const loadProductData = async () => {
@@ -1045,7 +1305,11 @@ const loadProductData = async () => {
 
         if (productStore.currentProduct) {
             Object.assign(formData, productStore.currentProduct)
+            formData.category_id = formData.category_id ? String(formData.category_id) : null
             formData.unit_id = formData.unit_id ? String(formData.unit_id) : null
+            formData.tags = (formData.tags || [])
+                .map((tag: any) => String(tag?.id ?? tag))
+                .filter(Boolean)
 
             // Charger les données associées
             if (formData.category_id) {
@@ -1063,10 +1327,17 @@ const loadProductData = async () => {
     }
 }
 
-// Watch pour l'auto-save
+// Watch pour l'auto-save avec debounce pour éviter les boucles infinies
+// On ignore les changements de autoSaveStatus en utilisant un flag
+let isAutoSaving = false
 watch(formData, () => {
-    if (isEditMode.value) {
+    if (isEditMode.value && !isAutoSaving) {
+        isAutoSaving = true
         autoSave()
+        // Réinitialiser le flag après un délai
+        setTimeout(() => {
+            isAutoSaving = false
+        }, 2000)
     }
 }, { deep: true })
 
@@ -1534,4 +1805,3 @@ onUnmounted(() => {
     background: linear-gradient(to bottom, var(--green-light), var(--green-medium));
 }
 </style>
-

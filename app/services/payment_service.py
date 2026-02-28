@@ -155,10 +155,14 @@ class PaymentService:
         total_paid = self.repository.get_total_amount_by_order(order_id)
         
         if total_paid >= order.total_amount:
-            # La commande est entièrement payée
+            # La commande est entièrement payée : marquer le paiement comme complété
+            if order.payment_status != OrderPaymentStatus.COMPLETED:
+                order.payment_status = OrderPaymentStatus.COMPLETED
+            # Si la commande était en attente, la passer à "confirmée"
             if order.status == OrderStatus.PENDING:
                 order.status = OrderStatus.CONFIRMED
-                self.db.flush()
+            # Valider les changements sur l'entité Order
+            self.db.flush()
     
     def get_payment_statistics(self, start_date: datetime, end_date: datetime) -> PaymentStats:
         """

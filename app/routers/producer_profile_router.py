@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, status, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, status, UploadFile, File, Form, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pathlib import Path
+from uuid import uuid4
+import shutil
 
 from app.core.database import get_db
 from app.routers.auth_router import get_current_user
@@ -17,6 +20,9 @@ from app.schemas.profile_schema import (
 from app.schemas.auth_schema import MessageResponse
 
 router = APIRouter(prefix="/producers", tags=["Producer Profiles"])
+
+ALLOWED_PROFILE_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+MAX_PROFILE_IMAGE_SIZE_BYTES = 8 * 1024 * 1024  # 8MB
 
 # ============= Dependencies =============
 
@@ -38,6 +44,60 @@ def get_schedule_service(db: Session = Depends(get_db)) -> ProducerScheduleServi
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     """Dependency pour obtenir le service d'authentification"""
     return AuthService(db)
+
+
+def _validate_profile_image_upload(file: UploadFile) -> str:
+    filename = (file.filename or "image.bin").replace(" ", "_")
+    extension = Path(filename).suffix.lower()
+
+    if extension not in ALLOWED_PROFILE_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Format d'image non supporté. Utilisez JPG, PNG, WEBP ou GIF."
+        )
+
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier envoyé n'est pas une image valide."
+        )
+
+    return extension
+
+
+async def _save_profile_image(file: UploadFile, user_id: int, image_kind: str) -> str:
+    extension = _validate_profile_image_upload(file)
+    target_dir = Path("uploads") / "producers" / str(user_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_filename = (
+        f"{int(datetime.now(timezone.utc).timestamp())}-"
+        f"{image_kind}-{uuid4().hex}{extension}"
+    )
+    target_path = target_dir / stored_filename
+
+    file.file.seek(0, 2)
+    size_bytes = file.file.tell()
+    file.file.seek(0)
+    if size_bytes > MAX_PROFILE_IMAGE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image trop volumineuse (max 8MB)."
+        )
+
+    try:
+        with target_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Impossible d'enregistrer l'image: {exc}"
+        ) from exc
+    finally:
+        await file.close()
+
+    return f"/uploads/producers/{user_id}/{stored_filename}"
 
 
 # ============= Producer Profile Endpoints =============
@@ -109,6 +169,52 @@ def update_my_profile(
     return ProducerProfileResponse.model_validate(profile)
 
 
+@router.post(
+    "/profile/avatar",
+    response_model=ProducerProfileResponse,
+    summary="Uploader la photo de profil producteur"
+)
+async def upload_profile_avatar(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    """
+    Upload la photo de profil (avatar) du producteur connecté.
+    """
+    public_path = await _save_profile_image(file, current_user.id, "avatar")
+    public_url = str(request.base_url).rstrip('/') + public_path
+    profile = producer_service.update_profile(
+        current_user.id,
+        ProducerProfileUpdate(avatar=public_url)
+    )
+    return ProducerProfileResponse.model_validate(profile)
+
+
+@router.post(
+    "/profile/cover-image",
+    response_model=ProducerProfileResponse,
+    summary="Uploader la photo de couverture producteur"
+)
+async def upload_profile_cover_image(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    producer_service: ProducerProfileService = Depends(get_producer_service)
+):
+    """
+    Upload la photo de couverture du producteur connecté.
+    """
+    public_path = await _save_profile_image(file, current_user.id, "cover")
+    public_url = str(request.base_url).rstrip('/') + public_path
+    profile = producer_service.update_profile(
+        current_user.id,
+        ProducerProfileUpdate(cover_image=public_url)
+    )
+    return ProducerProfileResponse.model_validate(profile)
+
+
 @router.get(
     "/verified",
     response_model=List[ProducerProfileResponse],
@@ -143,7 +249,7 @@ async def upload_producer_document(
 ):
     """
     Uploade un document légal (kbis/insurance/certification) pour le producteur connecté.
-    Le fichier est référencé en base (MVP: chemin logique).
+    Le fichier est stocké sur disque puis son chemin public est enregistré en base.
     """
     try:
         document_type = DocumentTypeEnum(type)
@@ -154,7 +260,25 @@ async def upload_producer_document(
         )
 
     safe_name = (file.filename or "document.bin").replace(" ", "_")
-    stored_path = f"/uploads/producers/{current_user.id}/{int(datetime.now(timezone.utc).timestamp())}_{safe_name}"
+    extension = Path(safe_name).suffix.lower()
+    target_dir = Path("uploads") / "producers" / str(current_user.id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_filename = f"{int(datetime.now(timezone.utc).timestamp())}-{uuid4().hex}{extension or '.bin'}"
+    target_path = target_dir / stored_filename
+
+    try:
+        with target_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Impossible d'enregistrer le document: {exc}"
+        ) from exc
+    finally:
+        await file.close()
+
+    stored_path = f"/uploads/producers/{current_user.id}/{stored_filename}"
     document = producer_service.upload_document(
         user_id=current_user.id,
         document_type=document_type,

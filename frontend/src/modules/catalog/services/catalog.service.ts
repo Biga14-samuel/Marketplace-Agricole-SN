@@ -29,6 +29,8 @@ import type {
  * Service intégré pour la gestion du catalogue - Connecté à l'API backend
  */
 class CatalogService {
+  private readonly productsBasePath = '/products-catalog/products'
+
   // ============ CATEGORIES ============
 
   /**
@@ -38,7 +40,7 @@ class CatalogService {
   async createCategory(categoryData: CreateCategoryRequest): Promise<Category> {
     try {
       const backendData = CategoryAdapter.toBackendCreate(categoryData)
-      const response: AxiosResponse = await apiClient.post('/products-catalog/categories', backendData)
+      const response: AxiosResponse = await apiClient.post(`${this.productsBasePath}/categories`, backendData)
       return CategoryAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur création catégorie:', error)
@@ -53,9 +55,9 @@ class CatalogService {
   async getCategories(includeInactive = false): Promise<Category[]> {
     try {
       const params = new URLSearchParams()
-      if (includeInactive) params.append('include_inactive', 'true')
+      if (!includeInactive) params.append('active_only', 'true')
 
-      const url = `/products-catalog/categories${params.toString() ? `?${params.toString()}` : ''}`
+      const url = `${this.productsBasePath}/categories${params.toString() ? `?${params.toString()}` : ''}`
       const response: AxiosResponse = await apiClient.get(url)
       return response.data.map((category: any) => CategoryAdapter.toFrontend(category))
     } catch (error: any) {
@@ -70,7 +72,7 @@ class CatalogService {
    */
   async getCategoryTree(): Promise<Category[]> {
     try {
-      const response: AxiosResponse = await apiClient.get('/products-catalog/categories/tree')
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}/categories/tree`)
       return response.data.map((category: any) => CategoryAdapter.toFrontend(category))
     } catch (error: any) {
       console.error('Erreur récupération arbre catégories:', error)
@@ -84,7 +86,7 @@ class CatalogService {
    */
   async getCategory(categoryId: string | number): Promise<Category> {
     try {
-      const response: AxiosResponse = await apiClient.get(`/products-catalog/categories/${categoryId}`)
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}/categories/${categoryId}`)
       return CategoryAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur récupération catégorie:', error)
@@ -99,7 +101,7 @@ class CatalogService {
   async updateCategory(categoryId: string | number, categoryData: UpdateCategoryRequest): Promise<Category> {
     try {
       const backendData = CategoryAdapter.toBackendUpdate(categoryData)
-      const response: AxiosResponse = await apiClient.put(`/products-catalog/categories/${categoryId}`, backendData)
+      const response: AxiosResponse = await apiClient.put(`${this.productsBasePath}/categories/${categoryId}`, backendData)
       return CategoryAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur mise à jour catégorie:', error)
@@ -113,7 +115,7 @@ class CatalogService {
    */
   async deleteCategory(categoryId: string | number): Promise<void> {
     try {
-      await apiClient.delete(`/products-catalog/categories/${categoryId}`)
+      await apiClient.delete(`${this.productsBasePath}/categories/${categoryId}`)
     } catch (error: any) {
       console.error('Erreur suppression catégorie:', error)
       throw new Error(error.response?.data?.detail || 'Erreur lors de la suppression de la catégorie')
@@ -129,7 +131,7 @@ class CatalogService {
   async createTag(tagData: any): Promise<Tag> {
     try {
       const backendData = TagAdapter.toBackendCreate(tagData)
-      const response: AxiosResponse = await apiClient.post('/products-catalog/tags', backendData)
+      const response: AxiosResponse = await apiClient.post(`${this.productsBasePath}/tags`, backendData)
       return TagAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur création tag:', error)
@@ -146,7 +148,7 @@ class CatalogService {
       const params = new URLSearchParams()
       if (type) params.append('type', type)
 
-      const url = `/products-catalog/tags${params.toString() ? `?${params.toString()}` : ''}`
+      const url = `${this.productsBasePath}/tags${params.toString() ? `?${params.toString()}` : ''}`
       const response: AxiosResponse = await apiClient.get(url)
       return response.data.map((tag: any) => TagAdapter.toFrontend(tag))
     } catch (error: any) {
@@ -164,7 +166,7 @@ class CatalogService {
   async createUnit(unitData: any): Promise<Unit> {
     try {
       const backendData = UnitAdapter.toBackendCreate(unitData)
-      const response: AxiosResponse = await apiClient.post('/products-catalog/units', backendData)
+      const response: AxiosResponse = await apiClient.post(`${this.productsBasePath}/units`, backendData)
       return UnitAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur création unité:', error)
@@ -179,9 +181,9 @@ class CatalogService {
   async getUnits(type?: string): Promise<Unit[]> {
     try {
       const params = new URLSearchParams()
-      if (type) params.append('type', type)
+      if (type) params.append('unit_type', type)
 
-      const url = `/products-catalog/units${params.toString() ? `?${params.toString()}` : ''}`
+      const url = `${this.productsBasePath}/units${params.toString() ? `?${params.toString()}` : ''}`
       const response: AxiosResponse = await apiClient.get(url)
       return response.data.map((unit: any) => UnitAdapter.toFrontend(unit))
     } catch (error: any) {
@@ -199,7 +201,7 @@ class CatalogService {
   async createProduct(productData: CreateProductRequest): Promise<Product> {
     try {
       const backendData = ProductAdapter.toBackendCreate(productData)
-      const response: AxiosResponse = await apiClient.post('/products-catalog/products', backendData)
+      const response: AxiosResponse = await apiClient.post(this.productsBasePath, backendData)
       return ProductAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur création produit:', error)
@@ -208,7 +210,7 @@ class CatalogService {
   }
 
   /**
-   * GET /api/v1/products-catalog/products/search
+   * GET /api/v1/products-catalog/products
    * Rechercher des produits
    */
   async searchProducts(params: {
@@ -239,11 +241,20 @@ class CatalogService {
       if (params.skip !== undefined) searchParams.append('skip', params.skip.toString())
       if (params.limit !== undefined) searchParams.append('limit', params.limit.toString())
 
-      const response: AxiosResponse = await apiClient.get(`/products-catalog/products/search?${searchParams.toString()}`)
+      const query = searchParams.toString()
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}${query ? `?${query}` : ''}`)
 
+      if (Array.isArray(response.data)) {
+        return {
+          products: response.data.map((product: any) => ProductAdapter.toFrontend(product)),
+          total: response.data.length
+        }
+      }
+
+      const products = Array.isArray(response.data?.products) ? response.data.products : []
       return {
-        products: response.data.products.map((product: any) => ProductAdapter.toFrontend(product)),
-        total: response.data.total
+        products: products.map((product: any) => ProductAdapter.toFrontend(product)),
+        total: Number(response.data?.total ?? products.length)
       }
     } catch (error: any) {
       console.error('Erreur recherche produits:', error)
@@ -269,11 +280,20 @@ class CatalogService {
       if (params.category_id) searchParams.append('category_id', params.category_id.toString())
       if (params.is_active !== undefined) searchParams.append('is_active', params.is_active.toString())
 
-      const response: AxiosResponse = await apiClient.get(`/products-catalog/products/my-products?${searchParams.toString()}`)
+      const query = searchParams.toString()
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}/my-products${query ? `?${query}` : ''}`)
+
+      // Handle both array and object response formats
+      if (Array.isArray(response.data)) {
+        return {
+          products: response.data.map((product: any) => ProductAdapter.toFrontend(product)),
+          total: response.data.length
+        }
+      }
 
       return {
-        products: response.data.products.map((product: any) => ProductAdapter.toFrontend(product)),
-        total: response.data.total
+        products: response.data.products?.map((product: any) => ProductAdapter.toFrontend(product)) || [],
+        total: response.data.total || 0
       }
     } catch (error: any) {
       console.error('Erreur récupération mes produits:', error)
@@ -287,7 +307,7 @@ class CatalogService {
    */
   async getProduct(productId: string | number): Promise<Product> {
     try {
-      const response: AxiosResponse = await apiClient.get(`/products-catalog/products/${productId}`)
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}/${productId}`)
       return ProductAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur récupération produit:', error)
@@ -301,7 +321,7 @@ class CatalogService {
    */
   async getCompleteProduct(productId: string | number): Promise<Product> {
     try {
-      const response: AxiosResponse = await apiClient.get(`/products-catalog/products/${productId}/complete`)
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}/${productId}/complete`)
       return ProductAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur récupération produit complet:', error)
@@ -316,7 +336,7 @@ class CatalogService {
   async updateProduct(productId: string | number, productData: UpdateProductRequest): Promise<Product> {
     try {
       const backendData = ProductAdapter.toBackendUpdate(productData)
-      const response: AxiosResponse = await apiClient.put(`/products-catalog/products/${productId}`, backendData)
+      const response: AxiosResponse = await apiClient.put(`${this.productsBasePath}/${productId}`, backendData)
       return ProductAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur mise à jour produit:', error)
@@ -334,7 +354,7 @@ class CatalogService {
     reason?: string
   }): Promise<Product> {
     try {
-      const response: AxiosResponse = await apiClient.post(`/products-catalog/products/${productId}/stock`, stockData)
+      const response: AxiosResponse = await apiClient.post(`${this.productsBasePath}/${productId}/stock`, stockData)
       return ProductAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur mise à jour stock:', error)
@@ -348,7 +368,7 @@ class CatalogService {
    */
   async deleteProduct(productId: string | number): Promise<void> {
     try {
-      await apiClient.delete(`/products-catalog/products/${productId}`)
+      await apiClient.delete(`${this.productsBasePath}/${productId}`)
     } catch (error: any) {
       console.error('Erreur suppression produit:', error)
       throw new Error(error.response?.data?.detail || 'Erreur lors de la suppression du produit')
@@ -364,7 +384,7 @@ class CatalogService {
   async addProductImage(productId: string | number, imageData: any): Promise<ProductImage> {
     try {
       const backendData = ProductImageAdapter.toBackendCreate(imageData)
-      const response: AxiosResponse = await apiClient.post(`/products-catalog/products/${productId}/images`, backendData)
+      const response: AxiosResponse = await apiClient.post(`${this.productsBasePath}/${productId}/images`, backendData)
       return ProductImageAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur ajout image produit:', error)
@@ -378,7 +398,7 @@ class CatalogService {
    */
   async getProductImages(productId: string | number): Promise<ProductImage[]> {
     try {
-      const response: AxiosResponse = await apiClient.get(`/products-catalog/products/${productId}/images`)
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}/${productId}/images`)
       return response.data.map((image: any) => ProductImageAdapter.toFrontend(image))
     } catch (error: any) {
       console.error('Erreur récupération images produit:', error)
@@ -395,7 +415,7 @@ class CatalogService {
   async addProductVariant(productId: string | number, variantData: any): Promise<ProductVariant> {
     try {
       const backendData = ProductVariantAdapter.toBackendCreate(variantData)
-      const response: AxiosResponse = await apiClient.post(`/products-catalog/products/${productId}/variants`, backendData)
+      const response: AxiosResponse = await apiClient.post(`${this.productsBasePath}/${productId}/variants`, backendData)
       return ProductVariantAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur ajout variante produit:', error)
@@ -409,7 +429,7 @@ class CatalogService {
    */
   async getProductVariants(productId: string | number): Promise<ProductVariant[]> {
     try {
-      const response: AxiosResponse = await apiClient.get(`/products-catalog/products/${productId}/variants`)
+      const response: AxiosResponse = await apiClient.get(`${this.productsBasePath}/${productId}/variants`)
       return response.data.map((variant: any) => ProductVariantAdapter.toFrontend(variant))
     } catch (error: any) {
       console.error('Erreur récupération variantes produit:', error)
@@ -426,7 +446,8 @@ class CatalogService {
   async createStockAlert(alertData: any): Promise<StockAlert> {
     try {
       const backendData = StockAlertAdapter.toBackendCreate(alertData)
-      const response: AxiosResponse = await apiClient.post('/products-catalog/stock-alerts', backendData)
+      const productId = backendData.product_id
+      const response: AxiosResponse = await apiClient.post(`${this.productsBasePath}/${productId}/stock-alert`, backendData)
       return StockAlertAdapter.toFrontend(response.data)
     } catch (error: any) {
       console.error('Erreur création alerte stock:', error)
@@ -441,7 +462,7 @@ class CatalogService {
    */
   async testConnection(): Promise<boolean> {
     try {
-      await apiClient.get('/products-catalog/categories')
+      await apiClient.get(`${this.productsBasePath}/categories`)
       return true
     } catch (error) {
       console.error('Erreur connexion API catalog:', error)

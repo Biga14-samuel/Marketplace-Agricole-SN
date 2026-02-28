@@ -48,6 +48,28 @@ export const ProducerProfileService = {
     },
 
     /**
+     * Uploader l'avatar producteur
+     * POST /api/v1/producer-profiles/producers/profile/avatar
+     */
+    async uploadAvatar(file: File): Promise<ProducerProfile> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await api.post('/producer-profiles/producers/profile/avatar', formData);
+        return response.data;
+    },
+
+    /**
+     * Uploader la couverture producteur
+     * POST /api/v1/producer-profiles/producers/profile/cover-image
+     */
+    async uploadCoverImage(file: File): Promise<ProducerProfile> {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await api.post('/producer-profiles/producers/profile/cover-image', formData);
+        return response.data;
+    },
+
+    /**
      * Obtenir mon profil complet (avec documents, points de retrait, etc.)
      * GET /api/v1/producer-profiles/producers/profile/complete
      */
@@ -58,7 +80,34 @@ export const ProducerProfileService = {
         schedule: ProducerSchedule[];
     }> {
         const response = await api.get('/producer-profiles/producers/profile/complete');
-        return response.data;
+        const payload = response.data as any;
+
+        // Backend MVP peut retourner soit:
+        // 1) { profile, documents, pickupPoints, schedule }
+        // 2) un objet "flat" ProducerProfileComplete (avec documents, pickup_points, schedules)
+        if (payload && typeof payload === 'object' && 'profile' in payload) {
+            return {
+                profile: payload.profile as ProducerProfile,
+                documents: Array.isArray(payload.documents) ? payload.documents : [],
+                pickupPoints: Array.isArray(payload.pickupPoints)
+                    ? payload.pickupPoints
+                    : (Array.isArray(payload.pickup_points) ? payload.pickup_points : []),
+                schedule: Array.isArray(payload.schedule)
+                    ? payload.schedule
+                    : (Array.isArray(payload.schedules) ? payload.schedules : [])
+            };
+        }
+
+        return {
+            profile: payload as ProducerProfile,
+            documents: Array.isArray(payload?.documents) ? payload.documents : [],
+            pickupPoints: Array.isArray(payload?.pickup_points)
+                ? payload.pickup_points
+                : (Array.isArray(payload?.pickupPoints) ? payload.pickupPoints : []),
+            schedule: Array.isArray(payload?.schedules)
+                ? payload.schedules
+                : (Array.isArray(payload?.schedule) ? payload.schedule : [])
+        };
     },
 
     /**

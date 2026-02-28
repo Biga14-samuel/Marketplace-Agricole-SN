@@ -273,7 +273,10 @@ export const usePaymentStore = defineStore('payment', () => {
     const fetchUserPayments = async () => {
         paymentLoading.value = true
         try {
-            const userPayments = await paymentService.getUserPayments()
+            const isProducerRole = authStore.hasRole?.('Producer') || authStore.hasRole?.('Producteur')
+            const userPayments = await paymentService.getUserPayments({
+                ...(isProducerRole ? ({ role: 'producer' } as any) : {})
+            } as any)
             payments.value = userPayments
             return userPayments
         } catch (error: unknown) {

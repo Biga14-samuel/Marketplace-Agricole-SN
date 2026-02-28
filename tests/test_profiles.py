@@ -1,4 +1,5 @@
 import pytest
+import io
 from fastapi import status
 from datetime import time
 
@@ -118,6 +119,39 @@ class TestCustomerProfile:
         data = response.json()
         assert data["first_name"] == update_data["first_name"]
         assert data["last_name"] == update_data["last_name"]
+
+    def test_upload_customer_cover_image(self, client, auth_user_with_profile, auth_headers):
+        """
+        Test d'upload de la photo de couverture client.
+        """
+        cover_bytes = io.BytesIO(b"fake-cover-content")
+        response = client.post(
+            f"{CUSTOMER_PREFIX}/profile/cover-image",
+            headers=auth_headers,
+            files={"file": ("cover.jpg", cover_bytes, "image/jpeg")}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        preferences = data.get("preferences") or {}
+        assert isinstance(preferences.get("cover_image"), str)
+        assert preferences["cover_image"].startswith("/uploads/customers/")
+
+    def test_upload_customer_avatar(self, client, auth_user_with_profile, auth_headers):
+        """
+        Test d'upload de la photo de profil client.
+        """
+        avatar_bytes = io.BytesIO(b"fake-avatar-content")
+        response = client.post(
+            f"{CUSTOMER_PREFIX}/profile/avatar",
+            headers=auth_headers,
+            files={"file": ("avatar.jpg", avatar_bytes, "image/jpeg")}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert isinstance(data.get("avatar"), str)
+        assert data["avatar"].startswith("/uploads/customers/")
 
     def test_profile_requires_authentication(self, client):
         """
@@ -377,6 +411,46 @@ class TestProducerProfile:
         data = response.json()
         assert data["bio"] == update_data["bio"]
         assert float(data["farm_size"]) == update_data["farm_size"]
+
+    def test_update_producer_profile_accepts_spaced_legal_fields(self, client, producer_with_profile, producer_headers):
+        """
+        Test de mise à jour des informations légales avec des espaces de saisie.
+
+        Vérifie que SIRET/IBAN sont acceptés puis normalisés côté API.
+        """
+        update_data = {
+            "siret": "123 456 789",
+            "iban": "FR76 3000 1000 0100 0000 0000 X99",
+            "tva_number": "FR XX 123456789"
+        }
+
+        response = client.put(
+            f"{PRODUCER_PREFIX}/profile",
+            headers=producer_headers,
+            json=update_data
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["siret"] == "123456789"
+        assert data["iban"] == "FR7630001000010000000000X99"
+        assert data["tva_number"] == update_data["tva_number"]
+
+    def test_upload_producer_avatar(self, client, producer_with_profile, producer_headers):
+        """
+        Test d'upload de photo de profil producteur via multipart.
+        """
+        avatar_bytes = io.BytesIO(b"fake-avatar-content")
+        response = client.post(
+            f"{PRODUCER_PREFIX}/profile/avatar",
+            headers=producer_headers,
+            files={"file": ("avatar.jpg", avatar_bytes, "image/jpeg")}
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert isinstance(data.get("avatar"), str)
+        assert data["avatar"].startswith("/uploads/producers/")
 
     def test_get_public_producer_profile(self, client, producer_with_profile):
         """

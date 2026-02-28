@@ -246,7 +246,7 @@ export class Product {
 
     // Obtenir l'image principale
     getMainImage(): ProductImage | null {
-        return this.images.find(img => img.is_main) || this.images[0] || null;
+        return this.images.find(img => img.is_main || (img as any).is_primary) || this.images[0] || null;
     }
 
     // Obtenir les images secondaires
@@ -383,9 +383,11 @@ export class ProductImage {
         this.product_id = data.product_id || '';
         this.url = data.url || '';
         this.alt_text = data.alt_text;
-        this.is_main = data.is_main || false;
-        this.order = data.order || 0;
-        this.created_at = data.created_at ? new Date(data.created_at) : new Date();
+        this.is_main = (data.is_main ?? (data as any).is_primary) || false;
+        this.order = data.order ?? (data as any).position ?? 0;
+        this.created_at = data.created_at
+            ? new Date(data.created_at)
+            : ((data as any).uploaded_at ? new Date((data as any).uploaded_at) : new Date());
     }
 
     static fromApiData(data: any): ProductImage {
@@ -394,9 +396,9 @@ export class ProductImage {
             product_id: data.product_id,
             url: data.url,
             alt_text: data.alt_text,
-            is_main: data.is_main,
-            order: data.order,
-            created_at: data.created_at,
+            is_main: data.is_main ?? data.is_primary,
+            order: data.order ?? data.position,
+            created_at: data.created_at ?? data.uploaded_at,
         });
     }
 
@@ -404,8 +406,8 @@ export class ProductImage {
         return {
             url: this.url,
             alt_text: this.alt_text,
-            is_main: this.is_main,
-            order: this.order,
+            is_primary: this.is_main,
+            position: this.order,
         };
     }
 

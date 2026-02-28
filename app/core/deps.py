@@ -90,9 +90,11 @@ def require_admin(current_user: User = Depends(get_current_active_user)) -> User
 
 def require_producer(current_user: User = Depends(get_current_active_user)) -> User:
     """Vérifie que l'utilisateur est un producteur"""
-    if not current_user.has_role("producer") and not current_user.has_role("admin"):
+    # Support case-insensitive role checking
+    user_roles = [role.name.lower() for role in current_user.roles]
+    if "producer" not in user_roles and "admin" not in user_roles:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Accès réservé aux producteurs"
+            detail="Seuls les producteurs peuvent accéder à cette ressource"
         )
     return current_user

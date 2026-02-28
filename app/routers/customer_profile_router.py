@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, status
+from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
+import shutil
+from fastapi import APIRouter, Depends, status, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -13,6 +17,9 @@ from app.schemas.profile_schema import (
 from app.schemas.auth_schema import MessageResponse
 
 router = APIRouter(prefix="/customers", tags=["Customer Profiles"])
+
+ALLOWED_CUSTOMER_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+MAX_CUSTOMER_IMAGE_SIZE_BYTES = 8 * 1024 * 1024  # 8MB
 
 # ============= Dependencies =============
 
@@ -29,6 +36,60 @@ def get_address_service(db: Session = Depends(get_db)) -> AddressService:
 def get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     """Dependency pour obtenir le service d'authentification"""
     return AuthService(db)
+
+
+def _validate_customer_image_upload(file: UploadFile) -> str:
+    filename = (file.filename or "image.bin").replace(" ", "_")
+    extension = Path(filename).suffix.lower()
+
+    if extension not in ALLOWED_CUSTOMER_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Format d'image non supporté. Utilisez JPG, PNG, WEBP ou GIF."
+        )
+
+    content_type = (file.content_type or "").lower()
+    if not content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier envoyé n'est pas une image valide."
+        )
+
+    return extension
+
+
+async def _save_customer_image(file: UploadFile, user_id: int, image_kind: str) -> str:
+    extension = _validate_customer_image_upload(file)
+    target_dir = Path("uploads") / "customers" / str(user_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    stored_filename = (
+        f"{int(datetime.now(timezone.utc).timestamp())}-"
+        f"{image_kind}-{uuid4().hex}{extension}"
+    )
+    target_path = target_dir / stored_filename
+
+    file.file.seek(0, 2)
+    size_bytes = file.file.tell()
+    file.file.seek(0)
+    if size_bytes > MAX_CUSTOMER_IMAGE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image trop volumineuse (max 8MB)."
+        )
+
+    try:
+        with target_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Impossible d'enregistrer l'image: {exc}"
+        ) from exc
+    finally:
+        await file.close()
+
+    return f"/uploads/customers/{user_id}/{stored_filename}"
 
 
 # ============= Customer Profile Endpoints =============
@@ -119,6 +180,58 @@ def update_my_profile(
     Met à jour le profil client de l'utilisateur connecté.
     """
     profile = customer_service.update_profile(current_user.id, profile_data)
+    return CustomerProfileResponse.model_validate(profile)
+
+
+@router.post(
+    "/profile/avatar",
+    response_model=CustomerProfileResponse,
+    summary="Uploader la photo de profil client"
+)
+@router.post(
+    "/me/avatar",
+    response_model=CustomerProfileResponse,
+    summary="Uploader la photo de profil client (alias)"
+)
+async def upload_customer_avatar(
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    customer_service: CustomerProfileService = Depends(get_customer_service)
+):
+    """
+    Upload la photo de profil (avatar) du client connecté.
+    """
+    public_url = await _save_customer_image(file, current_user.id, "avatar")
+    profile = customer_service.update_profile(
+        current_user.id,
+        CustomerProfileUpdate(avatar=public_url)
+    )
+    return CustomerProfileResponse.model_validate(profile)
+
+
+@router.post(
+    "/profile/cover-image",
+    response_model=CustomerProfileResponse,
+    summary="Uploader la photo de couverture client"
+)
+@router.post(
+    "/me/cover-image",
+    response_model=CustomerProfileResponse,
+    summary="Uploader la photo de couverture client (alias)"
+)
+async def upload_customer_cover_image(
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
+    customer_service: CustomerProfileService = Depends(get_customer_service)
+):
+    """
+    Upload la photo de couverture du client connecté.
+    """
+    public_url = await _save_customer_image(file, current_user.id, "cover")
+    profile = customer_service.update_profile(
+        current_user.id,
+        CustomerProfileUpdate(preferences={"cover_image": public_url})
+    )
     return CustomerProfileResponse.model_validate(profile)
 
 

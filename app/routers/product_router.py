@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, Query
+from fastapi import APIRouter, Depends, status, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
@@ -8,6 +8,7 @@ from app.services.product_service import (
     CategoryService, TagService, UnitService, ProductService
 )
 from app.routers.auth_router import get_current_user
+from app.core.deps import require_producer
 from app.schemas.product_schema import (
     CategoryCreate, CategoryUpdate, CategoryResponse, CategoryTree,
     TagCreate, TagResponse,
@@ -250,7 +251,7 @@ def get_units(
 )
 def create_product(
     product_data: ProductCreate,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_producer),
     product_service: ProductService = Depends(get_product_service)
 ):
     """
@@ -325,6 +326,8 @@ def get_my_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     active_only: bool = Query(False, description="Ne retourner que les produits actifs"),
+    category_id: Optional[int] = Query(None, description="Filtrer par catégorie"),
+    is_active: Optional[bool] = Query(None, description="Filtrer par statut actif"),
     current_user=Depends(get_current_user),
     product_service: ProductService = Depends(get_product_service)
 ):
@@ -333,7 +336,9 @@ def get_my_products(
     
     **Réservé aux producteurs.**
     """
-    products = product_service.get_my_products(current_user.id, skip, limit, active_only)
+    # Utiliser is_active si fourni, sinon active_only
+    filter_active = is_active if is_active is not None else active_only
+    products = product_service.get_my_products(current_user.id, skip, limit, filter_active, category_id)
     return [ProductResponse.model_validate(p) for p in products]
 
 
@@ -471,6 +476,37 @@ def add_product_image(
     La première image ajoutée est automatiquement définie comme image principale.
     """
     image = product_service.add_image(product_id, current_user.id, image_data)
+    return ProductImageResponse.model_validate(image)
+
+
+@router.post(
+    "/{product_id}/images/upload",
+    response_model=ProductImageResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Uploader un fichier image"
+)
+def upload_product_image(
+    product_id: int,
+    file: UploadFile = File(...),
+    alt_text: Optional[str] = Form(None),
+    position: int = Form(0),
+    is_primary: bool = Form(False),
+    current_user=Depends(get_current_user),
+    product_service: ProductService = Depends(get_product_service)
+):
+    """
+    Upload un fichier image et enregistre son URL dans la base.
+    
+    Seul le producteur propriétaire du produit peut uploader l'image.
+    """
+    image = product_service.add_image_file(
+        product_id=product_id,
+        user_id=current_user.id,
+        image_file=file,
+        alt_text=alt_text,
+        position=position,
+        is_primary=is_primary
+    )
     return ProductImageResponse.model_validate(image)
 
 

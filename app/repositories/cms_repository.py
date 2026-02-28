@@ -29,14 +29,14 @@ class PageRepository:
         """Récupère une page par son slug"""
         query = self.db.query(Page).filter(Page.slug == slug)
         if published_only:
-            query = query.filter(Page.is_published)
+            query = query.filter(Page.is_published == True)
         return query.first()
     
     def get_all(self, published_only: bool = False) -> List[Page]:
         """Récupère toutes les pages"""
         query = self.db.query(Page).order_by(Page.title)
         if published_only:
-            query = query.filter(Page.is_published)
+            query = query.filter(Page.is_published == True)
         return query.all()
     
     def update(self, page_id: int, **kwargs) -> Optional[Page]:
@@ -91,7 +91,7 @@ class FAQRepository:
             query = query.filter(FAQ.category == category)
         
         if published_only:
-            query = query.filter(FAQ.is_published)
+            query = query.filter(FAQ.is_published == True)
         
         query = query.order_by(FAQ.position, FAQ.id)
         return query.all()
@@ -100,7 +100,7 @@ class FAQRepository:
         """Récupère les FAQs d'une catégorie"""
         query = self.db.query(FAQ).filter(FAQ.category == category)
         if published_only:
-            query = query.filter(FAQ.is_published)
+            query = query.filter(FAQ.is_published == True)
         return query.order_by(FAQ.position, FAQ.id).all()
     
     def update(self, faq_id: int, **kwargs) -> Optional[FAQ]:
@@ -147,14 +147,14 @@ class BlogPostRepository:
         """Récupère un article par son ID"""
         query = self.db.query(BlogPost).filter(BlogPost.id == post_id)
         if published_only:
-            query = query.filter(BlogPost.is_published)
+            query = query.filter(BlogPost.is_published == True)
         return query.first()
     
     def get_by_slug(self, slug: str, published_only: bool = False) -> Optional[BlogPost]:
         """Récupère un article par son slug"""
         query = self.db.query(BlogPost).filter(BlogPost.slug == slug)
         if published_only:
-            query = query.filter(BlogPost.is_published)
+            query = query.filter(BlogPost.is_published == True)
         return query.first()
     
     def get_all(
@@ -168,7 +168,7 @@ class BlogPostRepository:
         query = self.db.query(BlogPost)
         
         if published_only:
-            query = query.filter(BlogPost.is_published)
+            query = query.filter(BlogPost.is_published == True)
         
         if author_id:
             query = query.filter(BlogPost.author_id == author_id)
@@ -183,7 +183,7 @@ class BlogPostRepository:
     def get_featured(self, limit: int = 5) -> List[BlogPost]:
         """Récupère les articles mis en avant"""
         return self.db.query(BlogPost)\
-            .filter(BlogPost.is_published)\
+            .filter(BlogPost.is_published == True)\
             .order_by(desc(BlogPost.published_at))\
             .limit(limit)\
             .all()
@@ -233,7 +233,7 @@ class BlogPostRepository:
         )
         
         if published_only:
-            query = query.filter(BlogPost.is_published)
+            query = query.filter(BlogPost.is_published == True)
         
         return query.order_by(desc(BlogPost.published_at)).all()
 
@@ -269,10 +269,10 @@ class TestimonialRepository:
         query = self.db.query(Testimonial)
         
         if approved_only:
-            query = query.filter(Testimonial.is_approved)
+            query = query.filter(Testimonial.is_approved == True)
         
         if featured_only:
-            query = query.filter(Testimonial.is_featured)
+            query = query.filter(Testimonial.is_featured == True)
         
         if user_id:
             query = query.filter(Testimonial.user_id == user_id)
@@ -287,8 +287,8 @@ class TestimonialRepository:
     def get_featured(self, limit: int = 10) -> List[Testimonial]:
         """Récupère les témoignages mis en avant"""
         return self.db.query(Testimonial)\
-            .filter(Testimonial.is_approved)\
-            .filter(Testimonial.is_featured)\
+            .filter(Testimonial.is_approved == True)\
+            .filter(Testimonial.is_featured == True)\
             .order_by(desc(Testimonial.created_at))\
             .limit(limit)\
             .all()

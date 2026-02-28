@@ -228,7 +228,7 @@ class ProducerProfileRepository:
     def get_verified_producers(self, skip: int = 0, limit: int = 100) -> List[ProducerProfile]:
         """Récupère les producteurs vérifiés"""
         return self.db.query(ProducerProfile).filter(
-            ProducerProfile.is_verified
+            ProducerProfile.is_verified == True
         ).offset(skip).limit(limit).all()
     
     def verify_producer(self, profile: ProducerProfile) -> ProducerProfile:
@@ -361,7 +361,7 @@ class PickupPointRepository:
         """Récupère tous les points d'un producteur"""
         query = self.db.query(PickupPoint).filter(PickupPoint.producer_id == producer_id)
         if active_only:
-            query = query.filter(PickupPoint.is_active)
+            query = query.filter(PickupPoint.is_active == True)
         return query.all()
     
     def get_with_slots(self, point_id: int) -> Optional[PickupPoint]:
@@ -407,7 +407,7 @@ class PickupSlotRepository:
         """Récupère tous les créneaux d'un point"""
         query = self.db.query(PickupSlot).filter(PickupSlot.pickup_point_id == pickup_point_id)
         if active_only:
-            query = query.filter(PickupSlot.is_active)
+            query = query.filter(PickupSlot.is_active == True)
         return query.all()
     
     def get_available_slots(self, pickup_point_id: int, day_of_week: str) -> List[PickupSlot]:
@@ -415,7 +415,7 @@ class PickupSlotRepository:
         return self.db.query(PickupSlot).filter(
             PickupSlot.pickup_point_id == pickup_point_id,
             PickupSlot.day_of_week == day_of_week,
-            PickupSlot.is_active,
+            PickupSlot.is_active == True,
             PickupSlot.current_orders < PickupSlot.max_orders
         ).all()
     

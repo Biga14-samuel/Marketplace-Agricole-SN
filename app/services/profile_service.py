@@ -85,6 +85,9 @@ class CustomerProfileService:
         # Mettre à jour uniquement les champs fournis
         update_data = profile_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
+            if field == "preferences" and isinstance(value, dict):
+                existing_preferences = profile.preferences if isinstance(profile.preferences, dict) else {}
+                value = {**existing_preferences, **value}
             setattr(profile, field, value)
         
         return self.profile_repo.update(profile)

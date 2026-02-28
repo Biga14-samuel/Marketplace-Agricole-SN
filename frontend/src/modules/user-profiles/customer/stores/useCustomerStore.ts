@@ -263,6 +263,66 @@ export const useCustomerStore = defineStore('customer', () => {
     };
 
     /**
+     * Uploader la photo de profil client
+     * Endpoint: POST /api/v1/customer-profiles/customers/profile/avatar
+     */
+    const uploadAvatar = async (file: File): Promise<CustomerProfile | null> => {
+        try {
+            isUpdatingProfile.value = true;
+            clearError();
+
+            const updatedProfile = await CustomerProfileService.uploadAvatar(file);
+            profile.value = updatedProfile;
+
+            if (completeProfile.value) {
+                completeProfile.value = {
+                    ...completeProfile.value,
+                    ...updatedProfile
+                };
+            }
+
+            CustomerProfileService.invalidateCache();
+            return updatedProfile;
+        } catch (err: any) {
+            error.value = err.message || 'Erreur lors de la mise à jour de la photo de profil';
+            console.error('Erreur uploadAvatar:', err);
+            return null;
+        } finally {
+            isUpdatingProfile.value = false;
+        }
+    };
+
+    /**
+     * Uploader la photo de couverture client
+     * Endpoint: POST /api/v1/customer-profiles/customers/profile/cover-image
+     */
+    const uploadCoverImage = async (file: File): Promise<CustomerProfile | null> => {
+        try {
+            isUpdatingProfile.value = true;
+            clearError();
+
+            const updatedProfile = await CustomerProfileService.uploadCoverImage(file);
+            profile.value = updatedProfile;
+
+            if (completeProfile.value) {
+                completeProfile.value = {
+                    ...completeProfile.value,
+                    ...updatedProfile
+                };
+            }
+
+            CustomerProfileService.invalidateCache();
+            return updatedProfile;
+        } catch (err: any) {
+            error.value = err.message || 'Erreur lors de la mise à jour de la couverture';
+            console.error('Erreur uploadCoverImage:', err);
+            return null;
+        } finally {
+            isUpdatingProfile.value = false;
+        }
+    };
+
+    /**
      * Supprimer le profil client
      * Endpoint: DELETE /api/v1/customer-profiles/customers/profile
      */
@@ -663,6 +723,8 @@ export const useCustomerStore = defineStore('customer', () => {
         fetchCompleteProfile,
         createProfile,
         updateProfile,
+        uploadAvatar,
+        uploadCoverImage,
         deleteProfile,
 
         // Actions - Adresses

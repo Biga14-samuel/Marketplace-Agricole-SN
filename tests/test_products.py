@@ -1,7 +1,7 @@
 import pytest
+import io
 from fastapi import status
 from datetime import date, timedelta
-from decimal import Decimal
 
 # Préfixe des routes produits
 PRODUCTS_PREFIX = "/products-catalog/products"
@@ -205,6 +205,69 @@ class TestProducts:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert isinstance(data, list)
+
+    def test_public_search_returns_description_and_images(
+        self,
+        client,
+        producer_with_profile,
+        producer_headers
+    ):
+        """
+        Vérifie qu'un produit publié par un producteur est visible côté client
+        avec sa description et ses images.
+        """
+        categories = client.get(f"{PRODUCTS_PREFIX}/categories").json()
+        units = client.get(f"{PRODUCTS_PREFIX}/units").json()
+
+        if len(categories) == 0 or len(units) == 0:
+            pytest.skip("Catégories ou unités non initialisées")
+
+        product_payload = {
+            "name": "Moringa frais de Yaoundé",
+            "slug": "moringa-frais-yaounde",
+            "description": "Feuilles de moringa fraîches, récolte du matin.",
+            "category_id": categories[0]["id"],
+            "unit_id": units[0]["id"],
+            "price": 1200,
+            "stock_quantity": 25,
+            "is_active": True
+        }
+
+        create_response = client.post(
+            f"{PRODUCTS_PREFIX}/",
+            headers=producer_headers,
+            json=product_payload
+        )
+        assert create_response.status_code == status.HTTP_201_CREATED
+        created_product = create_response.json()
+        product_id = created_product["id"]
+
+        image_payload = {
+            "url": f"/uploads/products/{product_id}/moringa-test.jpg",
+            "alt_text": "Moringa frais",
+            "position": 0,
+            "is_primary": True
+        }
+        image_response = client.post(
+            f"{PRODUCTS_PREFIX}/{product_id}/images",
+            headers=producer_headers,
+            json=image_payload
+        )
+        assert image_response.status_code == status.HTTP_201_CREATED
+
+        public_search = client.get(
+            f"{PRODUCTS_PREFIX}/",
+            params={"search_term": "moringa"}
+        )
+        assert public_search.status_code == status.HTTP_200_OK
+        products = public_search.json()
+
+        visible_product = next((item for item in products if item["id"] == product_id), None)
+        assert visible_product is not None
+        assert visible_product["description"] == product_payload["description"]
+        assert "images" in visible_product
+        assert len(visible_product["images"]) >= 1
+        assert visible_product["images"][0]["url"] == image_payload["url"]
 
     def test_create_product_as_producer(self, client, producer_with_profile, producer_headers):
         """
@@ -472,10 +535,45 @@ class TestProductImages:
         
         Vérifie qu'un producteur peut ajouter des images à ses produits.
         """
-        # Cette fonctionnalité nécessite souvent un upload de fichier
-        # Votre implémentation peut varier
-        # Adaptez ce test selon votre API
-        pass
+        categories = client.get(f"{PRODUCTS_PREFIX}/categories").json()
+        units = client.get(f"{PRODUCTS_PREFIX}/units").json()
+
+        if len(categories) == 0 or len(units) == 0:
+            pytest.skip("Catégories ou unités non initialisées")
+
+        product_response = client.post(
+            f"{PRODUCTS_PREFIX}/",
+            headers=producer_headers,
+            json={
+                "name": "Produit image test",
+                "slug": "produit-image-test",
+                "category_id": categories[0]["id"],
+                "unit_id": units[0]["id"],
+                "price": 1000,
+                "stock_quantity": 10
+            }
+        )
+        assert product_response.status_code == status.HTTP_201_CREATED
+        product_id = product_response.json()["id"]
+
+        image_bytes = io.BytesIO(b"fake-image-content")
+        upload_response = client.post(
+            f"{PRODUCTS_PREFIX}/{product_id}/images/upload",
+            headers=producer_headers,
+            files={"file": ("test.jpg", image_bytes, "image/jpeg")},
+            data={"alt_text": "Image test", "position": 0, "is_primary": "true"}
+        )
+        assert upload_response.status_code == status.HTTP_201_CREATED
+        uploaded_image = upload_response.json()
+        assert uploaded_image["product_id"] == product_id
+        assert uploaded_image["is_primary"] is True
+        assert uploaded_image["url"].startswith(f"/uploads/products/{product_id}/")
+
+        images_response = client.get(f"{PRODUCTS_PREFIX}/{product_id}/images")
+        assert images_response.status_code == status.HTTP_200_OK
+        images = images_response.json()
+        assert len(images) >= 1
+        assert any(img["url"].startswith(f"/uploads/products/{product_id}/") for img in images)
 
 
 class TestProductVariants:

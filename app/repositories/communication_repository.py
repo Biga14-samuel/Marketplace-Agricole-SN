@@ -206,7 +206,7 @@ class EmailTemplateRepository:
         """Récupère tous les templates"""
         query = self.db.query(EmailTemplate)
         if active_only:
-            query = query.filter(EmailTemplate.is_active)
+            query = query.filter(EmailTemplate.is_active == True)
         return query.all()
     
     def update(self, template_id: int, **kwargs) -> Optional[EmailTemplate]:

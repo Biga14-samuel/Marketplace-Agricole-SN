@@ -396,6 +396,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { createEmojiIcon } from '@/shared/components/icons/emoji'
 import { getErrorMessage } from '@/shared/utils/error-handler'
+import { productsApi } from '../../services/api/products.api'
 
 const ImageIcon = createEmojiIcon('🖼️', 'Image')
 const UploadIcon = createEmojiIcon('⬆️', 'Upload')
@@ -537,6 +538,7 @@ const handleFileSelect = async (event: Event) => {
     // Ajouter les erreurs
     if (errors.length > 0) {
         uploadErrors.value.push(...errors)
+        showUploadErrors.value = true
         emit('error', errors)
     }
 
@@ -562,60 +564,58 @@ const uploadNewImages = async (imagesToUpload: any[]) => {
         if (!image.file) continue
 
         image.uploading = true
+        image.progress = 0
         uploadingCount.value++
 
         try {
-            // Simuler l'upload (remplacer par votre logique API)
-            await simulateUpload(image)
+            if (!props.productId) {
+                image.uploading = false
+                image.progress = 100
+                continue
+            }
 
-            // Marquer comme uploadé
-            image.uploading = false
+            const uploadedImage = await productsApi.uploadProductImage(
+                String(props.productId),
+                {
+                    file: image.file,
+                    alt_text: image.alt_text || image.file.name.split('.')[0],
+                    is_primary: image.is_primary || false,
+                    position: image.position ?? 0
+                },
+                (progress) => {
+                    image.progress = progress
+                }
+            )
+
+            image.id = uploadedImage.id
+            image.url = uploadedImage.url
+            image.alt_text = uploadedImage.alt_text || image.alt_text
+            image.position = uploadedImage.position
+            image.is_primary = uploadedImage.is_primary
             image.uploaded = true
+            image.changed = false
+            delete image.file
 
             emit('upload', {
-                image,
+                image: uploadedImage,
                 productId: props.productId
             })
         } catch (error) {
-            image.uploading = false
             image.error = true
 
-            uploadErrors.value.push({
+            const uploadError = {
                 fileName: image.file.name,
                 message: error instanceof Error ? getErrorMessage(error) : 'Erreur lors de l\'upload'
-            })
+            }
+            uploadErrors.value.push(uploadError)
+            showUploadErrors.value = true
+            emit('error', [uploadError])
         } finally {
+            image.uploading = false
+            emit('update:modelValue', images.value)
             uploadingCount.value--
         }
     }
-}
-
-const simulateUpload = async (image: any): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        let progress = 0
-
-        const interval = setInterval(() => {
-            progress += Math.random() * 20
-            image.progress = Math.min(progress, 100)
-
-            if (progress >= 100) {
-                clearInterval(interval)
-
-                // Simuler une URL d'image
-                image.url = `https://api.localhost.cm/uploads/${Date.now()}-${image.file.name}`
-                delete image.file
-
-                // Simuler un délai réseau
-                setTimeout(() => {
-                    if (Math.random() > 0.1) { // 90% de succès
-                        resolve()
-                    } else {
-                        reject(new Error('Échec de l\'upload'))
-                    }
-                }, 500)
-            }
-        }, 100)
-    })
 }
 
 const handleDragOver = (event: DragEvent) => {
@@ -712,6 +712,21 @@ const startDrag = (index: number) => {
 }
 
 const saveChanges = async () => {
+    const pendingImages = images.value.filter((image) => image.file instanceof File)
+
+    if (!props.productId) {
+        // En mode création, les images seront envoyées après la publication du produit.
+        emit('save', {
+            images: images.value,
+            productId: props.productId
+        })
+        return
+    }
+
+    if (pendingImages.length > 0) {
+        await uploadNewImages(pendingImages)
+    }
+
     emit('save', {
         images: images.value,
         productId: props.productId

@@ -1,6 +1,10 @@
 from sqlalchemy.orm import Session
 from typing import Optional, List
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, UploadFile
+from pathlib import Path
+from uuid import uuid4
+from datetime import datetime, timezone
+import shutil
 
 from app.repositories.product_repository import (
     CategoryRepository, TagRepository, UnitRepository, ProductRepository,
@@ -8,6 +12,8 @@ from app.repositories.product_repository import (
     StockMovementRepository, StockAlertRepository
 )
 from app.repositories.profile_repository import ProducerProfileRepository
+from app.models.auth import User
+from app.models.profiles import ProducerProfile
 from app.models.products import Product, Category, Tag, Unit, ProductImage, ProductVariant, StockAlert
 from app.core.config import settings
 from app.schemas.product_schema import (
@@ -210,11 +216,43 @@ class ProductService:
         self.stock_alert_repo = StockAlertRepository(db)
         self.image_repo = ProductImageRepository(db)
         self.variant_repo = ProductVariantRepository(db)
+
+    def _build_default_business_name(self, user: User) -> str:
+        customer_profile = getattr(user, "customer_profile", None)
+        first_name = (getattr(customer_profile, "first_name", "") or "").strip()
+        last_name = (getattr(customer_profile, "last_name", "") or "").strip()
+        full_name = f"{first_name} {last_name}".strip()
+        if full_name:
+            return full_name
+
+        email = (user.email or "").strip()
+        if email:
+            local_part = email.split("@")[0].replace(".", " ").replace("_", " ").strip()
+            if local_part:
+                return local_part[:255]
+
+        return f"Producteur {user.id}"
+
+    def _ensure_producer_profile(self, user_id: int) -> Optional[ProducerProfile]:
+        producer = self.producer_repo.get_by_user_id(user_id)
+        if producer:
+            return producer
+
+        user = self.db.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+
+        business_name = self._build_default_business_name(user)
+        return self.producer_repo.create(
+            user_id=user_id,
+            business_name=business_name,
+            is_verified=bool(settings.SKIP_EMAIL_VERIFICATION)
+        )
     
     def create_product(self, user_id: int, product_data: ProductCreate) -> Product:
         """Crée un nouveau produit"""
         # Vérifier que l'utilisateur est un producteur
-        producer = self.producer_repo.get_by_user_id(user_id)
+        producer = self._ensure_producer_profile(user_id)
         if not producer:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -285,17 +323,18 @@ class ProductService:
         user_id: int,
         skip: int = 0,
         limit: int = 100,
-        active_only: bool = False
+        active_only: bool = False,
+        category_id: Optional[int] = None
     ) -> List[Product]:
         """Récupère les produits d'un producteur"""
-        producer = self.producer_repo.get_by_user_id(user_id)
+        producer = self._ensure_producer_profile(user_id)
         if not producer:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Seuls les producteurs peuvent voir leurs produits"
             )
         
-        return self.product_repo.get_producer_products(producer.id, skip, limit, active_only)
+        return self.product_repo.get_producer_products(producer.id, skip, limit, active_only, category_id)
     
     def search_products(self, filters: ProductSearchFilters, skip: int = 0, limit: int = 100) -> List[Product]:
         """Recherche de produits avec filtres"""
@@ -428,8 +467,71 @@ class ProductService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Vous ne pouvez pas modifier ce produit"
             )
-        
-        return self.image_repo.create(product_id, **image_data.model_dump())
+
+        existing_images = self.image_repo.get_product_images(product_id)
+        image_payload = image_data.model_dump()
+        # Première image du produit => image principale automatique
+        image_payload["is_primary"] = bool(image_payload.get("is_primary")) or len(existing_images) == 0
+        created_image = self.image_repo.create(product_id, **image_payload)
+
+        if created_image.is_primary:
+            return self.image_repo.set_as_primary(created_image)
+        return created_image
+
+    def add_image_file(
+        self,
+        product_id: int,
+        user_id: int,
+        image_file: UploadFile,
+        alt_text: Optional[str] = None,
+        position: int = 0,
+        is_primary: bool = False
+    ) -> 'ProductImage':
+        """Upload un fichier image produit puis enregistre son URL en base."""
+        # Validation droits avant écriture disque
+        product = self.get_product(product_id)
+        producer = self.producer_repo.get_by_user_id(user_id)
+        if not producer or product.producer_id != producer.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez pas modifier ce produit"
+            )
+
+        filename = image_file.filename or "product-image.bin"
+        extension = Path(filename).suffix.lower()
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+        if extension and extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Format d'image non supporté. Utilisez JPG, PNG, WEBP ou GIF."
+            )
+
+        upload_dir = Path("uploads") / "products" / str(product_id)
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        unique_name = f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid4().hex}{extension or '.bin'}"
+        saved_path = upload_dir / unique_name
+
+        try:
+            with saved_path.open("wb") as buffer:
+                shutil.copyfileobj(image_file.file, buffer)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Impossible d'enregistrer le fichier image: {exc}"
+            ) from exc
+
+        public_url = f"/uploads/products/{product_id}/{unique_name}"
+        return self.add_image(
+            product_id=product_id,
+            user_id=user_id,
+            image_data=ProductImageCreate(
+                url=public_url,
+                alt_text=alt_text,
+                position=position,
+                is_primary=is_primary
+            )
+        )
     
     def get_product_images(self, product_id: int) -> List['ProductImage']:
         """Récupère toutes les images d'un produit"""

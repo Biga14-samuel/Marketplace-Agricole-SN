@@ -5,6 +5,7 @@ import { ref, computed } from 'vue';
 import { productsApi } from '../../services/api/products.api';
 import type {
   CreateProductImageRequest,
+  UploadProductImageRequest,
   CreateVariantRequest,
   CreateStockAlertRequest
 } from '../../services/api/products.api';
@@ -222,7 +223,15 @@ export const useProductStore = defineStore('product', () => {
 
       return newProduct;
     } catch (err: any) {
-      error.value = err.message || 'Erreur lors de la création du produit';
+      const detail = err?.response?.data?.detail;
+      if (Array.isArray(detail) && detail.length > 0) {
+        const first = detail[0];
+        error.value = first?.msg || JSON.stringify(first);
+      } else if (typeof detail === 'string') {
+        error.value = detail;
+      } else {
+        error.value = err.message || 'Erreur lors de la création du produit';
+      }
       throw err;
     } finally {
       loading.value = false;
@@ -564,6 +573,44 @@ export const useProductStore = defineStore('product', () => {
       return image;
     } catch (err: any) {
       error.value = err.message || `Erreur lors de l'ajout de l'image au produit ${productId}`;
+      throw err;
+    } finally {
+      loading.value = false;
+      operationStatus.value = 'idle';
+    }
+  };
+
+  /**
+   * Upload un fichier image pour un produit
+   * Endpoint: POST /api/v1/products-catalog/products/{product_id}/images/upload
+   */
+  const addProductImageFile = async (
+    productId: string,
+    data: UploadProductImageRequest,
+    onProgress?: (progress: number) => void
+  ): Promise<ProductImage> => {
+    try {
+      operationStatus.value = 'uploading';
+      loading.value = true;
+      error.value = null;
+
+      const imageData = await productsApi.uploadProductImage(productId, data, onProgress);
+      const image = ProductImage.fromApiData(imageData);
+
+      const cachedComplete = completeProductsCache.value.get(productId);
+      if (cachedComplete) {
+        cachedComplete.images.push(image);
+        completeProductsCache.value.set(productId, cachedComplete);
+
+        if (completeProduct.value?.id === productId) {
+          completeProduct.value = cachedComplete;
+        }
+      }
+
+      completeProductsCache.value.delete(productId);
+      return image;
+    } catch (err: any) {
+      error.value = err.message || `Erreur lors de l'upload de l'image du produit ${productId}`;
       throw err;
     } finally {
       loading.value = false;
@@ -971,6 +1018,7 @@ export const useProductStore = defineStore('product', () => {
     getCompleteProduct,
     updateStock,
     addProductImage,
+    addProductImageFile,
     getProductImages,
     addProductVariant,
     getProductVariants,
