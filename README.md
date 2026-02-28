@@ -1,5 +1,3 @@
-Voici le texte brut, sans mise en forme, ni caractères spéciaux, ni symboles de ponctuation complexes :
-
 MarketFraîche Backend API
 
 API REST pour la plateforme de marketplace agricole connectant producteurs locaux et consommateurs
